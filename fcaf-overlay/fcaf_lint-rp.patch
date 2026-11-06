@@ -1,0 +1,20 @@
+--- a/tools/fcaf_lint.py	2026-11-04 22:51:51
++++ b/tools/fcaf_lint.py	2026-11-05 23:58:11
+@@ -169,7 +169,7 @@
+ # step ("Perform all Shared_JSON test cases on ..."), so the ID names only the
+ # family and a two-digit number, and the files live under suts/shared/.
+ SHARED_ID = re.compile(r"^Shared_[A-Za-z0-9]+(?:_[A-Za-z0-9]+)*_\d{2}$")
+-TESTCASE_PREFIXES = ("WS_", "Shared_")
++TESTCASE_PREFIXES = ("WS_", "RP_", "Shared_")
+ CURLY = re.compile(r'[\u201c\u201d]')
+ 
+ 
+@@ -206,7 +206,7 @@
+ def controlled_vocabulary(root: pathlib.Path):
+     """ICS statements from ics.md and the ISO mdoc test suite page."""
+     vocab = set()
+-    for rel in ("ics.md", "suts/wallet_solution/relying_party/testsuite_isomdoc.md"):
++    for rel in ("ics.md", "ics-rp.md", "suts/wallet_solution/relying_party/testsuite_isomdoc.md"):
+         p = root / rel
+         if not p.is_file():
+             continue

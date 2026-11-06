@@ -1,0 +1,43 @@
+# This fragment is owned and versioned with the FCAF content. Paths are
+# relative to docs/fcaf and are prefixed by hooks/fcaf_nav.py at build time.
+nav:
+  - Introduction: introduction.md
+  - Terminology: terminology.md
+  - Methodology: index.md
+  - Using the FCAF: using-fcaf.md
+  - Defaults: defaults.md
+  - Test Suites by SUTs:
+      - Overview: suts/index.md
+      - Wallet Solution (SUT):
+          - Overview: suts/wallet_solution/index.md
+          - Test Classes:
+              - (ws_rp) Relying Party:
+                  - Overview: suts/wallet_solution/relying_party/ws_rp.md
+                  - Baseline tests: suts/wallet_solution/relying_party/baseline-tests.md
+                  - Test cases: suts/wallet_solution/relying_party/test-cases.md
+              - (ws_ap) Attestation Provider:
+                  - Overview: suts/wallet_solution/attestation_provider/ws_ap.md
+                  - Baseline tests: suts/wallet_solution/attestation_provider/baseline-tests.md
+                  - Test cases: suts/wallet_solution/attestation_provider/test-cases.md
+              - (ws_pp) PID Provider: suts/wallet_solution/pid_provider/ws_pp.md
+              - (ws_inf) Infrastructure: suts/wallet_solution/infrastructure/ws_inf.md
+              - (ws_ui) UI: suts/wallet_solution/ui/ws_ui.md
+      - Relying Party (SUT):
+          - Overview: suts/relying_party/index.md
+          - Test Classes:
+              - (rp_ws) Wallet Solution:
+                  - Overview: suts/relying_party/wallet_solution/rp_ws.md
+                  - Baseline tests: suts/relying_party/wallet_solution/baseline-tests.md
+                  - Test cases: suts/relying_party/wallet_solution/test-cases.md
+              - (rp_pp) PID Provider:
+                  - Overview: suts/relying_party/pid_provider/rp_pp.md
+                  - Baseline tests: suts/relying_party/pid_provider/baseline-tests.md
+                  - Test cases: suts/relying_party/pid_provider/test-cases.md
+      - Shared: suts/shared/index.md
+  - Templates:
+      - Overview: templates/index.md
+      - Test spec template: templates/test-spec-template.md
+  - ICS: ics.md
+  - ICS (Relying Party): ics-rp.md
+  - References: references.md
+  - Changelog: CHANGELOG.md

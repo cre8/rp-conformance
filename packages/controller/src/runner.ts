@@ -11,6 +11,7 @@ import {
   type StepDefinition,
   type TestCaseDefinition,
   type Verdict,
+  controlsOf,
 } from '@rp-conformance/core';
 import { buildStatusListTokenJwt, issuePidSdJwtVc } from '@rp-conformance/forge';
 import { ConformanceWallet, type PresentationEvidence } from '@rp-conformance/wallet';
@@ -25,7 +26,9 @@ export const IMPLEMENTED_FLOWS: Flow[] = ['redirect'];
 export interface StepRecord {
   step: number;
   text: string;
+  /** Expected-result codes, for example `ACC` or `REJ + NOFETCH`. */
   expected: string;
+  expectedResult: string;
   /** Named faults of the step, `null` for valid material. */
   fault: string | null;
   transactionId?: string;
@@ -88,11 +91,10 @@ export function selectTestCases(definitions: TestCaseDefinition[], only?: string
   const selected = only?.length ? definitions.filter((d) => only.some((p) => matches(d.id, p))) : [...definitions];
   if (only?.length && selected.length === 0) throw new Error(`no test case matches ${only.join(', ')}`);
   for (const definition of [...selected]) {
-    if (definition.control && !selected.some((d) => d.id === definition.control)) {
-      const control = definitions.find((d) => d.id === definition.control);
-      if (!control) throw new Error(`${definition.id}: control ${definition.control} has no definition`);
-      selected.push(control);
-    }
+    const ids = controlsOf(definition);
+    const controls = definitions.filter((d) => ids.includes(d.id));
+    if (ids.length && controls.length === 0) throw new Error(`${definition.id}: control ${ids.join(' or ')} has no definition`);
+    for (const control of controls) if (!selected.includes(control)) selected.push(control);
   }
   return [...selected.filter((d) => !d.control), ...selected.filter((d) => d.control)];
 }
@@ -180,17 +182,19 @@ interface Context extends RunOptions {
 
 async function runTestCase(definition: TestCaseDefinition, flow: Flow, flowSupported: boolean, ctx: Context): Promise<TestCaseRecord> {
   const base = { testCase: definition.id, flow };
-  const control = definition.control
-    ? {
-        id: definition.control,
-        verdict: ctx.report.results.find((r) => r.testCase === definition.control && r.flow === flow)?.verdict ?? 'INCONCLUSIVE',
-      }
-    : null;
+  // One passed control is enough when the definition names alternatives (for example 001a or 001b).
+  const outcomes = controlsOf(definition).map((id) => ({
+    id,
+    verdict: ctx.report.results.find((r) => r.testCase === id && r.flow === flow)?.verdict ?? ('INCONCLUSIVE' as Verdict),
+  }));
+  const control = outcomes.find((o) => o.verdict === 'PASS') ?? outcomes[0] ?? null;
   const end = (verdict: Verdict, reason: string): TestCaseRecord => ({ ...base, verdict, reason, control, steps: [] });
   if (!flowSupported) return end('NOT APPLICABLE', `the ICS does not declare the ${flow} flow`);
   const unmet = applicability(definition, ctx.ics);
   if (unmet.length) return end('NOT APPLICABLE', `profile not met: ${unmet.join('; ')}`);
-  if (control && control.verdict !== 'PASS') return end('INCONCLUSIVE', `positive control ${control.id} did not pass`);
+  if (control && control.verdict !== 'PASS') {
+    return end('INCONCLUSIVE', `positive control ${outcomes.map((o) => o.id).join(' or ')} did not pass`);
+  }
   const steps: StepRecord[] = [];
   for (const [index, step] of definition.steps.entries()) {
     steps.push(await runStep(definition, flow, index + 1, step, ctx));
@@ -215,6 +219,7 @@ async function runStep(definition: TestCaseDefinition, flow: Flow, index: number
     step: index,
     text: step.text,
     expected: step.expect.codes.join(' + '),
+    expectedResult: step.expect.text,
     fault: faults.length ? faults.join(', ') : null,
     transactionId: undefined,
     rpResponse: undefined,

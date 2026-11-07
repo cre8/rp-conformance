@@ -81,6 +81,16 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/fcaf-render:
+    dependencies:
+      '@rp-conformance/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@rp-conformance/definitions':
+        specifier: workspace:*
+        version: link:../definitions
+
   packages/forge:
     dependencies:
       '@owf/crypto':

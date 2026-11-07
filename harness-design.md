@@ -106,32 +106,54 @@ All harness services run in one process or as containers on one Docker network w
 
 ### 4.2 Executable test definitions
 
-Each FCAF test case has one definition. It holds the FCAF text fields and the executable steps, so the markdown is rendered from it and cannot disagree with what runs.
+Each FCAF test case has one definition in `packages/definitions`. It holds every FCAF field and the executable steps, so the markdown is rendered from it and cannot disagree with what runs.
+
+| FCAF section | Definition field | Rendering |
+| --- | --- | --- |
+| Title | `id` | `# <id>`; class, layer and area in the ID give the file location |
+| Objective | `objective` | Paragraph |
+| References | `references` | Bullet list |
+| Profile applicability | `profile` (ICS conditions: item, exact `ics-rp.md` text, answer) | Bullet list of the texts, or `None`; the controller evaluates the items against the ICS |
+| EUDI-wallet relevancy | `relevancy` | One of the five FCAF values |
+| Technology | `technology` | Bullet list; left out when empty |
+| Preconditions | `preconditions` | Numbered list, or `None`; the positive controls they name must equal `control`, which gates execution |
+| Test Scenario | `steps[].text` | Numbered list |
+| Expected results | `steps[].expect.text` | Numbered list; `steps[].expect.codes` (`ACC`, `REJ`, `NOSTAT`, ...) is what the controller evaluates |
+| Comments | `comments` | Paragraphs; left out when empty |
+
+Shared wording lives in `packages/core/src/wording.ts`, ported from `generator/tests.py`: the preconditions, the expected results (`acc()`, `rej()`, `nostat()`, `fetched()`, `nofetch()`, combined with `all()`), the scenario texts (`scenario.credentialVariant(...)`, `scenario.statusListToken(...)`, ...), the comments, and the format and flow texts. Step builders such as `presentationStep.valid(...)` return the scenario text together with the executable action, so a fault and its description are written in one place.
 
 ```ts
-// Illustrative, not final API.
 export default defineTestCase({
   id: 'RP_PP_SM_Revocation_004a_UF',
   objective: 'Verify that the Relying Party does not use an expired Status List Token in JWT format.',
-  references: ['[Token Status List] section 5.1, 8.3', /* … */],
-  profile: [ics.requestsSdJwtVc, ics.checksPidRevocation],
-  relevancy: 'EUDI_generic | EUDI_required',
+  references: ['[Token Status List] section 5.1, 8.3' /* … */],
+  profile: [formats.sdJwtVc.profile, ics.checksPidRevocation],
+  relevancy: relevancy.genericRequired,
+  technology: [formats.sdJwtVc.technology, formats.sdJwtVc.statusListTechnology],
+  preconditions: [...preconditions.base, preconditions.control('RP_WS_IA_MainInteraction_001a'), preconditions.freshStatusList],
   control: 'RP_WS_IA_MainInteraction_001a',
   steps: [
     step({
-      text: slt('its `exp` claim is set to the current time minus `T_skew` minus one hour'),
+      // Phase 1: a statusListStep builder pairs this text with the fault.
+      text: scenario.statusListToken('its `exp` claim is set to the current time minus `T_skew` minus one hour'),
       run: presentation({
         query: 'default_query_pid',
         credential: pid.sdJwtVc(),
-        statusList: statusListToken.jwt().with(fault.statusList.expiredBy(skewPlus('1h'))),
+        statusList: statusListToken.jwt({ faults: ['statusList.expiredBy(T_skew+1h)'] }),
       }),
-      expect: nostat(),           // reject for PIDs, declared policy otherwise
+      expect: nostat(), // reject for PIDs, declared policy otherwise
     }),
   ],
+  comments: [comments.nostat, comments.flow],
 });
 ```
 
-The render step writes the FCAF markdown and runs the FCAF lint; CI fails if the rendered files differ from the committed ones.
+`packages/fcaf-render` renders a definition to FCAF markdown (`renderTestCase`, `testCasePath`). In Phase 0 a test checks that every definition renders byte-identical to the committed file in `fcaf-overlay/`. Phase 1 completes the renderer and replaces the Python generator:
+
+1. Port `generator/render.py` and `generator/pages.py` to TypeScript. The port is correct when it reproduces the current 121 files and the shared pages exactly.
+2. Run the patched FCAF lint (`fcaf-overlay/fcaf_lint-rp.patch`, Python) on the generated output in CI; CI also fails if the rendered files differ from the committed ones.
+3. Remove the Python `generator/`.
 
 ### 4.3 Artifact forge and fault injection
 
@@ -294,7 +316,7 @@ A wrong fault produces a false PASS, so every fault is tested before it is used 
 | Phase | Content | Baseline test cases enabled |
 | --- | --- | --- |
 | 0 | Repository, controller skeleton, test PKI, Test Status Provider, Test Trust Infrastructure (LoTE), Conformance Wallet for SD-JWT VC via redirects, EUDIPLO adapter, reference RP, self-validation | Positive control `RP_WS_IA_MainInteraction_001a` |
-| 1 | SD-JWT VC faults, Status List Tokens in JWT, response encryption via redirects | 53 (`a` variants of `Validity`, `Revocation`, `RP_PP_SM_Revocation`, PID `TrustMechanisms`, `SessionEncryption` via redirects), including the control |
+| 1 | SD-JWT VC faults, Status List Tokens in JWT, response encryption via redirects; the TypeScript renderer replaces the Python generator (section 4.2) | 53 (`a` variants of `Validity`, `Revocation`, `RP_PP_SM_Revocation`, PID `TrustMechanisms`, `SessionEncryption` via redirects), including the control |
 | 2 | mdoc: MSO, COSE, Status List Tokens in CWT, identifier lists | 45 (`b` variants and mdoc-only test cases) |
 | 3 | DC API shim | 11 (`SessionEncryption` via the DC API), plus every earlier test case repeated per flow |
 | 4 | QEAA (Trusted List XML), PuB-EAA, non-qualified EAA; OIDF bridge; nightly CI | 12 (`TrustMechanisms_010`–`_015`) |
@@ -303,6 +325,6 @@ A wrong fault produces a false PASS, so every fault is tested before it is used 
 ## 12. Decisions needed
 
 1. **Where the harness lives**: decided 2026-11-06, the private repository `cre8/rp-conformance`, next to the catalogue and the baseline. A move to an organisation (EUDIPLO, OpenWallet Foundation Labs) stays possible later.
-2. **Source of truth**: executable test definitions render the FCAF markdown (recommended), or the markdown stays hand-maintained and the harness only checks IDs and step counts against it.
+2. **Source of truth**: decided 2026-11-07, the executable test definitions; a TypeScript renderer in this monorepo produces the FCAF markdown and replaces the Python `generator/` (section 4.2).
 3. **Reference RP**: a minimal RP built on the reference validator (recommended, proves the harness independently of EUDIPLO), or EUDIPLO itself as the reference.
 4. **OIDF bridge**: run the 16 overlapping objectives through the OIDF suite in addition to the harness's own steps, or only through the harness.

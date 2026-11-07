@@ -1,0 +1,13 @@
+{
+  "name": "@rp-conformance/fcaf-render",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@rp-conformance/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@rp-conformance/definitions": "workspace:*"
+  }
+}

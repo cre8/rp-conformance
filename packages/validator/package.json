@@ -1,0 +1,24 @@
+{
+  "name": "@rp-conformance/validator",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@owf/crypto": "^0.7.0",
+    "@owf/eudi-jades": "^0.6.0",
+    "@owf/eudi-lote": "^0.6.0",
+    "@owf/identity-common": "^0.7.0",
+    "@owf/token-status-list": "^0.7.0",
+    "@owf/x509": "^0.7.0",
+    "@rp-conformance/core": "workspace:*",
+    "@rp-conformance/forge": "workspace:*",
+    "@sd-jwt/core": "^0.24.3",
+    "@sd-jwt/sd-jwt-vc": "^0.24.3",
+    "jose": "^6.2.15"
+  },
+  "devDependencies": {
+    "@rp-conformance/status-provider": "workspace:*",
+    "@rp-conformance/trust-infrastructure": "workspace:*"
+  }
+}

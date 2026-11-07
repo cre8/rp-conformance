@@ -1,0 +1,24 @@
+{
+  "name": "@rp-conformance/controller",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@rp-conformance/adapter-eudiplo": "workspace:*",
+    "@rp-conformance/adapter-reference": "workspace:*",
+    "@rp-conformance/definitions": "workspace:*",
+    "@rp-conformance/forge": "workspace:*",
+    "@rp-conformance/status-provider": "workspace:*",
+    "@rp-conformance/trust-infrastructure": "workspace:*",
+    "@rp-conformance/wallet": "workspace:*",
+    "tsx": "^4.23.15",
+    "yaml": "^2.9.1"
+  },
+  "bin": {
+    "rp-conformance": "./bin/rp-conformance.mjs"
+  },
+  "devDependencies": {
+    "@rp-conformance/core": "workspace:*"
+  }
+}

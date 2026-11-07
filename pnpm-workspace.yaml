@@ -1,0 +1,9 @@
+packages:
+  - packages/*
+  - adapters/*
+
+# esbuild ships its binary as an optional platform package and cbor-extract is an
+# optional accelerator of cbor-x, so neither install script is needed.
+allowBuilds:
+  esbuild: false
+  cbor-extract: false

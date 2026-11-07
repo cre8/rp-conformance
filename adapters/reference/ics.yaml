@@ -1,0 +1,19 @@
+# Implementation Conformance Statement of the reference Relying Party (see fcaf-overlay/docs/fcaf/ics-rp.md).
+RP.G.1: "Yes"   # requests credentials in IETF SD-JWT VC format
+RP.G.2: "No"    # mdoc (Phase 2)
+RP.G.3: "No"
+RP.G.4: "No"
+RP.G.5: "No"
+RP.G.6: API
+RP.P.1: "Yes"   # presentations via redirects
+RP.P.2: "No"    # W3C Digital Credentials API (Phase 3)
+RP.P.3: "No"
+RP.P.4: 60      # T_skew, seconds
+RP.P.5: "Yes"
+RP.P.6: 300     # T_kb, seconds
+RP.R.1: "Yes"   # checks the revocation status of PIDs
+RP.R.2: Reject
+RP.R.3: None
+RP.R.4: 1048576
+RP.T.1: PT1H
+RP.T.2: PT0S

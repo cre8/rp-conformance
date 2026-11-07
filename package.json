@@ -1,0 +1,22 @@
+{
+  "name": "rp-conformance",
+  "private": true,
+  "description": "Functional conformance tests and test harness for EUDI Wallet Relying Parties",
+  "type": "module",
+  "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "types:check": "tsc --noEmit -p tsconfig.json",
+    "rp-conformance": "node packages/controller/bin/rp-conformance.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "vitest": "^5.1.0",
+    "@rp-conformance/controller": "workspace:*"
+  }
+}

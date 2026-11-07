@@ -1,0 +1,53 @@
+# EUDIPLO as the Relying Party under test, with PostgreSQL (harness design section 8).
+#
+#   docker compose -f adapters/eudiplo/docker-compose.yml up -d --wait
+#   pnpm rp-conformance run --adapter eudiplo --only RP_WS_IA_MainInteraction_001a
+#
+# The harness services run on the host; EUDIPLO reaches them as host.docker.internal.
+name: rp-conformance-eudiplo
+
+services:
+  eudiplo:
+    image: ${EUDIPLO_IMAGE:-ghcr.io/eudiplo/eudiplo:latest}
+    ports:
+      - '127.0.0.1:3000:3000'
+    environment:
+      PUBLIC_URL: http://localhost:3000
+      MASTER_SECRET: rp-conformance-test-master-secret-not-for-production
+      AUTH_CLIENT_ID: rp-conformance
+      AUTH_CLIENT_SECRET: rp-conformance-secret
+      DB_TYPE: postgres
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      DB_USERNAME: eudiplo
+      DB_PASSWORD: eudiplo
+      DB_DATABASE: eudiplo
+      # The Test Status Provider and the Test Trust Infrastructure run on the host, over plain HTTP in Phase 0.
+      OUTBOUND_URL_ALLOW_HTTP: 'true'
+      OUTBOUND_URL_ALLOW_PRIVATE_NETWORK: 'true'
+      # default_query_pid carries no trusted_authorities; EUDIPLO uses them for its own trust decision only.
+      VP_REMOVE_TA: 'true'
+      LOG_LEVEL: debug
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: eudiplo
+      POSTGRES_PASSWORD: eudiplo
+      POSTGRES_DB: eudiplo
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U eudiplo']
+      interval: 2s
+      timeout: 5s
+      retries: 30

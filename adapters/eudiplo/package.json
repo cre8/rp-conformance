@@ -4,5 +4,7 @@
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
-  "dependencies": {"@rp-conformance/core": "workspace:*", "@rp-conformance/forge": "workspace:*"}
+  "dependencies": {
+    "@rp-conformance/core": "workspace:*"
+  }
 }

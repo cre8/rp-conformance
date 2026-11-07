@@ -1,0 +1,20 @@
+# Implementation Conformance Statement of EUDIPLO as Relying Party (see fcaf-overlay/docs/fcaf/ics-rp.md).
+# Values as configured by the EUDIPLO adapter; RP.P.2 is Yes, but the DC API shim of the harness is Phase 3.
+RP.G.1: "Yes"   # requests credentials in IETF SD-JWT VC format
+RP.G.2: "Yes"   # mdoc (harness: Phase 2)
+RP.G.3: "No"
+RP.G.4: "No"
+RP.G.5: "No"
+RP.G.6: API     # GET /api/session/:id
+RP.P.1: "Yes"   # presentations via redirects
+RP.P.2: "Yes"   # W3C Digital Credentials API (harness: Phase 3)
+RP.P.3: "No"    # VP_REMOVE_TA strips trusted_authorities from the request
+RP.P.4: 60      # T_skew: skewSeconds, EUDIPLO default 60
+RP.P.5: "Yes"
+RP.P.6: 300     # T_kb: KB-JWT iat at most 300 s old
+RP.R.1: "Yes"   # statusCheckMode strict
+RP.R.2: Reject
+RP.R.3: None
+RP.R.4: 10485760
+RP.T.1: PT5M    # trust list cache
+RP.T.2: PT0S

@@ -1,6 +1,6 @@
 # RP conformance harness: design
 
-Draft 0.1, 2026-11-06. Design only; no code exists yet. It describes the tool that executes the Relying Party test cases in [fcaf-overlay](fcaf-overlay/README.md) (121 baseline test cases) against any Relying Party, EUDIPLO first.
+Draft 0.1, 2026-11-06. Phase 0 (section 11) is implemented in `packages/` and `adapters/`; see the README for how to run it. It describes the tool that executes the Relying Party test cases in [fcaf-overlay](fcaf-overlay/README.md) (121 baseline test cases) against any Relying Party, EUDIPLO first.
 
 ## 0. Summary
 

@@ -29,9 +29,6 @@ importers:
       '@rp-conformance/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@rp-conformance/forge':
-        specifier: workspace:*
-        version: link:../../packages/forge
 
   adapters/reference:
     dependencies:

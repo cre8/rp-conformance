@@ -59,6 +59,8 @@ export interface RunReport {
     harness: ReturnType<typeof harnessInfo>;
     environment: { namespace: string; statusProvider: string; trustInfrastructure: string; trustLists: { id: string; url: string }[] };
     summary: Partial<Record<Verdict, number>>;
+    /** Why the run could not execute its test cases, if it could not. */
+    error?: string;
   };
   results: TestCaseRecord[];
 }
@@ -126,13 +128,25 @@ export async function runConformance(options: RunOptions): Promise<{ report: Run
   };
   try {
     log(`run ${runId}: harness services at ${harness.status.baseUrl} (status) and ${harness.trust.baseUrl} (trust)`);
-    await options.adapter.setUp(harness.env, namespace);
+    const selected = selectTestCases(options.definitions, options.only);
+    try {
+      await options.adapter.setUp(harness.env, namespace);
+    } catch (error) {
+      // Without a configured Relying Party no test case can produce a verdict.
+      report.run.error = `adapter set-up failed: ${(error as Error).message}`;
+      for (const definition of selected) {
+        for (const flow of flows) {
+          report.results.push({ testCase: definition.id, flow, verdict: 'INCONCLUSIVE', reason: report.run.error, control: null, steps: [] });
+        }
+      }
+      log(report.run.error);
+      return await writeReport(report, runDir);
+    }
     log(`adapter ${options.adapter.name} set up`);
     const wallet = await ConformanceWallet.create({
       accessCertificateAnchors: [harness.pki.entities['AC-A'].anchors.issuance.certificate],
       allowInsecureUrls: true,
     });
-    const selected = selectTestCases(options.definitions, options.only);
     for (const definition of selected) {
       for (const flow of flows.length ? flows : requestedFlows) {
         const record = await runTestCase(definition, flow, flows.includes(flow), { ...options, harness, wallet, runDir, report });
@@ -141,12 +155,17 @@ export async function runConformance(options: RunOptions): Promise<{ report: Run
       }
     }
   } finally {
-    report.run.finishedAt = new Date().toISOString();
-    for (const result of report.results) report.run.summary[result.verdict] = (report.run.summary[result.verdict] ?? 0) + 1;
     await options.adapter.tearDown?.().catch(() => {});
     await harness.stop();
-    await mkdir(runDir, { recursive: true });
   }
+  return writeReport(report, runDir);
+}
+
+async function writeReport(report: RunReport, runDir: string): Promise<{ report: RunReport; reportPath: string }> {
+  report.run.finishedAt = new Date().toISOString();
+  report.run.summary = {};
+  for (const result of report.results) report.run.summary[result.verdict] = (report.run.summary[result.verdict] ?? 0) + 1;
+  await mkdir(runDir, { recursive: true });
   const reportPath = join(runDir, 'report.json');
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
   return { report, reportPath };

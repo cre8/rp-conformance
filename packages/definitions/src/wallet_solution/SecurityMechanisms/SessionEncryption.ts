@@ -6,17 +6,22 @@ import {
   defineTestCase,
   encryptionKeyOf,
   type Expectation,
+  type FaultId,
   type Flow,
   flows,
   PID,
   positiveControlOf,
   formats,
+  pid,
   preconditions,
+  presentation,
+  presentationStep,
   QUERY_PID,
   rej,
   relevancy,
   scenario,
   type StepDefinition,
+  faultInfo,
   step,
   testCaseId,
 } from '@rp-conformance/core';
@@ -35,6 +40,17 @@ const via = (flow: Flow) => flows[flow].via;
 const responseOf = (flow: Flow) => (flow === 'redirect' ? 'the `response` parameter' : 'the `response` member of the returned `data` object');
 const rejected = (flow: Flow, differences: string[]) =>
   differences.map((difference) => step({ text: scenario.encryption(flow, difference), expect: rej() }));
+
+/**
+ * Steps with a response fault: executable via redirects, text only via the DC API until Phase 3 (the text of a DC API
+ * variant, where it differs, is given by `dcApiText`).
+ */
+const faulty = (flow: Flow, faults: FaultId[], dcApiText?: (fault: FaultId) => string) =>
+  faults.map((fault) =>
+    flow === 'redirect'
+      ? step({ ...presentationStep.encryptionFault(flow, fault), expect: rej() })
+      : step({ text: dcApiText?.(fault) ?? scenario.encryption(flow, faultInfo(fault).text), expect: rej() }),
+  );
 
 interface EncryptionTestCase {
   number: number;
@@ -62,7 +78,15 @@ const sessionEncryption = (testCase: EncryptionTestCase) =>
   );
 
 const BOTH: Flow[] = ['redirect', 'dc-api'];
-const accepted = (text: string): StepDefinition => step({ text, expect: acc({ credential: PID }) as Expectation });
+/** A step expected to be accepted; executable via redirects with the given response. */
+const accepted = (flow: Flow, text: string, response: { enc?: 'A128GCM' | 'A256GCM'; faults?: FaultId[] }): StepDefinition =>
+  step({
+    text,
+    ...(flow === 'redirect'
+      ? { run: presentation({ query: 'default_query_pid', credential: pid.sdJwtVc(), response: { faults: [], ...response } }) }
+      : {}),
+    expect: acc({ credential: PID }) as Expectation,
+  });
 
 export const definitions = [
   ...(['A128GCM', 'A256GCM'] as const).flatMap((enc, i) =>
@@ -73,7 +97,9 @@ export const definitions = [
       objective: (flow) => `Verify that the Relying Party accepts an Authorization Response ${via(flow)} encrypted with \`ECDH-ES\` on P-256 and \`${enc}\`.`,
       steps: (flow) => [
         accepted(
+          flow,
           `Perform a presentation for ${QUERY_PID} ${via(flow)} in which the Conformance Wallet presents ${PID} in a valid Authorization Response, encrypted as a JWE with \`alg\` \`ECDH-ES\` (P-256) and \`enc\` \`${enc}\` to the encryption key from the \`client_metadata\` of the request.`,
+          { enc },
         ),
       ],
       references: ['[RFC7516] section 5.2', '[RFC7518] section 4.6, 5.3'],
@@ -84,20 +110,14 @@ export const definitions = [
     flows: ['redirect'],
     unhappyFlow: true,
     objective: () => 'Verify that the Relying Party rejects an unencrypted Authorization Response when it requested response mode `direct_post.jwt`.',
-    steps: (flow) =>
-      rejected(flow, [
-        'it is not encrypted: the Conformance Wallet posts `vp_token` and `state` as form parameters to the `response_uri`, as in response mode `direct_post`',
-      ]),
+    steps: (flow) => faulty(flow, ['response.unencrypted']),
   }),
   ...sessionEncryption({
     number: 4,
     flows: BOTH,
     unhappyFlow: true,
     objective: (flow) => `Verify that the Relying Party rejects an Authorization Response ${via(flow)} encrypted to a key it did not issue.`,
-    steps: (flow) =>
-      rejected(flow, [
-        "it is encrypted to a newly generated P-256 key that the Relying Party did not issue, while the JWE header carries the `kid` of the Relying Party's encryption key",
-      ]),
+    steps: (flow) => faulty(flow, ['response.foreign-key']),
   }),
   ...sessionEncryption({
     number: 5,
@@ -107,10 +127,14 @@ export const definitions = [
     steps: (flow) => [
       step({
         text: `Start a presentation for ${QUERY_PID} ${via(flow)} (transaction T1) and record the encryption key from the \`client_metadata\` of its request. Send no response for T1.`,
+        ...(flow === 'redirect' ? { run: { kind: 'start' as const, query: 'default_query_pid' as const } } : {}),
         expect: encryptionKeyOf('T1'),
       }),
       step({
-        text: `Perform a presentation for ${QUERY_PID} ${via(flow)} (transaction T2) in which the Conformance Wallet encrypts an otherwise valid Authorization Response for T2 to the encryption key recorded for T1, with the \`kid\` of that key.`,
+        text: `Perform a presentation for ${QUERY_PID} ${via(flow)} (transaction T2) in which ${faultInfo('response.other-transaction-key').text}.`,
+        ...(flow === 'redirect'
+          ? { run: presentation({ query: 'default_query_pid', credential: pid.sdJwtVc(), response: { faults: ['response.other-transaction-key'], keyOfStep: 1 } }) }
+          : {}),
         expect: rej(),
       }),
     ],
@@ -121,11 +145,7 @@ export const definitions = [
     unhappyFlow: true,
     objective: (flow) =>
       `Verify that the Relying Party rejects an Authorization Response ${via(flow)} encrypted with a key management algorithm other than \`ECDH-ES\`.`,
-    steps: (flow) =>
-      rejected(flow, [
-        "its JWE uses `alg` `ECDH-ES+A128KW` with the Relying Party's encryption key",
-        "its JWE uses `alg` `ECDH-ES+A256KW` with the Relying Party's encryption key",
-      ]),
+    steps: (flow) => faulty(flow, ['response.alg-ecdh-es-a128kw', 'response.alg-ecdh-es-a256kw']),
     references: ['[RFC7518] section 4.6'],
   }),
   ...sessionEncryption({
@@ -133,7 +153,7 @@ export const definitions = [
     flows: BOTH,
     unhappyFlow: true,
     objective: (flow) => `Verify that the Relying Party rejects an Authorization Response ${via(flow)} encrypted with a content encryption algorithm it did not list.`,
-    steps: (flow) => rejected(flow, ['its JWE uses `enc` `A128CBC-HS256`']),
+    steps: (flow) => faulty(flow, ['response.enc-a128cbc-hs256']),
     references: ['[RFC7518] section 5.2'],
   }),
   ...sessionEncryption({
@@ -141,7 +161,7 @@ export const definitions = [
     flows: BOTH,
     unhappyFlow: true,
     objective: (flow) => `Verify that the Relying Party rejects an Authorization Response ${via(flow)} whose JWE was modified.`,
-    steps: (flow) => rejected(flow, ['one bit of its JWE ciphertext is flipped', 'one bit of its JWE authentication tag is flipped']),
+    steps: (flow) => faulty(flow, ['response.ciphertext-bitflip', 'response.tag-bitflip']),
     references: ['[RFC7516] section 5.2'],
   }),
   ...sessionEncryption({
@@ -149,11 +169,7 @@ export const definitions = [
     flows: BOTH,
     unhappyFlow: true,
     objective: (flow) => `Verify that the Relying Party rejects an Authorization Response ${via(flow)} whose ephemeral public key is not a valid P-256 point.`,
-    steps: (flow) =>
-      rejected(flow, [
-        'the `epk` header of its JWE holds coordinates that are not a point on P-256',
-        'the `epk` header of its JWE holds a key on curve P-384',
-      ]),
+    steps: (flow) => faulty(flow, ['response.epk-off-curve', 'response.epk-p384']),
     references: ['[RFC7518] section 4.6', '[RFC8725] section 3.4'],
   }),
   ...sessionEncryption({
@@ -161,11 +177,11 @@ export const definitions = [
     flows: BOTH,
     unhappyFlow: true,
     objective: (flow) => `Verify that the Relying Party rejects an Authorization Response ${via(flow)} that is signed or unsecured instead of encrypted.`,
+    // The fault wording names the `response` parameter of the redirect flow; via the DC API it is a member of `data`.
     steps: (flow) =>
-      rejected(flow, [
-        `${responseOf(flow)} is a JWS signed with a key of the Conformance Wallet instead of a JWE`,
-        `${responseOf(flow)} is an unsecured JWT with \`alg\` \`none\` instead of a JWE`,
-      ]),
+      faulty(flow, ['response.jws', 'response.alg-none'], (fault) =>
+        scenario.encryption(flow, faultInfo(fault).text.replace('the `response` parameter', responseOf(flow))),
+      ),
     references: ['[RFC8725] section 3.1'],
   }),
   ...sessionEncryption({
@@ -185,7 +201,9 @@ export const definitions = [
     objective: (flow) => `Verify that the Relying Party ignores unrecognised members in a decrypted Authorization Response ${via(flow)}.`,
     steps: (flow) => [
       accepted(
-        `Perform a presentation for ${QUERY_PID} ${via(flow)} in which the Conformance Wallet presents ${PID} in a valid Authorization Response whose decrypted payload additionally contains the member \`foo\` with the value \`bar\`.`,
+        flow,
+        `Perform a presentation for ${QUERY_PID} ${via(flow)} in which the Conformance Wallet presents ${PID} in a valid Authorization Response whose ${faultInfo('response.extra-member').text.replace(/^its /, '')}.`,
+        { faults: ['response.extra-member'] },
       ),
     ],
     references: ['[OpenID4VP] section 8.1'],

@@ -77,8 +77,12 @@ export interface PresentationAction {
 
 export type StepAction = PresentationAction;
 
-/** Expected-result codes of the catalogue (harness design section 5). */
-export type ExpectationCode = 'ACC' | 'REJ' | 'NOSTAT' | 'NOFETCH' | 'FETCHED' | 'POLICY';
+/**
+ * Expected-result codes of the catalogue (harness design section 5). `LIST_RETRIEVED`: the Test Trust Infrastructure
+ * logged a retrieval of the list version the step published. `ENC_KEY`: the request carries an encryption key in its
+ * `client_metadata`.
+ */
+export type ExpectationCode = 'ACC' | 'REJ' | 'NOSTAT' | 'NOFETCH' | 'FETCHED' | 'POLICY' | 'LIST_RETRIEVED' | 'ENC_KEY';
 
 /** An expected result: the codes the controller evaluates and the FCAF text it renders. */
 export interface Expectation {
@@ -90,7 +94,8 @@ export interface Expectation {
 export interface StepDefinition {
   /** Test scenario text of the step. */
   text: string;
-  run: StepAction;
+  /** What the harness executes; left out while the step is text only (a later phase makes it executable). */
+  run?: StepAction;
   expect: Expectation;
 }
 
@@ -143,6 +148,11 @@ export function parseTestCaseId(id: string): TestCaseId {
     variant: match[5],
     unhappyFlow: Boolean(match[6]),
   };
+}
+
+/** A definition is executable when every step has an action. */
+export function isExecutable(definition: TestCaseDefinition): boolean {
+  return definition.steps.every((s) => s.run !== undefined);
 }
 
 /** The controls of a definition as a list. */

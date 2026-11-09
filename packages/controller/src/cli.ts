@@ -2,7 +2,7 @@
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import type { Flow, RelyingPartyAdapter } from '@rp-conformance/core';
+import { type Flow, isExecutable, type RelyingPartyAdapter } from '@rp-conformance/core';
 import { definitions } from '@rp-conformance/definitions';
 import { loadIcs } from './ics';
 import { runConformance } from './runner';
@@ -39,7 +39,10 @@ async function main() {
   });
   if (values.help) return void process.stdout.write(usage);
   if (values.list) {
-    for (const d of definitions) process.stdout.write(`${d.id}${d.control ? '' : ' (positive control)'}\n`);
+    for (const d of definitions) {
+      const notes = [!d.control && 'positive control', !isExecutable(d) && 'text only'].filter(Boolean);
+      process.stdout.write(`${d.id}${notes.length ? ` (${notes.join(', ')})` : ''}\n`);
+    }
     return;
   }
   if (positionals[0] !== 'run' || !values.adapter) {

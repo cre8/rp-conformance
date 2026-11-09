@@ -12,7 +12,7 @@ Key choices:
 - **Valid first, then one fault**: every artifact is built valid with the libraries, then a named mutation is applied in a separate fault-injection layer that assembles JOSE/COSE directly, so strict library validation never blocks a deliberately broken artifact.
 - **The harness proves its own faults**: before a mutation is used against an RP, a reference validator confirms that the unmutated artifact passes every check and the mutated one fails exactly the targeted check.
 - **RP-agnostic through adapters**: one small interface (start a presentation, read the verdict, optionally refresh trust). EUDIPLO gets the first adapter; a manual adapter covers RPs without an API.
-- **Executable test definitions are the single source of truth**: the FCAF markdown is rendered from them, replacing the current Python generator, so the specification and the executed test cannot drift.
+- **Executable test definitions are the single source of truth**: the FCAF markdown is rendered from them, so the specification and the executed test cannot drift.
 
 ## 1. Goals and non-goals
 
@@ -32,7 +32,7 @@ Non-goals for now:
 
 ## 2. What the baseline needs from a harness
 
-Derived from the 121 generated test cases ([generator/tests.py](generator/tests.py)):
+Derived from the 121 baseline test cases ([packages/definitions](packages/definitions)):
 
 | Capability | Used by | Notes |
 | --- | --- | --- |
@@ -121,7 +121,7 @@ Each FCAF test case has one definition in `packages/definitions`. It holds every
 | Expected results | `steps[].expect.text` | Numbered list; `steps[].expect.codes` (`ACC`, `REJ`, `NOSTAT`, ...) is what the controller evaluates |
 | Comments | `comments` | Paragraphs; left out when empty |
 
-Shared wording lives in `packages/core/src/wording.ts`, ported from `generator/tests.py`: the preconditions, the expected results (`acc()`, `rej()`, `nostat()`, `fetched()`, `nofetch()`, combined with `all()`), the scenario texts (`scenario.credentialVariant(...)`, `scenario.statusListToken(...)`, ...), the comments, and the format and flow texts. Step builders such as `presentationStep.valid(...)` return the scenario text together with the executable action, so a fault and its description are written in one place.
+Shared wording lives in `packages/core/src/wording.ts`: the preconditions, the expected results (`acc()`, `rej()`, `nostat()`, `fetched()`, `nofetch()`, combined with `all()`), the scenario texts (`scenario.credentialVariant(...)`, `scenario.statusListToken(...)`, ...), the comments, and the format and flow texts. Step builders such as `presentationStep.valid(...)` return the scenario text together with the executable action, so a fault and its description are written in one place.
 
 ```ts
 export default defineTestCase({
@@ -149,11 +149,9 @@ export default defineTestCase({
 });
 ```
 
-`packages/fcaf-render` renders a definition to FCAF markdown (`renderTestCase`, `testCasePath`). In Phase 0 a test checks that every definition renders byte-identical to the committed file in `fcaf-overlay/`. Phase 1 completes the renderer and replaces the Python generator:
+The definitions are grouped by area (`packages/definitions/src/<class>/<layer>/<Area>.ts`); where the FCAF test cases of an objective differ only in the credential format or the flow, one function produces each variant, and the variant a later phase implements carries text only (steps without `run`). The controller executes only definitions whose steps all have an action.
 
-1. Port `generator/render.py` and `generator/pages.py` to TypeScript. The port is correct when it reproduces the current 121 files and the shared pages exactly.
-2. Run the patched FCAF lint (`fcaf-overlay/fcaf_lint-rp.patch`, Python) on the generated output in CI; CI also fails if the rendered files differ from the committed ones.
-3. Remove the Python `generator/`.
+`packages/fcaf-render` renders the whole overlay `fcaf-overlay/docs/fcaf` (`pnpm fcaf:render`): the test cases from the definitions, the overview, area and layer pages and baseline lists, the Relying Party ICS and defaults from `packages/fcaf-render/pages`, and the four modified FCAF pages from their unmodified originals in `packages/fcaf-render/upstream` (`submitted` at `0ed4ab1`). `pnpm test` and CI fail when the committed overlay differs from the rendered one, and CI runs the patched FCAF lint (`scripts/fcaf-lint.sh`, `fcaf-overlay/fcaf_lint-rp.patch`) on the rendered output with every finding blocking. The Python generator this replaced was removed in Phase 1, after the port had reproduced its 121 test cases and 21 shared pages byte for byte.
 
 ### 4.3 Artifact forge and fault injection
 
@@ -296,7 +294,6 @@ A wrong fault produces a false PASS, so every fault is tested before it is used 
 | EUDIPLO `apps/client/e2e/support/wallet.ts` | Starting point for the Conformance Wallet |
 | EUDIPLO `apps/backend/test/oidf` | OIDF bridge |
 | WILMA (`cre8/walter`) | Run and verdict model, report conventions |
-| `rp-conformance/generator` | Test text, replaced by the executable definitions |
 
 ## 10. Gaps and risks
 

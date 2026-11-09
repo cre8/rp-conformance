@@ -5,9 +5,7 @@
   "type": "module",
   "exports": "./src/index.ts",
   "dependencies": {
-    "@rp-conformance/core": "workspace:*"
-  },
-  "devDependencies": {
+    "@rp-conformance/core": "workspace:*",
     "@rp-conformance/definitions": "workspace:*"
   }
 }

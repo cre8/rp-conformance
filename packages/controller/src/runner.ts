@@ -12,6 +12,7 @@ import {
   type TestCaseDefinition,
   type Verdict,
   controlsOf,
+  isExecutable,
 } from '@rp-conformance/core';
 import { buildStatusListTokenJwt, issuePidSdJwtVc } from '@rp-conformance/forge';
 import { ConformanceWallet, type PresentationEvidence } from '@rp-conformance/wallet';
@@ -86,10 +87,17 @@ export interface RunOptions {
 const matches = (id: string, pattern: string) =>
   new RegExp(`^${pattern.split('*').map((p) => p.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`).test(id);
 
-/** Selects the test cases and adds the positive controls they depend on, controls first (harness design section 4.1). */
-export function selectTestCases(definitions: TestCaseDefinition[], only?: string[]): TestCaseDefinition[] {
+/**
+ * Selects the executable test cases and adds the positive controls they depend on, controls first (harness design
+ * section 4.1). Text-only definitions are left out.
+ */
+export function selectTestCases(all: TestCaseDefinition[], only?: string[]): TestCaseDefinition[] {
+  const definitions = all.filter(isExecutable);
   const selected = only?.length ? definitions.filter((d) => only.some((p) => matches(d.id, p))) : [...definitions];
-  if (only?.length && selected.length === 0) throw new Error(`no test case matches ${only.join(', ')}`);
+  if (only?.length && selected.length === 0) {
+    const textOnly = all.filter((d) => !isExecutable(d) && only.some((p) => matches(d.id, p)));
+    throw new Error(`no executable test case matches ${only.join(', ')}${textOnly.length ? ` (text only: ${textOnly.map((d) => d.id).join(', ')})` : ''}`);
+  }
   for (const definition of [...selected]) {
     const ids = controlsOf(definition);
     const controls = definitions.filter((d) => ids.includes(d.id));
@@ -205,7 +213,7 @@ async function runTestCase(definition: TestCaseDefinition, flow: Flow, flowSuppo
 }
 
 async function runStep(definition: TestCaseDefinition, flow: Flow, index: number, step: StepDefinition, ctx: Context): Promise<StepRecord> {
-  const action: PresentationAction = step.run;
+  const action = step.run as PresentationAction;
   const dir = join(ctx.runDir, 'artifacts', definition.id, flow, `step-${index}`);
   await mkdir(dir, { recursive: true });
   const artifacts: string[] = [];

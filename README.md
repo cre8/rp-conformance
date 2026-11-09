@@ -12,9 +12,9 @@ Status: specification, design, and Phase 0 of the harness (positive control `RP_
 | --- | --- |
 | [rp-test-catalogue.md](rp-test-catalogue.md) | All test objectives (222), traced to the ARF high-level requirements, with the decisions taken on the open questions (§8) |
 | [fcaf-overlay/](fcaf-overlay/README.md) | 121 baseline test cases in the FCAF test case format, with the defaults, the Relying Party ICS and the navigation, as an overlay on the FCAF content branch `submitted` |
-| [generator/](generator/) | Python generator that renders the baseline test cases and shared pages; replaced by `packages/fcaf-render` in Phase 1 |
 | [harness-design.md](harness-design.md) | Design of the test harness: conformance wallet, status and trust list servers, artifact forge with fault injection, RP adapters, verdicts, delivery phases |
-| [packages/](packages/) | The harness (TypeScript, pnpm workspace): `core` (adapter interface, test definition format, shared FCAF wording), `forge` (test PKI, PID SD-JWT VC, Status List Token, JAdES-sealed LoTE, registration certificate), `wallet` (Conformance Wallet), `status-provider`, `trust-infrastructure`, `validator` (reference validator), `reference-rp`, `definitions` (executable test definitions), `fcaf-render` (FCAF markdown from the definitions), `controller` (CLI, selection, gating, report) |
+| [packages/](packages/) | The harness (TypeScript, pnpm workspace): `core` (adapter interface, test definition format, shared FCAF wording), `forge` (test PKI, PID SD-JWT VC, Status List Token, JAdES-sealed LoTE, registration certificate), `wallet` (Conformance Wallet), `status-provider`, `trust-infrastructure`, `validator` (reference validator), `reference-rp`, `definitions` (the 121 test definitions, the source of the FCAF test cases), `fcaf-render` (renders the overlay from the definitions and the shared pages), `controller` (CLI, selection, gating, report) |
+| [scripts/fcaf-lint.sh](scripts/fcaf-lint.sh) | Runs the patched FCAF lint on the rendered test cases, as CI does |
 | [adapters/](adapters/) | RP adapters with their ICS: `reference` (the reference RP, in-process) and `eudiplo` (with a Docker Compose file for EUDIPLO and PostgreSQL) |
 
 ## Approach
@@ -46,14 +46,24 @@ pnpm rp-conformance run --adapter eudiplo --only RP_WS_IA_MainInteraction_001a
 
 Phase 0 decisions on the open points of [harness-design.md](harness-design.md) §12: the executable TypeScript definitions in `packages/definitions` are the source of truth, and a TypeScript renderer produces the FCAF markdown from them (complete in Phase 1, see §4.2); the reference RP is built on the reference validator; the OIDF bridge is optional and not part of Phase 0.
 
-## Regenerating the baseline
+## Rendering the baseline
+
+The test cases in `fcaf-overlay/docs/fcaf` are rendered from the definitions in `packages/definitions`; the shared pages come from `packages/fcaf-render/pages` and, for the four modified FCAF pages, from the base pages in `packages/fcaf-render/upstream`. Edit those, then:
 
 ```bash
-python3 generator/render.py <fcaf-submitted-checkout>/docs/fcaf fcaf-overlay/docs/fcaf
+pnpm fcaf:render
 ```
 
-Then run the FCAF lint with [fcaf-overlay/fcaf_lint-rp.patch](fcaf-overlay/fcaf_lint-rp.patch) applied; see the overlay README.
+```bash
+pnpm fcaf:render --check
+```
+
+```bash
+scripts/fcaf-lint.sh
+```
+
+`--check` fails when the committed overlay differs from what the definitions render; `pnpm test` checks the same. `scripts/fcaf-lint.sh` fetches the FCAF repository at the pinned commits and runs its lint with [fcaf-overlay/fcaf_lint-rp.patch](fcaf-overlay/fcaf_lint-rp.patch) applied; any finding fails it. CI runs all three.
 
 ## Licence
 
-Not chosen yet. The files under `fcaf-overlay/docs/fcaf/` that modify existing FCAF pages (`defaults.md`, `references.md`, `.nav.yml`, `suts/index.md`) contain FCAF content, which is licensed under EUPL-1.2.
+Not chosen yet. The files under `fcaf-overlay/docs/fcaf/` that modify existing FCAF pages (`defaults.md`, `references.md`, `.nav.yml`, `suts/index.md`) and their unmodified originals in `packages/fcaf-render/upstream/` contain FCAF content, which is licensed under EUPL-1.2.

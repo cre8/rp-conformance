@@ -86,7 +86,6 @@ importers:
       '@rp-conformance/core':
         specifier: workspace:*
         version: link:../core
-    devDependencies:
       '@rp-conformance/definitions':
         specifier: workspace:*
         version: link:../definitions

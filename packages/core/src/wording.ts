@@ -1,5 +1,5 @@
-// The shared wording of the FCAF Relying Party test cases, ported from generator/tests.py so the 121 definitions do
-// not repeat it. Texts must stay byte-identical to the committed fcaf-overlay files until the renderer replaces them.
+// The shared wording of the FCAF Relying Party test cases, so the 121 definitions do not repeat it. The FCAF markdown in
+// fcaf-overlay/ is rendered from the definitions (packages/fcaf-render); a test checks that it is up to date.
 import type { DefaultQueryId } from './adapter';
 import {
   type CredentialSpec,
@@ -17,6 +17,27 @@ export const item = (name: string) => `\`${name}\``;
 
 export const PID = item('default_credential_pid');
 export const QUERY_PID = item('default_query_pid');
+
+/** The default credentials of the Relying Party defaults, as test cases name them. */
+export const credentials = {
+  pid: PID,
+  pidShort: item('default_credential_pid_short'),
+  qeaa: item('default_credential_qeaa'),
+  pubEaa: item('default_credential_pubeaa'),
+  eaa: item('default_credential_eaa'),
+};
+
+/** The default queries of the Relying Party defaults, as test cases name them. */
+export const queries = {
+  pid: QUERY_PID,
+  qeaa: item('default_query_qeaa'),
+  pubEaa: item('default_query_pubeaa'),
+  eaa: item('default_query_eaa'),
+};
+
+/** A Relying Party test case ID: `RP_<class>_<layer>_<area>_<nnn><variant>[_UF]`. */
+export const testCaseId = (sutClass: 'WS' | 'PP', layer: 'IA' | 'SM', area: string, number: number, variant = '', unhappyFlow = false) =>
+  `RP_${sutClass}_${layer}_${area}_${String(number).padStart(3, '0')}${variant}${unhappyFlow ? '_UF' : ''}`;
 
 export interface FormatWording {
   /** Variant letter of the test case ID. */
@@ -80,12 +101,22 @@ export const preconditions = {
     `Test case \`${ids[0]}\` or \`${ids[1]}\` passed in the same environment for the presentation flow of this test case.`,
   freshStatusList:
     'Every credential presented in this test case references a status list URI from which the Relying Party has not retrieved a status list before.',
+  statusValid: "The status list referenced by the presented credential holds the value 0x00 (VALID) at the credential's index.",
+  identifierList:
+    'The `status` element of the MSO of every presented credential carries an `identifier_list` entry (`id`, `uri`) that references an identifier list in CWT format (`application/identifierlist+cwt`) served by the Test Status Provider.',
+  identifierListOmits: "The identifier list served for each presented credential does not contain the credential's identifier.",
+  trustedAuthoritiesOfPpA:
+    'The Relying Party is configured to restrict `default_query_pid` with a `trusted_authorities` entry of type `aki` that names only the PID/Issuance anchor of `PP-A`.',
 };
 
 export const comments = {
   flow: 'Execute this test case once for each presentation flow the Relying Party supports (redirects, W3C Digital Credentials API).',
   nostat:
     'A Status List Token that cannot be used leaves no reliable revocation status. For PIDs the Relying Party SUT rejects the presentation in that case; for QEAA, PuB-EAA and non-qualified EAA the policy declared in the ICS applies (see [ARF] Annex 2, VCR_14).',
+  encryptionFormat:
+    'The credential format does not affect this test case; use `default_credential_pid` in a format the Relying Party requests.',
+  restoreTrustList: 'Restore the previous version of `TL-PID` after the test case.',
+  oidf: (module: string) => `The OIDF verifier test module \`${module}\` covers the same objective.`,
   positiveControl: (format: FormatWording) =>
     `This test case is the positive control for the unhappy-flow test cases of the Relying Party SUT that present a credential in ${format.name} format. When it fails, those test cases cannot produce a meaningful verdict in the same environment.`,
 };
@@ -118,6 +149,33 @@ export const nofetch = (): Expectation => ({
 export const fetched = (): Expectation => ({
   codes: ['FETCHED'],
   text: 'The Test Status Provider has logged a request from the Relying Party for the status list referenced by the credential.',
+});
+
+/** `FETCHED` for the identifier list of an mdoc. */
+export const fetchedIdentifierList = (): Expectation => ({
+  codes: ['FETCHED'],
+  text: 'The Test Status Provider has logged a request from the Relying Party for the identifier list.',
+});
+
+/**
+ * `POLICY` for an application-specific status value (ICS RP.R.3): rejected unless the Relying Party declares a meaning
+ * for it, otherwise handled as declared.
+ */
+export const policyApplicationSpecificStatus = (value: string): Expectation => ({
+  codes: ['POLICY'],
+  text: `If the Relying Party declares no meaning for the status value ${value} in its ICS: ${REJ_TEXT[0].toLowerCase()}${REJ_TEXT.slice(1)} If it declares a meaning: it handles the presentation as declared.`,
+});
+
+/** `LIST_RETRIEVED`: the Relying Party retrieved the list version the step published. */
+export const listRetrieved = (list: string): Expectation => ({
+  codes: ['LIST_RETRIEVED'],
+  text: `The Test Trust Infrastructure logs a retrieval of the new version of \`${list}\` by the Relying Party.`,
+});
+
+/** `ENC_KEY`: the request of a transaction carries an encryption key. */
+export const encryptionKeyOf = (transaction: string): Expectation => ({
+  codes: ['ENC_KEY'],
+  text: `The request of ${transaction} carries an encryption key in its \`client_metadata\`.`,
 });
 
 /** Several expected results of one step, rendered as one line: for example `all(acc(...), fetched())`. */

@@ -44,17 +44,19 @@ Variant letters: `a` is SD-JWT VC (with a Status List Token in JWT format in `RP
 
 Catalogue objectives in these areas that are not in the baseline: `RP_WS_SM_Validity_004` (informative only), `RP_WS_SM_Validity_020` (policy-dependent), `RP_WS_SM_Revocation_011` (aggregate of two other test cases), `RP_PP_SM_Revocation_014` and `_031` (optional checks), `RP_WS_SM_TrustMechanisms_017` (optional check).
 
-## Regenerating
+## Rendering
 
-The test case files are generated. Edit the definitions in [../generator/tests.py](../generator/tests.py) and the shared pages in [../generator/pages.py](../generator/pages.py), then run:
+The files are rendered; do not edit them here. The test cases come from the executable definitions in [../packages/definitions](../packages/definitions), the shared pages from [../packages/fcaf-render/pages](../packages/fcaf-render/pages), and the modified FCAF pages from their originals in [../packages/fcaf-render/upstream](../packages/fcaf-render/upstream) (`submitted` at `0ed4ab1`). From the repository root:
 
 ```bash
-python3 ../generator/render.py <submitted-checkout>/docs/fcaf docs/fcaf
+pnpm fcaf:render
 ```
+
+CI fails when the committed files differ from the rendered ones, and runs the lint below through `scripts/fcaf-lint.sh`.
 
 ## Verification done
 
-- The FCAF lint (`tools/fcaf_lint.py` from the `site` branch at `e2f076a`, with the patch above) reports 0 blocking findings and 0 warnings for the 121 files, including the advisory checks for ICS vocabulary, reference keys, `default_*` definitions, relative links and identifier markup.
+- The FCAF lint (`tools/fcaf_lint.py` from the `site` branch at `e2f076a`, with the patch above) reports 0 blocking findings and 0 warnings for the 121 files, including the advisory checks for ICS vocabulary, reference keys, `default_*` definitions, relative links and identifier markup. CI runs it with `--enforce-all`, so any finding fails the build.
 - The lint over the whole corpus reports the same 3,779 warnings with and without the overlay, so the modified shared pages change nothing for the existing Wallet Solution test cases.
 
 Not done: an MkDocs build of the site. It runs the Python hooks of the FCAF repository and was not executed here, so the rendering of the `include-markdown` pages and the navigation is unchecked.

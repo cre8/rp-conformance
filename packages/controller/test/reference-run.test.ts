@@ -2,7 +2,7 @@ import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ReferenceAdapter } from '@rp-conformance/adapter-reference';
-import { definitions } from '@rp-conformance/definitions';
+import { executableDefinitions as definitions } from '@rp-conformance/definitions';
 import { describe, expect, it } from 'vitest';
 import { loadIcs } from '../src/ics';
 import { runConformance } from '../src/runner';

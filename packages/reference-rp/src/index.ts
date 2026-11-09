@@ -1,11 +1,18 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { type CallbackContext, type Jwk, setGlobalConfig } from '@openid4vc/oauth2';
-import { Openid4vpVerifier, parseOpenid4vpAuthorizationResponse } from '@openid4vc/openid4vp';
+import { Openid4vpVerifier } from '@openid4vc/openid4vp';
 import type { DcqlQuery, DefaultQueryId, KeyedCertificate, RunningServer, ServerOptions } from '@rp-conformance/core';
 import { sendJson, sendText, startServer } from '@rp-conformance/core';
 import { base64url, PID_VCT, signCompactJws } from '@rp-conformance/forge';
-import { type ListSource, type SdJwtVcValidation, TrustStore, validateSdJwtVcPresentation } from '@rp-conformance/validator';
-import { compactDecrypt, exportJWK, generateKeyPair, importJWK } from 'jose';
+import type { CheckResult } from '@rp-conformance/core';
+import {
+  type ListSource,
+  type SdJwtVcValidation,
+  TrustStore,
+  validateAuthorizationResponse,
+  validateSdJwtVcPresentation,
+} from '@rp-conformance/validator';
+import { exportJWK, generateKeyPair, importJWK } from 'jose';
 
 export interface ReferenceRpOptions extends ServerOptions {
   /** Base URL under which the Conformance Wallet reaches the Relying Party. */
@@ -18,6 +25,10 @@ export interface ReferenceRpOptions extends ServerOptions {
   skewSeconds: number;
   /** `T_kb`, seconds. */
   kbMaxAgeSeconds: number;
+  /** Maximum decompressed size of a status list, bytes (ICS RP.R.4). */
+  maxStatusListBytes: number;
+  /** Status values besides 0x00 treated as VALID (ICS RP.R.3); default none. */
+  validStatuses?: number[];
   /** Lets the OpenID4VP library use `http` URLs, for runs on localhost. */
   allowInsecureUrls?: boolean;
 }
@@ -35,6 +46,7 @@ interface Transaction {
   encryptionJwk: Jwk;
   attributes?: Record<string, unknown>;
   error?: string;
+  response?: CheckResult[];
   validations?: SdJwtVcValidation[];
 }
 
@@ -45,6 +57,8 @@ export interface ReferenceRpResult {
   /** Released attributes by claim path joined with `.`. */
   attributes?: Record<string, unknown>;
   error?: string;
+  /** The checks of the Authorization Response. */
+  response?: CheckResult[];
   validations?: SdJwtVcValidation[];
 }
 
@@ -112,6 +126,7 @@ export class ReferenceRelyingParty {
         status: tx.status,
         attributes: tx.attributes,
         error: tx.error,
+        response: tx.response,
         validations: tx.validations,
       };
       return sendJson(res, 200, result);
@@ -201,39 +216,24 @@ export class ReferenceRelyingParty {
     const tx = this.transactions.get(id);
     if (!tx) return sendJson(res, 404, { error: 'not_found' });
     if (tx.status !== 'pending') return sendJson(res, 400, { error: 'invalid_request', error_description: 'transaction is complete' });
-    const params = Object.fromEntries(new URLSearchParams(body.toString()));
-    if (!params.response) return this.fail(tx, res, 'the response is not encrypted (direct_post.jwt requires response)');
-    let parsed: Awaited<ReturnType<typeof parseOpenid4vpAuthorizationResponse>>;
-    try {
-      parsed = await parseOpenid4vpAuthorizationResponse({
-        authorizationResponse: params,
-        authorizationRequestPayload: tx.requestPayload as never,
-        callbacks: {
-          verifyJwt: () => ({ verified: false }),
-          decryptJwe: async (jwe) => {
-            try {
-              const { plaintext, protectedHeader } = await compactDecrypt(jwe, tx.encryptionKey, {
-                keyManagementAlgorithms: ['ECDH-ES'],
-                contentEncryptionAlgorithms: ['A128GCM', 'A256GCM'],
-              });
-              if (protectedHeader.kid !== undefined && protectedHeader.kid !== tx.encryptionJwk.kid) return { decrypted: false };
-              return { decrypted: true, decryptionJwk: tx.encryptionJwk, payload: new TextDecoder().decode(plaintext) };
-            } catch {
-              return { decrypted: false };
-            }
-          },
-        },
-      });
-    } catch (error) {
-      return this.fail(tx, res, `invalid authorization response: ${(error as Error).message}`);
+    const form = Object.fromEntries(new URLSearchParams(body.toString()));
+    const metadata = tx.requestPayload.client_metadata as { encrypted_response_enc_values_supported: string[] };
+    const response = await validateAuthorizationResponse(form, {
+      keys: [{ kid: tx.encryptionJwk.kid as string, privateKey: tx.encryptionKey }],
+      encValues: metadata.encrypted_response_enc_values_supported,
+      state: tx.requestPayload.state as string,
+    });
+    tx.response = response.checks;
+    if (!response.valid || !response.payload) {
+      return this.fail(tx, res, `${response.failed}: ${response.checks.at(-1)?.detail}`);
     }
-    if (parsed.type !== 'dcql') return this.fail(tx, res, 'expected a DCQL vp_token');
+    const presentations = response.payload.vp_token as Record<string, unknown>;
     const query = this.options.queries[tx.query];
     const attributes: Record<string, unknown> = {};
     const validations: SdJwtVcValidation[] = [];
     for (const credentialQuery of query.credentials) {
-      const entries = parsed.dcql.presentations[credentialQuery.id];
-      if (!entries || entries.length !== 1 || typeof entries[0] !== 'string') {
+      const entries = presentations[credentialQuery.id];
+      if (!Array.isArray(entries) || entries.length !== 1 || typeof entries[0] !== 'string') {
         return this.fail(tx, res, `expected one presentation for ${credentialQuery.id}`);
       }
       const validation = await validateSdJwtVcPresentation(entries[0], {
@@ -244,11 +244,14 @@ export class ReferenceRelyingParty {
         audience: this.clientId,
         skewSeconds: this.options.skewSeconds,
         kbMaxAgeSeconds: this.options.kbMaxAgeSeconds,
+        // A PID without reliable revocation status is rejected (catalogue decision 2).
         requireStatus: true,
+        maxStatusListBytes: this.options.maxStatusListBytes,
+        validStatuses: this.options.validStatuses,
+        trustedAuthorities: credentialQuery.trusted_authorities,
         fetchStatusList: async (uri) => {
-          const response = await fetch(uri, { headers: { accept: 'application/statuslist+jwt' }, signal: AbortSignal.timeout(5000) });
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          return response.text();
+          const fetched = await fetch(uri, { headers: { accept: 'application/statuslist+jwt' }, signal: AbortSignal.timeout(5000) });
+          return { status: fetched.status, body: await fetched.text(), contentType: fetched.headers.get('content-type') };
         },
       });
       validations.push(validation);

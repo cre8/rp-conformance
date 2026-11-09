@@ -7,7 +7,7 @@ RP.G.5: "No"
 RP.G.6: API
 RP.P.1: "Yes"   # presentations via redirects
 RP.P.2: "No"    # W3C Digital Credentials API (Phase 3)
-RP.P.3: "No"
+RP.P.3: "Yes"   # enforces trusted_authorities (type aki) of its own query
 RP.P.4: 60      # T_skew, seconds
 RP.P.5: "Yes"
 RP.P.6: 300     # T_kb, seconds

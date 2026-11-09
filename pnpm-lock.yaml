@@ -125,6 +125,9 @@ importers:
       '@sd-jwt/sd-jwt-vc':
         specifier: ^0.24.3
         version: 0.24.3
+      jose:
+        specifier: ^6.2.15
+        version: 6.2.15
 
   packages/reference-rp:
     dependencies:
@@ -201,6 +204,9 @@ importers:
         specifier: ^6.2.15
         version: 6.2.15
     devDependencies:
+      '@rp-conformance/definitions':
+        specifier: workspace:*
+        version: link:../definitions
       '@rp-conformance/status-provider':
         specifier: workspace:*
         version: link:../status-provider

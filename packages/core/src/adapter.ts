@@ -1,7 +1,11 @@
 import type { Flow } from './definition';
 
-/** A default DCQL query of `default_configuration_rp_1`, see the FCAF defaults "Relying Party testing". */
-export type DefaultQueryId = 'default_query_pid';
+/**
+ * A default DCQL query of `default_configuration_rp_1`, see the FCAF defaults "Relying Party testing".
+ * `default_query_pid_trusted_authorities` is `default_query_pid` restricted with a `trusted_authorities` entry of type
+ * `aki` naming the PID/Issuance anchor of `PP-A` (TrustMechanisms_016); test cases call it `default_query_pid`.
+ */
+export type DefaultQueryId = 'default_query_pid' | 'default_query_pid_trusted_authorities';
 
 /** A certificate with its private key, as the harness hands it to the Relying Party under test. */
 export interface KeyedCertificate {
@@ -53,6 +57,7 @@ export interface DcqlQuery {
     meta?: Record<string, unknown>;
     claims?: { id?: string; path: (string | number | null)[] }[];
     require_cryptographic_holder_binding?: boolean;
+    trusted_authorities?: { type: string; values: string[] }[];
   }[];
 }
 

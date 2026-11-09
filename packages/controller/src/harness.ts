@@ -1,12 +1,13 @@
 import type { Ics, PublishedTrustList, TestEnvironment } from '@rp-conformance/core';
 import {
   buildSealedLote,
-  DEFAULT_QUERIES,
+  createTestPki,
+  defaultEntitiesOf,
+  defaultQueries,
   issueRegistrationCertificate,
   LIST_PROFILES,
   type LoteListId,
   type TestPki,
-  createTestPki,
 } from '@rp-conformance/forge';
 import { StatusProvider } from '@rp-conformance/status-provider';
 import { TrustInfrastructure } from '@rp-conformance/trust-infrastructure';
@@ -32,6 +33,8 @@ export interface Harness {
   trust: TrustInfrastructure;
   env: TestEnvironment;
   namespace: string;
+  /** Publishes a new version of a list with the given entities (default: `default_trust_configuration_rp`). */
+  publishList(list: LoteListId, entities?: string[]): Promise<{ version: number; publishedAt: Date }>;
   stop(): Promise<void>;
 }
 
@@ -46,10 +49,17 @@ export async function startHarness(options: HarnessOptions): Promise<Harness> {
   const trust = await new TrustInfrastructure().start({ host: bind, port: options.trustPort ?? 0, publicHost: options.harnessHost });
 
   const trustLists: PublishedTrustList[] = [];
+  let sequenceNumber = 1;
+  const publishList = async (list: LoteListId, entities = defaultEntitiesOf(pki, list)) => {
+    const url = trust.urlOf(options.namespace, list);
+    const { jws } = await buildSealedLote({ list, pki, entities, distributionPoint: url, sequenceNumber: sequenceNumber++ });
+    const publishedAt = new Date();
+    const { version } = trust.publish(options.namespace, list, jws);
+    return { version, publishedAt };
+  };
   for (const list of LISTS) {
     const url = trust.urlOf(options.namespace, list);
-    const { jws } = await buildSealedLote({ list, pki, distributionPoint: url });
-    trust.publish(options.namespace, list, jws);
+    await publishList(list);
     trustLists.push({
       id: list,
       loteType: LIST_PROFILES[list].loteType,
@@ -58,6 +68,7 @@ export async function startHarness(options: HarnessOptions): Promise<Harness> {
     });
   }
   const access = pki.relyingPartyAccess;
+  const queries = defaultQueries(pki);
   const env: TestEnvironment = {
     runId: options.runId,
     trustLists,
@@ -68,8 +79,8 @@ export async function startHarness(options: HarnessOptions): Promise<Harness> {
       privateJwk: access.key.privateJwk,
       privateKeyPem: access.key.privateKeyPem,
     },
-    registrationCertificate: await issueRegistrationCertificate(pki, Object.values(DEFAULT_QUERIES)),
-    queries: DEFAULT_QUERIES,
+    registrationCertificate: await issueRegistrationCertificate(pki, [queries.default_query_pid]),
+    queries,
     ics: options.ics,
   };
   return {
@@ -78,6 +89,7 @@ export async function startHarness(options: HarnessOptions): Promise<Harness> {
     trust,
     env,
     namespace: options.namespace,
+    publishList,
     async stop() {
       await status.stop();
       await trust.stop();

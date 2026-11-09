@@ -30,6 +30,7 @@ export class ReferenceAdapter implements RelyingPartyAdapter {
       queries: env.queries,
       skewSeconds: Number(env.ics.items['RP.P.4'] ?? 60),
       kbMaxAgeSeconds: Number(env.ics.items['RP.P.6'] ?? 300),
+      maxStatusListBytes: Number(env.ics.items['RP.R.4'] ?? 1048576),
       allowInsecureUrls: true,
     }).start();
     const failed = (await this.rp.refreshTrust()).filter((list) => list.error);

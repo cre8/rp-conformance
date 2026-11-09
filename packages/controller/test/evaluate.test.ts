@@ -1,8 +1,9 @@
-import { DEFAULT_QUERIES } from '@rp-conformance/forge';
+import { acc, all, fetched, nofetch, nostat, policyApplicationSpecificStatus, rej } from '@rp-conformance/core';
+import { PID_QUERY } from '@rp-conformance/forge';
 import { describe, expect, it } from 'vitest';
-import { evaluateAccept, evaluateReject } from '../src/evaluate';
+import { evaluate, evaluateAccept, type EvaluationInput, evaluateReject } from '../src/evaluate';
 
-const query = DEFAULT_QUERIES.default_query_pid;
+const query = PID_QUERY;
 const issued = { iss: 'https://pp-a.rp-test', family_name: 'Mustermann', given_name: 'Erika', birthdate: '1964-08-12', nationalities: ['DE'] };
 const released = { family_name: 'Mustermann', given_name: 'Erika', birthdate: '1964-08-12' };
 
@@ -46,5 +47,54 @@ describe('REJ', () => {
 
   it('is inconclusive when the faulty response was not delivered', () => {
     expect(evaluateReject({ outcome: 'pending', raw: {} }, undefined).verdict).toBe('INCONCLUSIVE');
+  });
+});
+
+const input = (overrides: Partial<EvaluationInput>): EvaluationInput => ({
+  result: { outcome: 'failure', raw: {} },
+  query,
+  issuedClaims: issued,
+  responseStatus: 400,
+  ics: { items: { 'RP.R.2': 'Reject', 'RP.R.3': 'None' } },
+  category: 'pid',
+  statusRequests: 0,
+  ...overrides,
+});
+const success = { outcome: 'success' as const, releasedAttributes: released, raw: {} };
+
+describe('NOFETCH and FETCHED', () => {
+  it('read the Test Status Provider log of the step', () => {
+    expect(evaluate(all(rej(), nofetch()), input({})).verdict).toBe('PASS');
+    expect(evaluate(all(rej(), nofetch()), input({ statusRequests: 1 })).verdict).toBe('FAIL');
+    expect(evaluate(all(acc(), fetched()), input({ result: success, responseStatus: 200, statusRequests: 1 })).verdict).toBe('PASS');
+    expect(evaluate(all(acc(), fetched()), input({ result: success, responseStatus: 200 })).verdict).toBe('FAIL');
+  });
+});
+
+describe('NOSTAT', () => {
+  it('rejects a PID whatever the declared policy', () => {
+    expect(evaluate(nostat(), input({ ics: { items: { 'RP.R.2': 'Accept and flag as status unknown' } } })).verdict).toBe('PASS');
+    expect(evaluate(nostat(), input({ result: success, responseStatus: 200 })).verdict).toBe('FAIL');
+  });
+
+  it('follows RP.R.2 for other categories, and an accepted credential must be flagged status-unknown', () => {
+    const accept = { items: { 'RP.R.2': 'Accept and flag as status unknown' } };
+    expect(evaluate(nostat(), input({ category: 'qeaa', ics: accept, result: { ...success, flags: ['status-unknown'] }, responseStatus: 200 })).verdict).toBe('PASS');
+    expect(evaluate(nostat(), input({ category: 'qeaa', ics: accept, result: success, responseStatus: 200 })).verdict).toBe('FAIL');
+    expect(evaluate(nostat(), input({ category: 'eaa' })).verdict).toBe('PASS');
+  });
+});
+
+describe('POLICY (RP.R.3)', () => {
+  const policy = policyApplicationSpecificStatus('0x03');
+  it('rejects when no meaning is declared', () => {
+    expect(evaluate(policy, input({})).verdict).toBe('PASS');
+    expect(evaluate(policy, input({ result: success, responseStatus: 200 })).verdict).toBe('FAIL');
+  });
+
+  it('accepts or rejects as declared, and leaves other meanings to review', () => {
+    expect(evaluate(policy, input({ ics: { items: { 'RP.R.3': '0x03=valid' } }, result: success, responseStatus: 200 })).verdict).toBe('PASS');
+    expect(evaluate(policy, input({ ics: { items: { 'RP.R.3': '0x03=invalid' } } })).verdict).toBe('PASS');
+    expect(evaluate(policy, input({ ics: { items: { 'RP.R.3': '0x03=step-up authentication' } } })).verdict).toBe('REVIEW');
   });
 });

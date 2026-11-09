@@ -1,42 +1,54 @@
-import { randomBytes, randomInt } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import {
   type Flow,
+  faultsOf,
   flowIcsItems,
   type Ics,
+  isExecutable,
   type PresentationAction,
   type RelyingPartyAdapter,
   type RelyingPartyResult,
+  type StartAction,
   type StepDefinition,
   type TestCaseDefinition,
+  type TrustListAction,
   type Verdict,
   controlsOf,
-  isExecutable,
 } from '@rp-conformance/core';
-import { buildStatusListTokenJwt, issuePidSdJwtVc } from '@rp-conformance/forge';
+import { defaultEntitiesOf, forgePresentation } from '@rp-conformance/forge';
 import { ConformanceWallet, type PresentationEvidence } from '@rp-conformance/wallet';
-import { evaluate } from './evaluate';
+import { evaluate, worst } from './evaluate';
 import { type Harness, startHarness } from './harness';
 import { applicability, icsAnswer } from './ics';
 import { harnessInfo } from './info';
+import { writeSummary } from './summary';
 
 /** The flows the harness implements; the DC API shim is Phase 3. */
 export const IMPLEMENTED_FLOWS: Flow[] = ['redirect'];
 
 export interface StepRecord {
   step: number;
+  /** `presentation`, `start` (request only) or `trust-list` (new list version). */
+  action: string;
   text: string;
   /** Expected-result codes, for example `ACC` or `REJ + NOFETCH`. */
   expected: string;
   expectedResult: string;
-  /** Named faults of the step, `null` for valid material. */
+  /** The named fault of the step, `null` for valid material. */
   fault: string | null;
   transactionId?: string;
   rpResponse?: { endpoint: 'response_uri'; url: string; status?: number; body?: string };
   rpResult?: RelyingPartyResult;
-  wallet?: { findings: PresentationEvidence['findings']; error?: string; redirect?: PresentationEvidence['redirect']; requestFetch?: { url: string; status?: number } };
+  wallet?: {
+    findings: PresentationEvidence['findings'];
+    error?: string;
+    redirect?: PresentationEvidence['redirect'];
+    requestFetch?: { url: string; status?: number };
+  };
   statusLog: { url: string; at: string; status: number }[];
+  trustLog?: { url: string; at: string; status: number; version?: number }[];
   artifacts: string[];
   verdict: Verdict;
   reason: string;
@@ -81,6 +93,11 @@ export interface RunOptions {
   harnessHost: string;
   /** Milliseconds to wait for the verification result. */
   resultTimeoutMs?: number;
+  /**
+   * Milliseconds to wait for the Relying Party to retrieve a new trust list version after the adapter's refresh hook,
+   * before the retrieval is checked again after the next step; default 10 s, or `T_refresh` without a hook.
+   */
+  trustRefreshWaitMs?: number;
   log?: (line: string) => void;
 }
 
@@ -105,6 +122,14 @@ export function selectTestCases(all: TestCaseDefinition[], only?: string[]): Tes
     for (const control of controls) if (!selected.includes(control)) selected.push(control);
   }
   return [...selected.filter((d) => !d.control), ...selected.filter((d) => d.control)];
+}
+
+/** ISO 8601 duration (`PT1H`, `PT5M`, `PT30S`) in milliseconds. */
+export function durationMs(value: string | undefined): number | undefined {
+  const match = value && /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?$/.exec(value);
+  if (!match) return undefined;
+  const [, d = '0', h = '0', m = '0', s = '0'] = match;
+  return ((Number(d) * 24 + Number(h)) * 60 + Number(m)) * 60_000 + Number(s) * 1000;
 }
 
 export async function runConformance(options: RunOptions): Promise<{ report: RunReport; reportPath: string }> {
@@ -162,6 +187,7 @@ export async function runConformance(options: RunOptions): Promise<{ report: Run
         const record = await runTestCase(definition, flow, flows.includes(flow), { ...options, harness, wallet, runDir, report });
         report.results.push(record);
         log(`${record.verdict.padEnd(14)} ${record.testCase} [${record.flow}]${record.reason ? ` ${record.reason}` : ''}`);
+        for (const step of record.steps.filter((s) => s.verdict !== 'PASS')) log(`    step ${step.step} ${step.verdict}: ${step.reason}`);
       }
     }
   } finally {
@@ -178,6 +204,7 @@ async function writeReport(report: RunReport, runDir: string): Promise<{ report:
   await mkdir(runDir, { recursive: true });
   const reportPath = join(runDir, 'report.json');
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
+  await writeSummary(report, join(runDir, 'summary.md'));
   return { report, reportPath };
 }
 
@@ -186,6 +213,18 @@ interface Context extends RunOptions {
   wallet: ConformanceWallet;
   runDir: string;
   report: RunReport;
+}
+
+/** State shared by the steps of one test case. */
+interface TestCaseState {
+  /** The encryption key each step's request carried, by step number. */
+  encryptionKeys: Map<number, NonNullable<PresentationEvidence['encryptionKey']>>;
+  /** Lists the test case changed, restored afterwards. */
+  changedLists: Set<'TL-PID'>;
+  /** The current entities of each changed list. */
+  entities: Map<'TL-PID', string[]>;
+  /** A list retrieval still awaited, checked again after the next step. */
+  pendingRetrieval?: { record: StepRecord; list: 'TL-PID'; version: number; publishedAt: Date; checks: number };
 }
 
 async function runTestCase(definition: TestCaseDefinition, flow: Flow, flowSupported: boolean, ctx: Context): Promise<TestCaseRecord> {
@@ -203,106 +242,218 @@ async function runTestCase(definition: TestCaseDefinition, flow: Flow, flowSuppo
   if (control && control.verdict !== 'PASS') {
     return end('INCONCLUSIVE', `positive control ${outcomes.map((o) => o.id).join(' or ')} did not pass`);
   }
+  const state: TestCaseState = { encryptionKeys: new Map(), changedLists: new Set(), entities: new Map() };
   const steps: StepRecord[] = [];
-  for (const [index, step] of definition.steps.entries()) {
-    steps.push(await runStep(definition, flow, index + 1, step, ctx));
+  try {
+    for (const [index, step] of definition.steps.entries()) {
+      steps.push(await runStep(definition, flow, index + 1, step, ctx, state));
+      await checkPendingRetrieval(state, ctx, false);
+    }
+    await checkPendingRetrieval(state, ctx, true);
+  } finally {
+    // Restore the lists the test case changed (comment of TrustMechanisms_007 and _008).
+    for (const list of state.changedLists) {
+      await ctx.harness.publishList(list);
+      await ctx.adapter.refreshTrust?.(ctx.harness.namespace);
+    }
   }
-  const order: Verdict[] = ['FAIL', 'INCONCLUSIVE', 'REVIEW', 'PASS'];
-  const verdict = steps.map((s) => s.verdict).sort((a, b) => order.indexOf(a) - order.indexOf(b))[0] ?? 'INCONCLUSIVE';
-  return { ...base, verdict, control, steps };
+  return { ...base, verdict: worst(steps.map((s) => s.verdict)), control, steps };
 }
 
-async function runStep(definition: TestCaseDefinition, flow: Flow, index: number, step: StepDefinition, ctx: Context): Promise<StepRecord> {
-  const action = step.run as PresentationAction;
-  const dir = join(ctx.runDir, 'artifacts', definition.id, flow, `step-${index}`);
-  await mkdir(dir, { recursive: true });
-  const artifacts: string[] = [];
-  const save = async (name: string, content: string | undefined) => {
-    if (content === undefined) return;
-    await writeFile(join(dir, name), content);
-    artifacts.push(relative(ctx.runDir, join(dir, name)));
-  };
-  const faults = [...action.credential.faults, ...action.statusList.faults];
-  const record: StepRecord = {
+function newRecord(index: number, step: StepDefinition): StepRecord {
+  const action = step.run;
+  const faults = action ? faultsOf(action) : [];
+  return {
     step: index,
+    action: action?.kind ?? 'none',
     text: step.text,
     expected: step.expect.codes.join(' + '),
     expectedResult: step.expect.text,
     fault: faults.length ? faults.join(', ') : null,
-    transactionId: undefined,
-    rpResponse: undefined,
-    rpResult: undefined,
     statusLog: [],
-    wallet: undefined,
-    artifacts,
+    artifacts: [],
     verdict: 'INCONCLUSIVE',
     reason: '',
   };
-  if (faults.length) {
-    record.reason = `faults ${faults.join(', ')} are not implemented in Phase 0`;
-    return record;
-  }
+}
 
-  // Issue the credential with a unique status URL (harness design section 4.6).
-  const issuer = ctx.harness.pki.entities[action.credential.issuer];
-  const statusSigner = ctx.harness.pki.entities[action.statusList.signer ?? action.credential.issuer];
-  const statusUri = ctx.harness.status.allocate(ctx.harness.env.runId);
-  const idx = randomInt(0, 1024);
-  const statuses = new Array(1024).fill(0);
-  statuses[idx] = action.statusList.status;
-  const statusListToken = await buildStatusListTokenJwt({ signer: statusSigner.signers.revocation, issuer: statusSigner.issuerUri, uri: statusUri, statuses });
-  ctx.harness.status.register(statusUri, statusListToken);
-  const credential = await issuePidSdJwtVc({
-    signer: issuer.signers.issuance,
-    issuer: issuer.issuerUri,
-    holderPublicJwk: ctx.wallet.holderKey.publicJwk,
-    status: { uri: statusUri, idx },
-  });
-  await save('credential.sd-jwt', credential.compact);
-  await save('status-list.jwt', statusListToken);
-
-  const query = ctx.harness.env.queries[action.query];
-  const stepStart = new Date();
-  let transactionId: string;
-  let invocationUri: string;
+async function runStep(
+  definition: TestCaseDefinition,
+  flow: Flow,
+  index: number,
+  step: StepDefinition,
+  ctx: Context,
+  state: TestCaseState,
+): Promise<StepRecord> {
+  const record = newRecord(index, step);
+  const dir = join(ctx.runDir, 'artifacts', definition.id, flow, `step-${index}`);
+  await mkdir(dir, { recursive: true });
+  const save = async (name: string, content: string | undefined) => {
+    if (content === undefined) return;
+    await writeFile(join(dir, name), content);
+    record.artifacts.push(relative(ctx.runDir, join(dir, name)));
+  };
   try {
-    const started = await ctx.adapter.startPresentation({ query: action.query, flow, namespace: ctx.harness.namespace });
-    transactionId = started.transactionId;
-    if (!('uri' in started.invocation)) throw new Error('the adapter returned no invocation URI for the redirect flow');
-    invocationUri = started.invocation.uri;
+    switch (step.run?.kind) {
+      case 'presentation':
+        await runPresentation(step, step.run, flow, record, save, ctx, state);
+        break;
+      case 'start':
+        await runStart(step.run, flow, index, record, save, ctx, state);
+        break;
+      case 'trust-list':
+        await runTrustList(step.run, record, ctx, state);
+        break;
+      default:
+        record.reason = 'the step is text only';
+    }
   } catch (error) {
-    record.reason = `could not start the presentation: ${(error as Error).message}`;
-    return record;
+    record.verdict = 'INCONCLUSIVE';
+    record.reason = `the harness could not execute the step: ${(error as Error).message}`;
   }
-  record.transactionId = transactionId;
-  await save('invocation.txt', invocationUri);
+  return record;
+}
 
-  const evidence = await ctx.wallet.present(invocationUri, credential.compact);
-  await save('request.jwt', evidence.requestFetch?.body);
-  await save('presentation.sd-jwt', evidence.presentation);
-  await save('response.jwe', evidence.responseJwe);
-  await save('wallet-evidence.json', JSON.stringify(evidence, null, 2));
-  record.wallet = {
+type Save = (name: string, content: string | undefined) => Promise<void>;
+
+async function startPresentation(action: { query: PresentationAction['query'] }, flow: Flow, record: StepRecord, save: Save, ctx: Context) {
+  const started = await ctx.adapter.startPresentation({ query: action.query, flow, namespace: ctx.harness.namespace });
+  if (!('uri' in started.invocation)) throw new Error('the adapter returned no invocation URI for the redirect flow');
+  record.transactionId = started.transactionId;
+  await save('invocation.txt', started.invocation.uri);
+  return { transactionId: started.transactionId, uri: started.invocation.uri };
+}
+
+function walletRecord(evidence: PresentationEvidence): StepRecord['wallet'] {
+  return {
     findings: evidence.findings,
     error: evidence.error,
     redirect: evidence.redirect,
     requestFetch: evidence.requestFetch && { url: evidence.requestFetch.url, status: evidence.requestFetch.status },
   };
+}
+
+async function runPresentation(
+  step: StepDefinition,
+  action: PresentationAction,
+  flow: Flow,
+  record: StepRecord,
+  save: Save,
+  ctx: Context,
+  state: TestCaseState,
+) {
+  const skewSeconds = Number(ctx.ics.items['RP.P.4'] ?? 0);
+  // Every credential gets a unique status URL (harness design section 4.6).
+  const forged = await forgePresentation(action, {
+    pki: ctx.harness.pki,
+    holderPublicJwk: ctx.wallet.holderKey.publicJwk,
+    allocateStatusUri: () => ctx.harness.status.allocate(ctx.harness.env.runId),
+    skewSeconds,
+  });
+  if (forged.statusList) {
+    ctx.harness.status.register(forged.statusList.uri, forged.statusList.served.body, { contentType: forged.statusList.served.contentType });
+    await save(forged.statusList.served.contentType === 'application/json' ? 'status-list.json' : 'status-list.jwt', forged.statusList.served.body);
+    if (forged.statusList.served.body !== forged.statusList.validToken) await save('status-list.valid.jwt', forged.statusList.validToken);
+  }
+  await save('credential.sd-jwt', forged.compact);
+
+  const query = ctx.harness.env.queries[action.query];
+  const stepStart = new Date();
+  const { transactionId, uri } = await startPresentation(action, flow, record, save, ctx);
+  const otherKey = action.response.keyOfStep ? state.encryptionKeys.get(action.response.keyOfStep) : undefined;
+  if (action.response.keyOfStep && !otherKey) throw new Error(`step ${action.response.keyOfStep} recorded no encryption key`);
+  const evidence = await ctx.wallet.present(uri, forged.compact, { enc: action.response.enc, fault: action.response.faults[0], otherTransactionKey: otherKey });
+  if (evidence.encryptionKey) state.encryptionKeys.set(record.step, evidence.encryptionKey);
+  await save('request.jwt', evidence.requestFetch?.body);
+  await save('presentation.sd-jwt', evidence.presentation);
+  await save('response.form.json', evidence.responseForm && JSON.stringify(evidence.responseForm, null, 2));
+  await save('wallet-evidence.json', JSON.stringify(evidence, null, 2));
+  record.wallet = walletRecord(evidence);
   if (evidence.response) {
     record.rpResponse = { endpoint: 'response_uri', url: evidence.response.url, status: evidence.response.status, body: evidence.response.body };
   }
 
   record.rpResult = await ctx.adapter.readResult(transactionId, ctx.resultTimeoutMs ?? 15_000);
   await save('rp-result.json', JSON.stringify(record.rpResult.raw, null, 2));
-  record.statusLog = ctx.harness.status.requestsFor(statusUri, stepStart).map(({ url, at, status }) => ({ url, at, status }));
+  record.statusLog = forged.statusList
+    ? ctx.harness.status.requestsFor(forged.statusList.uri, stepStart).map(({ url, at, status }) => ({ url, at, status }))
+    : [];
 
-  const evaluation = evaluate(step.expect.codes, {
+  const evaluation = evaluate(step.expect, {
     result: record.rpResult,
     query,
-    issuedClaims: credential.claims,
+    issuedClaims: forged.claims,
     responseStatus: evidence.response?.status,
+    ics: ctx.ics,
+    category: 'pid',
+    statusRequests: record.statusLog.length,
   });
   record.verdict = evaluation.verdict;
   record.reason = evidence.error && evaluation.verdict !== 'PASS' ? `${evaluation.reason}; Conformance Wallet: ${evidence.error}` : evaluation.reason;
-  return record;
+}
+
+/** Starts a presentation and records the encryption key of its request without answering (`ENC_KEY`). */
+async function runStart(action: StartAction, flow: Flow, index: number, record: StepRecord, save: Save, ctx: Context, state: TestCaseState) {
+  const { uri } = await startPresentation(action, flow, record, save, ctx);
+  const evidence = await ctx.wallet.start(uri);
+  await save('request.jwt', evidence.requestFetch?.body);
+  await save('wallet-evidence.json', JSON.stringify(evidence, null, 2));
+  record.wallet = walletRecord(evidence);
+  if (evidence.encryptionKey) {
+    state.encryptionKeys.set(index, evidence.encryptionKey);
+    record.verdict = 'PASS';
+    record.reason = `the request carries the encryption key ${evidence.encryptionKey.kid ?? '(no kid)'}`;
+  } else {
+    record.verdict = evidence.error ? 'INCONCLUSIVE' : 'FAIL';
+    record.reason = evidence.error ? `the request could not be resolved: ${evidence.error}` : 'the request carries no encryption key in client_metadata';
+  }
+}
+
+/**
+ * Publishes a new version of a list, asks the adapter to refresh, and waits until the Relying Party retrieved it
+ * (`LIST_RETRIEVED`). A Relying Party that fetches lists only when it needs them retrieves the new version during the
+ * next step, so a retrieval missing at the end of the wait is checked again after that step.
+ */
+async function runTrustList(action: TrustListAction, record: StepRecord, ctx: Context, state: TestCaseState) {
+  const current = state.entities.get(action.list) ?? defaultEntitiesOf(ctx.harness.pki, action.list);
+  const entities = [...current.filter((e) => !action.remove?.includes(e)), ...(action.add ?? []).filter((e) => !current.includes(e))];
+  state.entities.set(action.list, entities);
+  state.changedLists.add(action.list);
+  const { version, publishedAt } = await ctx.harness.publishList(action.list, entities);
+  record.reason = `published version ${version} of ${action.list} with ${entities.join(', ')}`;
+  await ctx.adapter.refreshTrust?.(ctx.harness.namespace);
+  const refreshMs = durationMs(String(ctx.ics.items['RP.T.1'] ?? '')) ?? 60_000;
+  const waitMs = ctx.trustRefreshWaitMs ?? (ctx.adapter.refreshTrust ? 10_000 : refreshMs);
+  const deadline = Date.now() + waitMs;
+  state.pendingRetrieval = { record, list: action.list, version, publishedAt, checks: 0 };
+  while (Date.now() < deadline) {
+    if (retrievals(state, ctx).length) break;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+}
+
+function retrievals(state: TestCaseState, ctx: Context) {
+  const pending = state.pendingRetrieval;
+  if (!pending) return [];
+  return ctx.harness.trust
+    .retrievalsOf(ctx.harness.namespace, pending.list, pending.publishedAt)
+    .filter((entry) => entry.status === 200 && (entry.version ?? 0) >= pending.version);
+}
+
+/** Evaluates `LIST_RETRIEVED` right after the trust-list step and, if needed, once more after the next step. */
+async function checkPendingRetrieval(state: TestCaseState, ctx: Context, final: boolean) {
+  const pending = state.pendingRetrieval;
+  if (!pending) return;
+  const found = retrievals(state, ctx);
+  pending.record.trustLog = found.map(({ url, at, status, version }) => ({ url, at, status, version }));
+  pending.checks += 1;
+  if (found.length) {
+    pending.record.verdict = 'PASS';
+    pending.record.reason += `; the Relying Party retrieved it at ${found[0].at}`;
+    state.pendingRetrieval = undefined;
+  } else if (final || pending.checks >= 2) {
+    pending.record.verdict = 'FAIL';
+    pending.record.reason += '; the Relying Party did not retrieve it';
+    state.pendingRetrieval = undefined;
+  }
 }

@@ -7,10 +7,14 @@ import {
   type Flow,
   type IcsCondition,
   ics,
+  pid,
   presentation,
+  type ResponseSpec,
   type StatusListSpec,
   type StepAction,
+  statusListToken,
 } from './definition';
+import { type FaultId, faultInfo } from './faults';
 
 /** Markup of a `default_*` item, as the FCAF lint expects it. */
 export const item = (name: string) => `\`${name}\``;
@@ -163,6 +167,7 @@ export const fetchedIdentifierList = (): Expectation => ({
  */
 export const policyApplicationSpecificStatus = (value: string): Expectation => ({
   codes: ['POLICY'],
+  policy: { item: 'RP.R.3', status: Number.parseInt(value, 16) },
   text: `If the Relying Party declares no meaning for the status value ${value} in its ICS: ${REJ_TEXT[0].toLowerCase()}${REJ_TEXT.slice(1)} If it declares a meaning: it handles the presentation as declared.`,
 });
 
@@ -182,6 +187,7 @@ export const encryptionKeyOf = (transaction: string): Expectation => ({
 export const all = (...parts: Expectation[]): Expectation => ({
   codes: parts.flatMap((p) => p.codes),
   text: parts.map((p) => p.text).join(' '),
+  ...(parts.find((p) => p.policy) ? { policy: parts.find((p) => p.policy)?.policy } : {}),
 });
 
 /** Test scenario texts. */
@@ -204,20 +210,63 @@ export interface ScenarioStep {
   run: StepAction;
 }
 
-/** Steps whose text and execution are defined together, so a fault and its description cannot drift apart. */
+/** The FCAF name of a default query: the restricted variant of `default_query_pid` is still `default_query_pid`. */
+export const queryName = (query: DefaultQueryId) => item(query === 'default_query_pid_trusted_authorities' ? 'default_query_pid' : query);
+
+interface PresentationOptions {
+  query?: DefaultQueryId;
+  credential?: CredentialSpec;
+  statusList?: StatusListSpec | null;
+  response?: ResponseSpec;
+}
+
+const run = (options: PresentationOptions) =>
+  presentation({ query: options.query ?? 'default_query_pid', credential: options.credential ?? pid.sdJwtVc(), ...options });
+
+/**
+ * Steps whose text and execution are defined together: the fault a step applies is named once, and its FCAF wording
+ * comes from the fault catalogue (`FAULTS`).
+ */
 export const presentationStep = {
   /** A valid presentation of a default credential for a default query. */
-  valid(options: { query: DefaultQueryId; credential: CredentialSpec; statusList?: StatusListSpec }): ScenarioStep {
+  valid(options: PresentationOptions & { text?: { credential?: string; extra?: string } } = {}): ScenarioStep {
+    const credential = options.credential ?? pid.sdJwtVc();
     return {
-      text: scenario.valid({ credential: item(options.credential.defaultCredential), query: item(options.query) }),
-      run: presentation(options),
+      text: scenario.valid({
+        credential: options.text?.credential ?? item(credential.defaultCredential),
+        query: queryName(options.query ?? 'default_query_pid'),
+        extra: options.text?.extra,
+      }),
+      run: run(options),
     };
   },
-  /** A presentation of a variant of a default credential that differs only in `difference` (the fault). */
-  credentialVariant(difference: string, options: { query: DefaultQueryId; credential: CredentialSpec; statusList?: StatusListSpec }): ScenarioStep {
+  /** A presentation of a variant of `default_credential_pid` that differs only in `difference`, for example its issuer. */
+  credentialVariant(difference: string, options: PresentationOptions = {}): ScenarioStep {
+    return { text: scenario.credentialVariant(difference, { query: queryName(options.query ?? 'default_query_pid') }), run: run(options) };
+  },
+  /** A presentation of `default_credential_pid` with a credential fault. */
+  credentialFault(fault: FaultId, options: PresentationOptions = {}): ScenarioStep {
+    return presentationStep.credentialVariant(faultInfo(fault).text, {
+      ...options,
+      credential: pid.sdJwtVc({ ...options.credential, faults: [fault] }),
+    });
+  },
+  /** A presentation while the credential's status list holds `value` (for example `0x01 (INVALID)`) at its index. */
+  statusValue(value: string, status: number): ScenarioStep {
+    return { text: scenario.statusValue(value), run: run({ statusList: statusListToken.jwt({ status }) }) };
+  },
+  /** A presentation while the Status List Token has a fault; `text` replaces the wording where the scenario differs. */
+  statusListFault(fault: FaultId, options: { text?: string } = {}): ScenarioStep {
     return {
-      text: scenario.credentialVariant(difference, { credential: item(options.credential.defaultCredential), query: item(options.query) }),
-      run: presentation(options),
+      text: options.text ?? scenario.statusListToken(faultInfo(fault).text),
+      run: run({ statusList: statusListToken.jwt({ faults: [fault] }) }),
+    };
+  },
+  /** A presentation via `flow` whose Authorization Response has a fault. */
+  encryptionFault(flow: Flow, fault: FaultId, options: { text?: string; response?: Omit<ResponseSpec, 'faults'> } = {}): ScenarioStep {
+    return {
+      text: options.text ?? scenario.encryption(flow, faultInfo(fault).text),
+      run: run({ response: { ...options.response, faults: [fault] } }),
     };
   },
 };

@@ -128,10 +128,13 @@ const trustMechanisms = (format: FormatWording) => {
     defineTestCase({
       id: id(6),
       ...base(),
-      objective: `Verify that the Relying Party rejects a PID in ${format.name} format from a PID Provider whose entry is withdrawn.`,
+      objective: `Verify that the Relying Party rejects a PID in ${format.name} format from a PID Provider whose PID/Issuance service is withdrawn.`,
       references: referencesOf(format, 'OIA_12, OIA_15a'),
-      steps: [issuedBy('it is issued by `PP-W`')],
-      comments: [comments.flow],
+      steps: [rejectedVariant('it is issued by `PP-W`, whose PID/Issuance service is withdrawn', pid.sdJwtVc({ issuer: 'PP-W' }))],
+      comments: [
+        '[ETSI TS 119 602] Annex D gives PID Providers lists no service status. `TL-PID` therefore expresses the withdrawal by listing only the PID/Revocation service of `PP-W`. Its anchor `CA-PP-W` is the one the PID is signed under.',
+        comments.flow,
+      ],
     }),
     defineTestCase({
       id: id(7),

@@ -25,8 +25,11 @@ export interface EntitySpec {
   separateRevocationAnchor?: boolean;
   /** `PP-E`: the anchor certificate has expired. */
   expiredAnchor?: boolean;
-  /** `PP-W`: all services withdrawn. */
-  withdrawn?: boolean;
+  /**
+   * `PP-W`: its PID/Issuance service is withdrawn. ETSI TS 119 602 Annex D gives PID Providers lists no service status,
+   * so the list carries only its PID/Revocation service (TrustMechanisms_006).
+   */
+  issuanceWithdrawn?: boolean;
   /** A list that is not a LoTE: `QP-A` is on the Trusted List `TL-QEAA`, which the harness publishes from Phase 4. */
   trustedList?: 'TL-QEAA';
   /** Short host-like name used in subject alternative names and `iss`. */
@@ -43,7 +46,7 @@ export const ENTITIES: EntitySpec[] = [
   { id: 'PP-C', host: 'pp-c.rp-test' },
   { id: 'PP-D', list: 'TL-PID', host: 'pp-d.rp-test' },
   { id: 'PP-E', list: 'TL-PID', expiredAnchor: true, host: 'pp-e.rp-test' },
-  { id: 'PP-W', list: 'TL-PID', withdrawn: true, host: 'pp-w.rp-test' },
+  { id: 'PP-W', list: 'TL-PID', issuanceWithdrawn: true, host: 'pp-w.rp-test' },
   { id: 'QP-A', trustedList: 'TL-QEAA', host: 'qp-a.rp-test' },
   { id: 'PB-A', list: 'TL-PUB', host: 'pb-a.rp-test' },
   { id: 'EP-A', host: 'ep-a.rp-test' },

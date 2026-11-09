@@ -44,8 +44,8 @@ async function selfValidate(definition: TestCaseDefinition) {
 }
 
 describe('executable definitions against the reference validator', () => {
-  it('Phase 1 makes 52 test definitions executable (TrustMechanisms_006a awaits a representation of withdrawal)', () => {
-    expect(executableDefinitions).toHaveLength(52);
+  it('Phase 1 makes 53 test definitions executable', () => {
+    expect(executableDefinitions).toHaveLength(53);
   });
 
   it.each(executableDefinitions.map((d) => [d.id, d] as const))('%s: each step carries exactly its one fault', async (_id, definition) => {

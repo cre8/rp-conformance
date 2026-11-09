@@ -113,6 +113,12 @@ describe('LoTE builder', () => {
     expect(anchorOf('/Revocation')).toBe('CA-PP-A-REV');
   });
 
+  it('TL-PID lists PP-W with its PID/Revocation service only, under the anchor that signs its PIDs', () => {
+    const ppW = trust.lists.get('TL-PID')!.entities.find((e) => e.name === 'PP-W')!;
+    expect(ppW.services.map((s) => s.type)).toEqual(['http://uri.etsi.org/19602/SvcType/PID/Revocation']);
+    expect(ppW.services[0].anchors.map((a) => a.subject.commonName)).toEqual(['CA-PP-W']);
+  });
+
   it('a list sealed by another key is refused', async () => {
     const source = sources.find((s) => s.id === 'TL-PID')!;
     const { jws } = await buildSealedLote({ list: 'TL-PID', pki });
@@ -153,6 +159,7 @@ describe('reference validator discriminates', () => {
     ['a revoked status', { statusValue: 1 }, {}, 'status'],
     ['an issuer that is on no list (PP-C)', { issuer: 'PP-C' }, {}, 'issuer-trust'],
     ['an issuer whose anchor has expired (PP-E)', { issuer: 'PP-E' }, {}, 'issuer-trust'],
+    ['an issuer whose PID/Issuance service is withdrawn (PP-W)', { issuer: 'PP-W' }, {}, 'issuer-trust'],
     ['a KB-JWT for another nonce', {}, { nonce: 'other' }, 'key-binding'],
     ['a KB-JWT for another audience', {}, { audience: 'x509_hash:other' }, 'key-binding'],
   ] as const)('%s fails exactly the check %s', async (_name, issue, overrides, expected) => {

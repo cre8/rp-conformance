@@ -4,18 +4,24 @@ import {
   all,
   comments,
   defineTestCase,
+  type FaultId,
   type FormatWording,
   fetched,
   formats,
   ics,
   nostat,
   PID,
+  pid,
   positiveControlOf,
   preconditions,
+  presentation,
+  presentationStep,
   QUERY_PID,
   rej,
   relevancy,
   scenario,
+  type StepAction,
+  statusListToken as statusListTokenSpec,
   step,
   technology,
   testCaseId,
@@ -86,15 +92,21 @@ const algorithms = (format: FormatWording) =>
         'it is protected with a `COSE_Mac0` structure using HMAC 256/256, keyed with the encoded public key of the certificate in its `x5chain` header',
       ];
 
-const bitsSteps = () =>
-  [1, 2, 4, 8].flatMap((bits) => {
+const bitsSteps = (executable: boolean) =>
+  ([1, 2, 4, 8] as const).flatMap((bits) => {
     const index = 16 / bits - 1;
     const common = `Perform a presentation for ${QUERY_PID} in which the Conformance Wallet presents ${PID}, issued with status index ${index}, in a valid Authorization Response, while the Test Status Provider serves a valid Status List Token for it with \`bits\` set to ${bits}, in which `;
+    const run = (status: number, others: number) =>
+      executable ? { run: withStatusList(statusListTokenSpec.jwt({ bits, index, status, others })) } : {};
     return [
-      step({ text: `${common}the entry at index ${index} holds 0x01 and every other entry holds 0x00.`, expect: rej() }),
-      step({ text: `${common}the entry at index ${index} holds 0x00 and every other entry holds 0x01.`, expect: acc() }),
+      step({ text: `${common}the entry at index ${index} holds 0x01 and every other entry holds 0x00.`, ...run(1, 0), expect: rej() }),
+      step({ text: `${common}the entry at index ${index} holds 0x00 and every other entry holds 0x01.`, ...run(0, 1), expect: acc() }),
     ];
   });
+
+/** A presentation of `default_credential_pid` while the Test Status Provider serves `statusList` for it. */
+const withStatusList = (statusList: ReturnType<typeof statusListTokenSpec.jwt>, credential = pid.sdJwtVc()): StepAction =>
+  presentation({ query: 'default_query_pid', credential, statusList });
 
 const statusListToken = (format: FormatWording) => {
   const name = tokenFormat(format);
@@ -105,8 +117,13 @@ const statusListToken = (format: FormatWording) => {
     control: positiveControlOf(format),
   };
   const id = (number: number, unhappyFlow = true) => testCaseId('PP', 'SM', 'Revocation', number, format.letter, unhappyFlow);
+  const executable = format === sdJwtVc;
   const rejected = (differences: string[]) =>
     differences.map((difference) => step({ text: scenario.statusListToken(difference), expect: nostat() }));
+  /** Status List Token faults: executable in JWT format; the CWT wording stays text only until Phase 2. */
+  const faulty = (faults: FaultId[], cwtDifferences: string[]) =>
+    executable ? faults.map((fault) => step({ ...presentationStep.statusListFault(fault), expect: nostat() })) : rejected(cwtDifferences);
+  const valid = executable ? { run: withStatusList(statusListTokenSpec.jwt()) } : {};
   return [
     defineTestCase({
       id: id(1, false),
@@ -117,6 +134,7 @@ const statusListToken = (format: FormatWording) => {
       steps: [
         step({
           text: `Perform a presentation for ${QUERY_PID} in which the Conformance Wallet presents ${PID} in a valid Authorization Response, while the Test Status Provider serves, for the status list referenced by the credential, a Status List Token ${validTokenDescription(format)}, signed by a certificate under the revocation anchor of \`PP-A\`, that holds the value 0x00 at the credential's index.`,
+          ...valid,
           expect: all(acc({ credential: PID }), fetched()),
         }),
       ],
@@ -128,7 +146,7 @@ const statusListToken = (format: FormatWording) => {
       relevancy: relevancy.genericRequired,
       objective: `Verify that the Relying Party does not use a Status List Token in ${name} format with an invalid signature.`,
       references: referencesOf(format),
-      steps: rejected(['one bit of its signature value is flipped']),
+      steps: faulty(['status-list.signature-bitflip'], ['one bit of its signature value is flipped']),
       comments: NOSTAT_COMMENTS,
     }),
     defineTestCase({
@@ -138,8 +156,11 @@ const statusListToken = (format: FormatWording) => {
       objective: `Verify that the Relying Party does not use an unsigned Status List Token or a bare status list in place of a Status List Token in ${name} format.`,
       references: referencesOf(format),
       steps: [
-        ...(format === sdJwtVc ? rejected(['it is an unsecured JWT with `alg` `none` and an empty signature']) : []),
-        step({ text: bareList(format), expect: nostat() }),
+        ...(format === sdJwtVc ? faulty(['status-list.alg-none'], []) : []),
+        step({
+          ...(executable ? presentationStep.statusListFault('status-list.bare-list', { text: bareList(format) }) : { text: bareList(format) }),
+          expect: nostat(),
+        }),
       ],
       comments: NOSTAT_COMMENTS,
     }),
@@ -149,7 +170,7 @@ const statusListToken = (format: FormatWording) => {
       relevancy: relevancy.genericRequired,
       objective: `Verify that the Relying Party does not use an expired Status List Token in ${name} format.`,
       references: referencesOf(format),
-      steps: rejected([`${format === sdJwtVc ? 'its `exp` claim' : 'its expiration time (4)'} is set to the current time minus \`T_skew\` minus one hour`]),
+      steps: faulty(['status-list.exp-past'], ['its expiration time (4) is set to the current time minus `T_skew` minus one hour']),
       comments: NOSTAT_COMMENTS,
     }),
     defineTestCase({
@@ -158,7 +179,7 @@ const statusListToken = (format: FormatWording) => {
       relevancy: relevancy.genericRequired,
       objective: `Verify that the Relying Party does not use a Status List Token in ${name} format whose subject differs from the status list URI in the credential.`,
       references: referencesOf(format),
-      steps: rejected([`${format === sdJwtVc ? 'its `sub` claim' : 'its subject (2)'} is the URI of a different status list`]),
+      steps: faulty(['status-list.sub-other'], ['its subject (2) is the URI of a different status list']),
       comments: NOSTAT_COMMENTS,
     }),
     defineTestCase({
@@ -167,7 +188,7 @@ const statusListToken = (format: FormatWording) => {
       relevancy: relevancy.genericRequired,
       objective: `Verify that the Relying Party does not use a Status List Token in ${name} format that declares the wrong type.`,
       references: referencesOf(format),
-      steps: rejected([format === sdJwtVc ? 'its `typ` header is `JWT`' : 'its type header (16) is `application/cwt`']),
+      steps: faulty(['status-list.typ-jwt'], ['its type header (16) is `application/cwt`']),
       comments: NOSTAT_COMMENTS,
     }),
     defineTestCase({
@@ -176,7 +197,10 @@ const statusListToken = (format: FormatWording) => {
       relevancy: relevancy.genericRequired,
       objective: `Verify that the Relying Party does not use a Status List Token in ${name} format that lacks a required claim.`,
       references: referencesOf(format),
-      steps: rejected(missingClaims(format)),
+      steps: faulty(
+        ['status-list.no-sub', 'status-list.no-iat', 'status-list.no-status-list', 'status-list.no-bits', 'status-list.no-lst'],
+        missingClaims(format),
+      ),
       comments: NOSTAT_COMMENTS,
     }),
     defineTestCase({
@@ -185,11 +209,14 @@ const statusListToken = (format: FormatWording) => {
       relevancy: relevancy.genericRequired,
       objective: `Verify that the Relying Party does not use a Status List Token in ${name} format whose signer is not trusted.`,
       references: referencesOf(format, '[HAIP] section 6.1', '[Token Status List] section 11.3'),
-      steps: rejected([
-        `it is signed by a certificate issued by \`CA-X\`, with that certificate chain in ${x5(format)}`,
-        `it carries no ${x5(format)} header, so its signer cannot be validated`,
-        'it is signed by a self-signed certificate that is not part of `default_trust_configuration_rp`',
-      ]),
+      steps: faulty(
+        ['status-list.signer-ca-x', 'status-list.no-x5c', 'status-list.signer-self-signed'],
+        [
+          `it is signed by a certificate issued by \`CA-X\`, with that certificate chain in ${x5(format)}`,
+          `it carries no ${x5(format)} header, so its signer cannot be validated`,
+          'it is signed by a self-signed certificate that is not part of `default_trust_configuration_rp`',
+        ],
+      ),
       comments: NOSTAT_COMMENTS,
     }),
     defineTestCase({
@@ -198,11 +225,14 @@ const statusListToken = (format: FormatWording) => {
       relevancy: relevancy.specificRequired,
       objective: `Verify that the Relying Party does not use a Status List Token in ${name} format signed under a trusted anchor of another entity or another list.`,
       references: referencesOf(format, '[Token Status List] section 11.3'),
-      steps: rejected([
-        'it is signed by a certificate under the revocation anchor of `PP-B`',
-        'it is signed by a certificate under the revocation anchor of the Wallet Provider `WP-A` in `TL-WP`',
-        'it is signed by a certificate under the anchor of `AC-A` in `TL-AC`',
-      ]),
+      steps: faulty(
+        ['status-list.signer-pp-b-revocation', 'status-list.signer-wp-a-revocation', 'status-list.signer-ac-a'],
+        [
+          'it is signed by a certificate under the revocation anchor of `PP-B`',
+          'it is signed by a certificate under the revocation anchor of the Wallet Provider `WP-A` in `TL-WP`',
+          'it is signed by a certificate under the anchor of `AC-A` in `TL-AC`',
+        ],
+      ),
       comments: [
         '`default_trust_configuration_rp` defines that a status list is trusted only under the revocation anchor of the entity that issued the credential.',
         ...NOSTAT_COMMENTS,
@@ -217,10 +247,14 @@ const statusListToken = (format: FormatWording) => {
       steps: [
         step({
           text: `Perform a presentation for ${QUERY_PID} in which the Conformance Wallet presents ${PID} in a valid Authorization Response, while the Test Status Provider serves a valid Status List Token for it that holds the value 0x00 at the credential's index and is signed by a certificate under the revocation anchor \`CA-PP-A-REV\` of \`PP-A\`.`,
+          ...valid,
           expect: all(acc({ credential: PID }), fetched()),
         }),
         step({
           text: `Perform a presentation for ${QUERY_PID} in which the Conformance Wallet presents a variant of ${PID} issued by \`PP-B\` in a valid Authorization Response, while the Test Status Provider serves a valid Status List Token for it that holds the value 0x00 at the credential's index and is signed with the same key and certificate as that credential.`,
+          ...(executable
+            ? { run: withStatusList(statusListTokenSpec.jwt({ signer: { entity: 'PP-B', key: 'issuance' } }), pid.sdJwtVc({ issuer: 'PP-B' })) }
+            : {}),
           expect: all(acc(), fetched()),
         }),
       ],
@@ -235,10 +269,13 @@ const statusListToken = (format: FormatWording) => {
       relevancy: relevancy.specificRequired,
       objective: `Verify that the Relying Party does not use a Status List Token in ${name} format whose signer chains only to the issuance anchor of the issuing entity, when that anchor is not published under the entity's revocation service.`,
       references: referencesOf(format, '[Token Status List] section 11.3'),
-      steps: rejected([
-        'it is signed with the key and certificate that signed the presented credential',
-        'it is signed by another certificate issued under the issuance CA `CA-PP-A` of `PP-A`',
-      ]),
+      steps: faulty(
+        ['status-list.signer-credential-certificate', 'status-list.signer-other-issuance-certificate'],
+        [
+          'it is signed with the key and certificate that signed the presented credential',
+          'it is signed by another certificate issued under the issuance CA `CA-PP-A` of `PP-A`',
+        ],
+      ),
       comments: [
         '`PP-A` publishes separate CAs for its issuance and revocation services, so its issuance CA is not a root of trust for its status lists.',
         ...NOSTAT_COMMENTS,
@@ -250,9 +287,10 @@ const statusListToken = (format: FormatWording) => {
       relevancy: relevancy.genericRequired,
       objective: `Verify that the Relying Party does not trust a root certificate embedded in the ${x5(format)} header of a Status List Token in ${name} format.`,
       references: referencesOf(format, '[HAIP] section 6.1'),
-      steps: rejected([
-        `its signer certificate chains to a self-signed root that ${x5(format)} includes and that is not part of \`default_trust_configuration_rp\``,
-      ]),
+      steps: faulty(
+        ['status-list.embedded-root'],
+        [`its signer certificate chains to a self-signed root that ${x5(format)} includes and that is not part of \`default_trust_configuration_rp\``],
+      ),
       comments: NOSTAT_COMMENTS,
     }),
     defineTestCase({
@@ -261,7 +299,7 @@ const statusListToken = (format: FormatWording) => {
       relevancy: relevancy.genericRequired,
       objective: `Verify that the Relying Party does not use a Status List Token in ${name} format whose signer certificate is outside its validity period.`,
       references: referencesOf(format, '[RFC5280] section 6.1.3'),
-      steps: rejected(['its signer certificate has expired', 'its signer certificate is not yet valid']),
+      steps: faulty(['status-list.signer-expired', 'status-list.signer-not-yet-valid'], ['its signer certificate has expired', 'its signer certificate is not yet valid']),
       comments: NOSTAT_COMMENTS,
     }),
     defineTestCase({
@@ -270,7 +308,7 @@ const statusListToken = (format: FormatWording) => {
       relevancy: relevancy.genericRequired,
       objective: `Verify that the Relying Party does not use a Status List Token in ${name} format whose compressed status list is corrupt.`,
       references: referencesOf(format, '[Token Status List] section 4.1, 11.1'),
-      steps: rejected(corruptLists(format)),
+      steps: faulty(['status-list.lst-not-base64url', 'status-list.lst-not-zlib'], corruptLists(format)),
       comments: NOSTAT_COMMENTS,
     }),
     defineTestCase({
@@ -280,14 +318,26 @@ const statusListToken = (format: FormatWording) => {
       objective: `Verify that the Relying Party refuses a Status List Token in ${name} format whose status list decompresses to more than its declared maximum size, and stays available.`,
       references: referencesOf(format, '[Token Status List] section 4.1, 11.1'),
       steps: [
-        ...rejected([
-          'its `lst` value decompresses to more bytes than the maximum status list size the Relying Party declares, for example a ZLIB stream that inflates to 1 GiB of zero bytes',
-        ]),
+        ...faulty(
+          ['status-list.decompression-bomb'],
+          [
+            'its `lst` value decompresses to more bytes than the maximum status list size the Relying Party declares, for example a ZLIB stream that inflates to 1 GiB of zero bytes',
+          ],
+        ),
         step({
-          text: scenario.valid({
-            credential: `a newly issued ${PID}`,
-            extra: ', immediately after the previous step, while the status list referenced by that credential is valid and holds the value 0x00 at its index',
-          }),
+          ...(executable
+            ? presentationStep.valid({
+                text: {
+                  credential: `a newly issued ${PID}`,
+                  extra: ', immediately after the previous step, while the status list referenced by that credential is valid and holds the value 0x00 at its index',
+                },
+              })
+            : {
+                text: scenario.valid({
+                  credential: `a newly issued ${PID}`,
+                  extra: ', immediately after the previous step, while the status list referenced by that credential is valid and holds the value 0x00 at its index',
+                }),
+              }),
           expect: acc(),
         }),
       ],
@@ -302,7 +352,7 @@ const statusListToken = (format: FormatWording) => {
       relevancy: relevancy.genericRequired,
       objective: `Verify that the Relying Party does not use a Status List Token in ${name} format with an unsupported number of bits per status.`,
       references: referencesOf(format, '[Token Status List] section 4.1'),
-      steps: rejected(['the `bits` value of its status list is 3']),
+      steps: faulty(['status-list.bits-3'], ['the `bits` value of its status list is 3']),
       comments: NOSTAT_COMMENTS,
     }),
     defineTestCase({
@@ -311,7 +361,7 @@ const statusListToken = (format: FormatWording) => {
       relevancy: relevancy.genericRequired,
       objective: `Verify that the Relying Party reads the status value at the credential's index correctly from a Status List Token in ${name} format, for every permitted number of bits per status.`,
       references: referencesOf(format, '[Token Status List] section 4.1'),
-      steps: bitsSteps(),
+      steps: bitsSteps(executable),
       comments: [
         "Each index is the last entry of the second byte of the status list, so a Relying Party that reads the bits in the wrong order within a byte, or computes the byte offset incorrectly, reads a neighbouring entry. Every step uses a newly issued credential.",
         comments.flow,
@@ -323,7 +373,7 @@ const statusListToken = (format: FormatWording) => {
       relevancy: relevancy.specificRequired,
       objective: `Verify that the Relying Party does not use a Status List Token in ${name} format protected with an algorithm outside the agreed cryptographic mechanisms.`,
       references: referencesOf(format, '[ECCG ACM]', '[HAIP] section 6.1, 7', '[RFC8725] section 3.1'),
-      steps: rejected(algorithms(format)),
+      steps: faulty(['status-list.es256k', 'status-list.hs256-public-key'], algorithms(format)),
       comments: NOSTAT_COMMENTS,
     }),
   ];

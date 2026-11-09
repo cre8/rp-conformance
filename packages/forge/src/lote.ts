@@ -86,8 +86,9 @@ function buildEntity(entity: TestEntity, profile: ListProfile) {
     .postalAddress({ StreetAddress: 'Teststrasse 1', Locality: 'Berlin', PostalCode: '10115', Country: 'DE' })
     .email(`trust@${entity.spec.host}`)
     .infoUri(informationUri);
+  // A withdrawn issuance service is left out: TS 119 602 Annex D has no ServiceStatus for it (PP-W).
   const services: [string, CertifiedKey][] = [
-    [profile.issuanceServiceType, entity.anchors.issuance],
+    ...(entity.spec.issuanceWithdrawn ? [] : [[profile.issuanceServiceType, entity.anchors.issuance] as [string, CertifiedKey]]),
     [profile.revocationServiceType, entity.anchors.revocation],
   ];
   for (const [type, anchor] of services) {
@@ -112,9 +113,7 @@ export interface LoteBuildOptions {
 /** The entities of `default_trust_configuration_rp` that are on a list. */
 export function defaultEntitiesOf(pki: TestPki, list: LoteListId): string[] {
   return Object.values(pki.entities)
-    // PP-W ("all services withdrawn") needs a representation of withdrawal in a PID Providers list, which
-    // TS 119 602 D does not give a ServiceStatus for. It is left off until the TrustMechanisms test cases define it.
-    .filter((entity) => entity.spec.list === list && !entity.spec.withdrawn)
+    .filter((entity) => entity.spec.list === list)
     .map((entity) => entity.spec.id);
 }
 

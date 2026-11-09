@@ -4,10 +4,11 @@
 import { createHash, X509Certificate } from 'node:crypto';
 import { type CallbackContext, type Jwk, setGlobalConfig } from '@openid4vc/oauth2';
 import { Openid4vpClient } from '@openid4vc/openid4vp';
-import { base64url, type EcKeyPair, generateEcKeyPair, presentSdJwtVc, verifyEs256 } from '@rp-conformance/forge';
+import type { FaultId } from '@rp-conformance/core';
+import { base64url, buildAuthorizationResponse, type EcKeyPair, generateEcKeyPair, presentSdJwtVc, verifyEs256 } from '@rp-conformance/forge';
 import { validatePath } from '@rp-conformance/validator';
 import { type Certificate, parseCertificate } from '@owf/x509';
-import { CompactEncrypt, importJWK, type JWK } from 'jose';
+import type { JWK } from 'jose';
 
 /** A deviation of the Relying Party's request from OpenID4VP 1.0 or HAIP 1.0 (harness design section 4.5). */
 export interface WalletFinding {
@@ -31,8 +32,13 @@ export interface PresentationEvidence {
   requestFetch?: HttpExchange;
   request?: { header: Record<string, unknown>; payload: Record<string, unknown> };
   findings: WalletFinding[];
+  /** The encryption key from the request's `client_metadata`. */
+  encryptionKey?: JWK;
   presentation?: string;
+  /** The `response` parameter, when there is one. */
   responseJwe?: string;
+  /** Every form parameter posted to `response_uri`. */
+  responseForm?: Record<string, string>;
   response?: HttpExchange;
   redirect?: HttpExchange;
   /** Set when the wallet could not complete the flow. */
@@ -52,6 +58,16 @@ const hash: CallbackContext['hash'] = (data, alg) => createHash(alg.replace('-',
 
 const SUPPORTED_ENC = ['A128GCM', 'A256GCM'];
 
+/** How the Conformance Wallet answers: the content encryption to use and the fault of the response, if any. */
+export interface ResponseOptions {
+  enc?: string;
+  fault?: FaultId;
+  /** For `response.other-transaction-key`: the encryption key recorded for another transaction. */
+  otherTransactionKey?: JWK;
+}
+
+type Finding = (severity: WalletFinding['severity'], code: string, message: string) => void;
+
 export class ConformanceWallet {
   private constructor(
     readonly holderKey: EcKeyPair,
@@ -66,70 +82,29 @@ export class ConformanceWallet {
   }
 
   /**
+   * Resolves the request behind `invocationUri` and records its encryption key, without answering it (SessionEncryption
+   * transaction T1).
+   */
+  async start(invocationUri: string): Promise<PresentationEvidence> {
+    const evidence: PresentationEvidence = { invocationUri, findings: [] };
+    try {
+      await this.resolve(invocationUri, evidence);
+    } catch (error) {
+      evidence.error = (error as Error).message;
+    }
+    return evidence;
+  }
+
+  /**
    * Answers the request behind `invocationUri` (redirect flow): resolves `request_uri`, verifies the signed request
    * and its `x509_hash` Client Identifier against `TL-AC`, presents the credential with a KB-JWT bound to the request,
-   * encrypts the response (`direct_post.jwt`), posts it to `response_uri` and follows `redirect_uri`.
+   * encrypts the response (`direct_post.jwt`), or applies the step's response fault, posts it to `response_uri` and
+   * follows `redirect_uri`.
    */
-  async present(invocationUri: string, credential: string): Promise<PresentationEvidence> {
+  async present(invocationUri: string, credential: string, options: ResponseOptions = {}): Promise<PresentationEvidence> {
     const evidence: PresentationEvidence = { invocationUri, findings: [] };
-    const finding = (severity: WalletFinding['severity'], code: string, message: string) => evidence.findings.push({ severity, code, message });
     try {
-      const fetchWithEvidence: typeof fetch = async (input, init) => {
-        const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-        const exchange: HttpExchange = { method: init?.method ?? 'GET', url };
-        evidence.requestFetch = exchange;
-        const response = await fetch(input, init);
-        exchange.status = response.status;
-        exchange.contentType = response.headers.get('content-type');
-        exchange.body = await response.clone().text();
-        return response;
-      };
-      const client = new Openid4vpClient({
-        callbacks: {
-          hash,
-          fetch: fetchWithEvidence,
-          verifyJwt: async (signer, { header, payload, compact }) => {
-            evidence.request = { header: header as Record<string, unknown>, payload: payload as Record<string, unknown> };
-            if (signer.method !== 'x5c') {
-              finding('error', 'request-signer', `request signed with method ${signer.method}, expected x5c`);
-              return { verified: false };
-            }
-            const path = await validatePath(signer.x5c, this.anchors);
-            if (!path.ok) finding('error', 'request-signer-trust', `request signer is not under a TL-AC anchor: ${path.reason}`);
-            const jwk = path.ok ? path.leaf.publicKey.jwk : parseCertificate(signer.x5c[0]).publicKey.jwk;
-            const [h, p, s] = compact.split('.');
-            const verified = jwk ? await verifyEs256(jwk, `${h}.${p}`, base64url.decode(s ?? '')) : false;
-            if (!verified) finding('error', 'request-signature', 'request signature does not verify');
-            return verified && path.ok ? { verified: true, signerJwk: jwk as Jwk } : { verified: false };
-          },
-          getX509CertificateMetadata: (certificate) => {
-            const altNames = new X509Certificate(Buffer.from(certificate, 'base64')).subjectAltName ?? '';
-            const names = altNames.split(',').map((name) => name.trim());
-            return {
-              sanDnsNames: names.filter((n) => n.startsWith('DNS:')).map((n) => n.slice(4)),
-              sanUriNames: names.filter((n) => n.startsWith('URI:')).map((n) => n.slice(4)),
-            };
-          },
-          signJwt: () => {
-            throw new Error('not used');
-          },
-          encryptJwe: () => {
-            throw new Error('not used');
-          },
-          decryptJwe: () => ({ decrypted: false }),
-        },
-      });
-
-      const parsed = client.parseOpenid4vpAuthorizationRequest({ authorizationRequest: invocationUri });
-      const { authorizationRequestPayload: request, client: resolvedClient } = await client.resolveOpenId4vpAuthorizationRequest({
-        authorizationRequestPayload: parsed.params as never,
-        responseMode: { type: 'direct_post' },
-      });
-      this.checkRequest(request as Record<string, unknown>, evidence, finding, resolvedClient);
-      if (evidence.findings.some((f) => f.severity === 'error')) {
-        throw new Error(`request refused: ${evidence.findings.filter((f) => f.severity === 'error').map((f) => f.code).join(', ')}`);
-      }
-
+      const request = await this.resolve(invocationUri, evidence);
       const query = request.dcql_query as { credentials: { id: string; claims?: { path: (string | number | null)[] }[] }[] };
       const [credentialQuery] = query.credentials;
       const disclose = [...new Set((credentialQuery.claims ?? []).map((claim) => String(claim.path[0])))];
@@ -137,22 +112,24 @@ export class ConformanceWallet {
         holderPrivateKey: this.holderKey.privateKey,
         disclose,
         audience: request.client_id as string,
-        nonce: request.nonce,
+        nonce: request.nonce as string,
       });
 
-      const metadata = request.client_metadata as { jwks?: { keys: JWK[] }; encrypted_response_enc_values_supported?: string[] };
-      const verifierKey = metadata.jwks?.keys.find((k) => k.use === undefined || k.use === 'enc');
-      if (!verifierKey) throw new Error('client_metadata has no encryption key');
-      const enc = metadata.encrypted_response_enc_values_supported?.find((e) => SUPPORTED_ENC.includes(e)) ?? 'A128GCM';
+      const metadata = request.client_metadata as { encrypted_response_enc_values_supported?: string[] };
+      if (!evidence.encryptionKey) throw new Error('client_metadata has no encryption key');
+      const enc = options.enc ?? metadata.encrypted_response_enc_values_supported?.find((e) => SUPPORTED_ENC.includes(e)) ?? 'A128GCM';
       const payload = { vp_token: { [credentialQuery.id]: [evidence.presentation] }, ...(request.state ? { state: request.state } : {}) };
-      evidence.responseJwe = await new CompactEncrypt(new TextEncoder().encode(JSON.stringify(payload)))
-        .setProtectedHeader({ alg: 'ECDH-ES', enc, ...(verifierKey.kid ? { kid: verifierKey.kid } : {}) })
-        .encrypt(await importJWK(verifierKey, 'ECDH-ES'));
+      const form = await buildAuthorizationResponse(
+        { payload, recipient: evidence.encryptionKey, enc, walletKey: this.holderKey, otherTransactionKey: options.otherTransactionKey },
+        options.fault,
+      );
+      evidence.responseForm = form;
+      evidence.responseJwe = form.response;
 
       const responseUri = request.response_uri as string;
       const exchange: HttpExchange = { method: 'POST', url: responseUri };
       evidence.response = exchange;
-      const response = await fetch(responseUri, { method: 'POST', body: new URLSearchParams({ response: evidence.responseJwe }) });
+      const response = await fetch(responseUri, { method: 'POST', body: new URLSearchParams(form) });
       exchange.status = response.status;
       exchange.contentType = response.headers.get('content-type');
       exchange.body = await response.text();
@@ -182,10 +159,73 @@ export class ConformanceWallet {
     return evidence;
   }
 
+  /** Fetches and verifies the request; refuses it on an error finding. */
+  private async resolve(invocationUri: string, evidence: PresentationEvidence): Promise<Record<string, unknown>> {
+    const finding: Finding = (severity, code, message) => evidence.findings.push({ severity, code, message });
+    const fetchWithEvidence: typeof fetch = async (input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      const exchange: HttpExchange = { method: init?.method ?? 'GET', url };
+      evidence.requestFetch = exchange;
+      const response = await fetch(input, init);
+      exchange.status = response.status;
+      exchange.contentType = response.headers.get('content-type');
+      exchange.body = await response.clone().text();
+      return response;
+    };
+    const client = new Openid4vpClient({
+      callbacks: {
+        hash,
+        fetch: fetchWithEvidence,
+        verifyJwt: async (signer, { header, payload, compact }) => {
+          evidence.request = { header: header as Record<string, unknown>, payload: payload as Record<string, unknown> };
+          if (signer.method !== 'x5c') {
+            finding('error', 'request-signer', `request signed with method ${signer.method}, expected x5c`);
+            return { verified: false };
+          }
+          const path = await validatePath(signer.x5c, this.anchors);
+          if (!path.ok) finding('error', 'request-signer-trust', `request signer is not under a TL-AC anchor: ${path.reason}`);
+          const jwk = path.ok ? path.leaf.publicKey.jwk : parseCertificate(signer.x5c[0]).publicKey.jwk;
+          const [h, p, s] = compact.split('.');
+          const verified = jwk ? await verifyEs256(jwk, `${h}.${p}`, base64url.decode(s ?? '')) : false;
+          if (!verified) finding('error', 'request-signature', 'request signature does not verify');
+          return verified && path.ok ? { verified: true, signerJwk: jwk as Jwk } : { verified: false };
+        },
+        getX509CertificateMetadata: (certificate) => {
+          const altNames = new X509Certificate(Buffer.from(certificate, 'base64')).subjectAltName ?? '';
+          const names = altNames.split(',').map((name) => name.trim());
+          return {
+            sanDnsNames: names.filter((n) => n.startsWith('DNS:')).map((n) => n.slice(4)),
+            sanUriNames: names.filter((n) => n.startsWith('URI:')).map((n) => n.slice(4)),
+          };
+        },
+        signJwt: () => {
+          throw new Error('not used');
+        },
+        encryptJwe: () => {
+          throw new Error('not used');
+        },
+        decryptJwe: () => ({ decrypted: false }),
+      },
+    });
+
+    const parsed = client.parseOpenid4vpAuthorizationRequest({ authorizationRequest: invocationUri });
+    const { authorizationRequestPayload: request, client: resolvedClient } = await client.resolveOpenId4vpAuthorizationRequest({
+      authorizationRequestPayload: parsed.params as never,
+      responseMode: { type: 'direct_post' },
+    });
+    this.checkRequest(request as Record<string, unknown>, evidence, finding, resolvedClient);
+    const metadata = request.client_metadata as { jwks?: { keys: JWK[] } } | undefined;
+    evidence.encryptionKey = metadata?.jwks?.keys.find((k) => k.use === undefined || k.use === 'enc');
+    if (evidence.findings.some((f) => f.severity === 'error')) {
+      throw new Error(`request refused: ${evidence.findings.filter((f) => f.severity === 'error').map((f) => f.code).join(', ')}`);
+    }
+    return request as Record<string, unknown>;
+  }
+
   private checkRequest(
     request: Record<string, unknown>,
     evidence: PresentationEvidence,
-    finding: (severity: WalletFinding['severity'], code: string, message: string) => void,
+    finding: Finding,
     client: { prefix?: string } | undefined,
   ) {
     const header = evidence.request?.header ?? {};

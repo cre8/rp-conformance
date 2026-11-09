@@ -83,10 +83,10 @@ const validate = (presentation: string, overrides: Partial<Parameters<typeof val
     skewSeconds: 60,
     kbMaxAgeSeconds: 300,
     requireStatus: true,
+    maxStatusListBytes: 1 << 20,
     fetchStatusList: async (uri) => {
       const response = await fetch(uri);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return response.text();
+      return { status: response.status, body: await response.text() };
     },
     ...overrides,
   });
@@ -113,6 +113,12 @@ describe('LoTE builder', () => {
     expect(anchorOf('/Revocation')).toBe('CA-PP-A-REV');
   });
 
+  it('TL-PID lists PP-W with its PID/Revocation service only, under the anchor that signs its PIDs', () => {
+    const ppW = trust.lists.get('TL-PID')!.entities.find((e) => e.name === 'PP-W')!;
+    expect(ppW.services.map((s) => s.type)).toEqual(['http://uri.etsi.org/19602/SvcType/PID/Revocation']);
+    expect(ppW.services[0].anchors.map((a) => a.subject.commonName)).toEqual(['CA-PP-W']);
+  });
+
   it('a list sealed by another key is refused', async () => {
     const source = sources.find((s) => s.id === 'TL-PID')!;
     const { jws } = await buildSealedLote({ list: 'TL-PID', pki });
@@ -129,7 +135,7 @@ describe('PID SD-JWT VC and Status List Token builders', () => {
     const result = await validate(presentation);
     expect(result.failed).toBeUndefined();
     expect(result.valid).toBe(true);
-    expect(result.checks.map((c) => c.check)).toEqual([...SD_JWT_VC_CHECKS]);
+    expect(result.checks.map((c) => [c.check, c.status])).toEqual(SD_JWT_VC_CHECKS.map((c) => [c, 'pass']));
     expect(result.issuer).toBe('PP-A');
     expect(result.claims).toMatchObject({
       family_name: DEFAULT_PID_CLAIMS.family_name,
@@ -147,18 +153,19 @@ describe('PID SD-JWT VC and Status List Token builders', () => {
   });
 });
 
-// Not the systematic fault self-validation of Phase 1, but evidence that the reference validator discriminates.
+// Beyond the fault catalogue (faults.test.ts): the reference validator discriminates issuers, status and key binding.
 describe('reference validator discriminates', () => {
   it.each([
     ['a revoked status', { statusValue: 1 }, {}, 'status'],
     ['an issuer that is on no list (PP-C)', { issuer: 'PP-C' }, {}, 'issuer-trust'],
     ['an issuer whose anchor has expired (PP-E)', { issuer: 'PP-E' }, {}, 'issuer-trust'],
+    ['an issuer whose PID/Issuance service is withdrawn (PP-W)', { issuer: 'PP-W' }, {}, 'issuer-trust'],
     ['a KB-JWT for another nonce', {}, { nonce: 'other' }, 'key-binding'],
     ['a KB-JWT for another audience', {}, { audience: 'x509_hash:other' }, 'key-binding'],
   ] as const)('%s fails exactly the check %s', async (_name, issue, overrides, expected) => {
     const { presentation } = await issueValidPid(issue);
     const result = await validate(presentation, overrides);
     expect(result.failed).toBe(expected);
-    expect(result.checks.filter((c) => !c.ok)).toHaveLength(1);
+    expect(result.failures).toEqual([expected]);
   });
 });

@@ -1,0 +1,11 @@
+      - Relying Party (SUT):
+          - Overview: suts/relying_party/index.md
+          - Test Classes:
+              - (rp_ws) Wallet Solution:
+                  - Overview: suts/relying_party/wallet_solution/rp_ws.md
+                  - Baseline tests: suts/relying_party/wallet_solution/baseline-tests.md
+                  - Test cases: suts/relying_party/wallet_solution/test-cases.md
+              - (rp_pp) PID Provider:
+                  - Overview: suts/relying_party/pid_provider/rp_pp.md
+                  - Baseline tests: suts/relying_party/pid_provider/baseline-tests.md
+                  - Test cases: suts/relying_party/pid_provider/test-cases.md

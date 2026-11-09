@@ -25,15 +25,20 @@ export interface EntitySpec {
   separateRevocationAnchor?: boolean;
   /** `PP-E`: the anchor certificate has expired. */
   expiredAnchor?: boolean;
-  /** `PP-W`: all services withdrawn. */
-  withdrawn?: boolean;
+  /**
+   * `PP-W`: its PID/Issuance service is withdrawn. ETSI TS 119 602 Annex D gives PID Providers lists no service status,
+   * so the list carries only its PID/Revocation service (TrustMechanisms_006).
+   */
+  issuanceWithdrawn?: boolean;
+  /** A list that is not a LoTE: `QP-A` is on the Trusted List `TL-QEAA`, which the harness publishes from Phase 4. */
+  trustedList?: 'TL-QEAA';
   /** Short host-like name used in subject alternative names and `iss`. */
   host: string;
 }
 
 /**
- * The entities of `default_trust_configuration_rp` (FCAF defaults, "Relying Party testing").
- * `QP-A`, `QP-N` and `QP-W` (on the Trusted List `TL-QEAA`) follow in Phase 4.
+ * The entities of `default_trust_configuration_rp` (FCAF defaults, "Relying Party testing"). `QP-A` has its PKI, which
+ * TrustMechanisms_002 uses as a PID issuer; `TL-QEAA` itself, `QP-N` and `QP-W` follow in Phase 4.
  */
 export const ENTITIES: EntitySpec[] = [
   { id: 'PP-A', list: 'TL-PID', separateRevocationAnchor: true, host: 'pp-a.rp-test' },
@@ -41,7 +46,8 @@ export const ENTITIES: EntitySpec[] = [
   { id: 'PP-C', host: 'pp-c.rp-test' },
   { id: 'PP-D', list: 'TL-PID', host: 'pp-d.rp-test' },
   { id: 'PP-E', list: 'TL-PID', expiredAnchor: true, host: 'pp-e.rp-test' },
-  { id: 'PP-W', list: 'TL-PID', withdrawn: true, host: 'pp-w.rp-test' },
+  { id: 'PP-W', list: 'TL-PID', issuanceWithdrawn: true, host: 'pp-w.rp-test' },
+  { id: 'QP-A', trustedList: 'TL-QEAA', host: 'qp-a.rp-test' },
   { id: 'PB-A', list: 'TL-PUB', host: 'pb-a.rp-test' },
   { id: 'EP-A', host: 'ep-a.rp-test' },
   { id: 'WP-A', list: 'TL-WP', host: 'wp-a.rp-test' },

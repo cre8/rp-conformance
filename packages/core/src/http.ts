@@ -75,4 +75,6 @@ export interface RequestLogEntry {
   url: string;
   headers: Record<string, string | string[] | undefined>;
   status: number;
+  /** The version of a list the Test Trust Infrastructure served. */
+  version?: number;
 }

@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm types:check
+      # Unit tests, fault self-validation, the reference run of every executable test case, and the byte-for-byte
+      # rendering check of the 121 test cases and the shared pages.
+      - run: pnpm test
+      - name: Rendered FCAF overlay is committed
+        run: pnpm fcaf:render --check
+      - name: FCAF lint on the rendered overlay
+        env:
+          FCAF_LINT_FORMAT: github
+        run: |
+          pnpm fcaf:render --out "$RUNNER_TEMP/overlay"
+          OVERLAY_DIR="$RUNNER_TEMP/overlay" scripts/fcaf-lint.sh "$RUNNER_TEMP/fcaf"

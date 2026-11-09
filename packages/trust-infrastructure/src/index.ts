@@ -30,7 +30,7 @@ export class TrustInfrastructure {
       const match = /^\/([^/]+)\/([^/]+)(?:\/v(\d+))?$/.exec(path);
       const versions = match ? this.lists.get(`${match[1]}/${match[2]}`) : undefined;
       const entry = versions && (match?.[3] ? versions.find((v) => v.version === Number(match[3])) : versions[versions.length - 1]);
-      this.log.push({ at: new Date().toISOString(), method: req.method ?? 'GET', url: `${this.publicBaseUrl}${path}`, headers: req.headers, status: entry ? 200 : 404 });
+      this.log.push({ at: new Date().toISOString(), method: req.method ?? 'GET', url: `${this.publicBaseUrl}${path}`, headers: req.headers, status: entry ? 200 : 404, version: entry?.version });
       if (!entry) return sendJson(res, 404, { error: 'not_found' });
       res.writeHead(200, { 'content-type': 'application/jwt', 'cache-control': 'no-store', 'x-lote-version': String(entry.version) });
       res.end(entry.body);

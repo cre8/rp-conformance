@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@rp-conformance/status-provider": "workspace:*",
-    "@rp-conformance/trust-infrastructure": "workspace:*"
+    "@rp-conformance/trust-infrastructure": "workspace:*",
+    "@rp-conformance/definitions": "workspace:*"
   }
 }

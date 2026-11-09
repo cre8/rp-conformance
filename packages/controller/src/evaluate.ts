@@ -1,4 +1,5 @@
-import type { DcqlQuery, ExpectationCode, RelyingPartyResult, Verdict } from '@rp-conformance/core';
+import type { DcqlQuery, Expectation, ExpectationCode, Ics, RelyingPartyResult, Verdict } from '@rp-conformance/core';
+import { icsAnswer, statusMeanings } from './ics';
 
 export interface Evaluation {
   verdict: Verdict;
@@ -68,21 +69,82 @@ export function evaluateReject(result: RelyingPartyResult, responseStatus: numbe
   return { verdict: 'FAIL', reason: `verification result is ${result.outcome}` };
 }
 
-export function evaluate(
-  codes: ExpectationCode[],
-  args: { result: RelyingPartyResult; query: DcqlQuery; issuedClaims: Record<string, unknown>; responseStatus?: number },
-): Evaluation {
-  const evaluations = codes.map((code) => {
+/** The credential categories of `NOSTAT`: a PID is always rejected, the others follow ICS RP.R.2. */
+export type CredentialCategory = 'pid' | 'qeaa' | 'pub-eaa' | 'eaa';
+
+/**
+ * `NOSTAT` (catalogue decision 2): no reliable revocation status. A PID is rejected. Another category follows the
+ * policy the ICS declares in RP.R.2: `Reject`, or accepted with `status-unknown` in the result's flags.
+ */
+export function evaluateNoStatus(args: EvaluationInput): Evaluation {
+  if (args.category === 'pid') return withPrefix('PID without reliable status', evaluateReject(args.result, args.responseStatus));
+  const policy = icsAnswer(args.ics, 'RP.R.2') ?? '';
+  if (/^reject/i.test(policy)) return withPrefix(`RP.R.2 ${policy}`, evaluateReject(args.result, args.responseStatus));
+  if (/^accept/i.test(policy)) {
+    const accepted = evaluateAccept(args.result, args.query, args.issuedClaims, args.responseStatus);
+    if (accepted.verdict !== 'PASS') return withPrefix(`RP.R.2 ${policy}`, accepted);
+    if (!args.result.flags?.includes('status-unknown')) return { verdict: 'FAIL', reason: `RP.R.2 ${policy}: accepted without the flag status-unknown` };
+    return { verdict: 'PASS', reason: `RP.R.2 ${policy}: accepted and flagged status-unknown` };
+  }
+  return { verdict: 'INCONCLUSIVE', reason: `RP.R.2 is not declared (${policy || 'missing'})` };
+}
+
+/** `POLICY`: compared with the ICS declaration the expectation names (RP.R.3 for an application-specific status). */
+export function evaluatePolicy(expectation: Expectation, args: EvaluationInput): Evaluation {
+  const policy = expectation.policy;
+  if (!policy) return { verdict: 'INCONCLUSIVE', reason: 'the expected result names no ICS item' };
+  const hex = `0x${policy.status.toString(16).padStart(2, '0')}`;
+  const meaning = statusMeanings(args.ics).get(policy.status);
+  if (meaning === undefined) return withPrefix(`${policy.item} declares no meaning for ${hex}`, evaluateReject(args.result, args.responseStatus));
+  if (meaning === 'invalid') return withPrefix(`${policy.item} declares ${hex} invalid`, evaluateReject(args.result, args.responseStatus));
+  if (meaning === 'valid') return withPrefix(`${policy.item} declares ${hex} valid`, evaluateAccept(args.result, args.query, args.issuedClaims, args.responseStatus));
+  return { verdict: 'REVIEW', reason: `${policy.item} declares ${hex} as "${meaning}"; compare the verification result (${args.result.outcome}) by hand` };
+}
+
+const withPrefix = (prefix: string, evaluation: Evaluation): Evaluation => ({ ...evaluation, reason: `${prefix}: ${evaluation.reason}` });
+
+export interface EvaluationInput {
+  result: RelyingPartyResult;
+  query: DcqlQuery;
+  issuedClaims: Record<string, unknown>;
+  responseStatus?: number;
+  ics: Ics;
+  category: CredentialCategory;
+  /** Requests the Test Status Provider logged for the step's status list URI, from the step's start to the verdict. */
+  statusRequests: number;
+}
+
+const ORDER: Verdict[] = ['FAIL', 'INCONCLUSIVE', 'REVIEW', 'PASS'];
+
+/** The worst of several verdicts. */
+export function worst(verdicts: Verdict[]): Verdict {
+  return [...verdicts].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b))[0] ?? 'INCONCLUSIVE';
+}
+
+/** Evaluates the codes of a presentation step (harness design section 5); the step's verdict is the worst of them. */
+export function evaluate(expectation: Expectation, args: EvaluationInput): Evaluation {
+  const evaluations = expectation.codes.map((code: ExpectationCode): Evaluation => {
     switch (code) {
       case 'ACC':
         return evaluateAccept(args.result, args.query, args.issuedClaims, args.responseStatus);
       case 'REJ':
         return evaluateReject(args.result, args.responseStatus);
+      case 'NOSTAT':
+        return evaluateNoStatus(args);
+      case 'POLICY':
+        return evaluatePolicy(expectation, args);
+      case 'NOFETCH':
+        return args.statusRequests === 0
+          ? { verdict: 'PASS', reason: 'the status list was not retrieved' }
+          : { verdict: 'FAIL', reason: `the Relying Party retrieved the status list ${args.statusRequests} time(s)` };
+      case 'FETCHED':
+        return args.statusRequests > 0
+          ? { verdict: 'PASS', reason: `the status list was retrieved ${args.statusRequests} time(s)` }
+          : { verdict: 'FAIL', reason: 'the Relying Party did not retrieve the status list' };
       default:
-        return { verdict: 'INCONCLUSIVE' as const, reason: `expected result ${code} is not implemented in Phase 0` };
+        return { verdict: 'INCONCLUSIVE', reason: `expected result ${code} does not apply to a presentation step` };
     }
   });
-  const order: Verdict[] = ['FAIL', 'INCONCLUSIVE', 'REVIEW', 'PASS'];
-  evaluations.sort((a, b) => order.indexOf(a.verdict) - order.indexOf(b.verdict));
-  return evaluations[0];
+  const verdict = worst(evaluations.map((e) => e.verdict));
+  return { verdict, reason: evaluations.map((e) => e.reason).join('; ') };
 }

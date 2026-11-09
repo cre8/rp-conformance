@@ -2,7 +2,7 @@
 
 ## Objective
 
-Verify that the Relying Party rejects a PID in SD-JWT VC format from a PID Provider whose entry is withdrawn.
+Verify that the Relying Party rejects a PID in SD-JWT VC format from a PID Provider whose PID/Issuance service is withdrawn.
 
 ## References
 
@@ -32,12 +32,14 @@ EUDI_specific | EUDI_required
 
 ## Test Scenario
 
-1. Perform a presentation for `default_query_pid` in which the Conformance Wallet presents, in an otherwise valid Authorization Response, a variant of `default_credential_pid` that differs from it only in that it is issued by `PP-W`.
+1. Perform a presentation for `default_query_pid` in which the Conformance Wallet presents, in an otherwise valid Authorization Response, a variant of `default_credential_pid` that differs from it only in that it is issued by `PP-W`, whose PID/Issuance service is withdrawn.
 
 ## Expected results
 
 1. The Relying Party rejects the presentation: its verification result reports a failure and releases no attribute value from the presentation, and the endpoint receiving the Authorization Response does not answer with HTTP status 5xx.
 
 ## Comments
+
+[ETSI TS 119 602] Annex D gives PID Providers lists no service status. `TL-PID` therefore expresses the withdrawal by listing only the PID/Revocation service of `PP-W`. Its anchor `CA-PP-W` is the one the PID is signed under.
 
 Execute this test case once for each presentation flow the Relying Party supports (redirects, W3C Digital Credentials API).

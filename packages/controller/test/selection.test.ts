@@ -42,7 +42,7 @@ describe('selection', () => {
   });
 
   it('refuses a selection that matches nothing', () => {
-    expect(() => selectTestCases(all, ['nothing'])).toThrow(/no test case matches/);
+    expect(() => selectTestCases(all, ['nothing'])).toThrow(/no executable test case matches/);
   });
 
   it('refuses a control that the preconditions do not name, and the reverse', () => {

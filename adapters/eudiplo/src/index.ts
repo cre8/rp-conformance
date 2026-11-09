@@ -107,6 +107,9 @@ export class EudiploAdapter implements RelyingPartyAdapter {
     this.skewSeconds = Number(env.ics.items['RP.P.4'] ?? 60);
 
     for (const [id, query] of Object.entries(env.queries)) {
+      // The ICS declares RP.P.3 No: EUDIPLO is configured with trusted_authorities of its own (etsi_tl below), so the
+      // aki-restricted variant of default_query_pid (TrustMechanisms_016) is not configured.
+      if (query.credentials.some((credential) => credential.trusted_authorities)) continue;
       await this.call('POST', '/api/verifier/config', {
         id,
         description: `FCAF ${id}`,

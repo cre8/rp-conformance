@@ -29,3 +29,23 @@ export function applicability(definition: TestCaseDefinition, ics: Ics): string[
     .filter((condition) => icsAnswer(ics, condition.item) !== condition.equals)
     .map((condition) => `${condition.item} (${condition.text}) is ${icsAnswer(ics, condition.item) ?? 'not declared'}`);
 }
+
+export type StatusMeaning = 'valid' | 'invalid' | string;
+
+/**
+ * The meanings of application-specific status values the Relying Party declares (ICS RP.R.3), as `None` or
+ * `0x03=valid; 0x04=invalid`. `valid` and `invalid` are evaluated; any other text makes the verdict REVIEW.
+ */
+export function statusMeanings(ics: Ics): Map<number, StatusMeaning> {
+  const declared = icsAnswer(ics, 'RP.R.3') ?? 'None';
+  const meanings = new Map<number, StatusMeaning>();
+  for (const match of declared.matchAll(/0x([0-9a-f]{1,2})\s*[:=]\s*([^;]+)/gi)) {
+    meanings.set(Number.parseInt(match[1], 16), match[2].trim().toLowerCase());
+  }
+  return meanings;
+}
+
+/** The status values the Relying Party declares as VALID besides 0x00. */
+export function validStatuses(ics: Ics): number[] {
+  return [...statusMeanings(ics)].filter(([, meaning]) => meaning === 'valid').map(([value]) => value);
+}

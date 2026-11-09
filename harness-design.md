@@ -1,6 +1,6 @@
 # RP conformance harness: design
 
-Draft 0.1, 2026-11-06. Phase 0 (section 11) is implemented in `packages/` and `adapters/`; see the README for how to run it. It describes the tool that executes the Relying Party test cases in [fcaf-overlay](fcaf-overlay/README.md) (121 baseline test cases) against any Relying Party, EUDIPLO first.
+Draft 0.2, 2026-11-09. Phases 0 and 1 (section 11) are implemented in `packages/` and `adapters/`; see the README for how to run it. It describes the tool that executes the Relying Party test cases in [fcaf-overlay](fcaf-overlay/README.md) (121 baseline test cases) against any Relying Party, EUDIPLO first.
 
 ## 0. Summary
 
@@ -12,7 +12,7 @@ Key choices:
 - **Valid first, then one fault**: every artifact is built valid with the libraries, then a named mutation is applied in a separate fault-injection layer that assembles JOSE/COSE directly, so strict library validation never blocks a deliberately broken artifact.
 - **The harness proves its own faults**: before a mutation is used against an RP, a reference validator confirms that the unmutated artifact passes every check and the mutated one fails exactly the targeted check.
 - **RP-agnostic through adapters**: one small interface (start a presentation, read the verdict, optionally refresh trust). EUDIPLO gets the first adapter; a manual adapter covers RPs without an API.
-- **Executable test definitions are the single source of truth**: the FCAF markdown is rendered from them, replacing the current Python generator, so the specification and the executed test cannot drift.
+- **Executable test definitions are the single source of truth**: the FCAF markdown is rendered from them, so the specification and the executed test cannot drift.
 
 ## 1. Goals and non-goals
 
@@ -32,7 +32,7 @@ Non-goals for now:
 
 ## 2. What the baseline needs from a harness
 
-Derived from the 121 generated test cases ([generator/tests.py](generator/tests.py)):
+Derived from the 121 baseline test cases ([packages/definitions](packages/definitions)):
 
 | Capability | Used by | Notes |
 | --- | --- | --- |
@@ -121,10 +121,11 @@ Each FCAF test case has one definition in `packages/definitions`. It holds every
 | Expected results | `steps[].expect.text` | Numbered list; `steps[].expect.codes` (`ACC`, `REJ`, `NOSTAT`, ...) is what the controller evaluates |
 | Comments | `comments` | Paragraphs; left out when empty |
 
-Shared wording lives in `packages/core/src/wording.ts`, ported from `generator/tests.py`: the preconditions, the expected results (`acc()`, `rej()`, `nostat()`, `fetched()`, `nofetch()`, combined with `all()`), the scenario texts (`scenario.credentialVariant(...)`, `scenario.statusListToken(...)`, ...), the comments, and the format and flow texts. Step builders such as `presentationStep.valid(...)` return the scenario text together with the executable action, so a fault and its description are written in one place.
+Shared wording lives in `packages/core/src/wording.ts`: the preconditions, the expected results (`acc()`, `rej()`, `nostat()`, `fetched()`, `nofetch()`, combined with `all()`), the scenario texts (`scenario.credentialVariant(...)`, `scenario.statusListToken(...)`, ...), the comments, and the format and flow texts. Step builders such as `presentationStep.valid(...)` return the scenario text together with the executable action, so a fault and its description are written in one place.
 
 ```ts
-export default defineTestCase({
+// packages/definitions/src/pid_provider/SecurityMechanisms/Revocation.ts (abridged): one function per format
+defineTestCase({
   id: 'RP_PP_SM_Revocation_004a_UF',
   objective: 'Verify that the Relying Party does not use an expired Status List Token in JWT format.',
   references: ['[Token Status List] section 5.1, 8.3' /* … */],
@@ -134,26 +135,16 @@ export default defineTestCase({
   preconditions: [...preconditions.base, preconditions.control('RP_WS_IA_MainInteraction_001a'), preconditions.freshStatusList],
   control: 'RP_WS_IA_MainInteraction_001a',
   steps: [
-    step({
-      // Phase 1: a statusListStep builder pairs this text with the fault.
-      text: scenario.statusListToken('its `exp` claim is set to the current time minus `T_skew` minus one hour'),
-      run: presentation({
-        query: 'default_query_pid',
-        credential: pid.sdJwtVc(),
-        statusList: statusListToken.jwt({ faults: ['statusList.expiredBy(T_skew+1h)'] }),
-      }),
-      expect: nostat(), // reject for PIDs, declared policy otherwise
-    }),
+    // The fault names the scenario text ("…, except that its `exp` claim is set to …") and the executable action.
+    step({ ...presentationStep.statusListFault('status-list.exp-past'), expect: nostat() }),
   ],
   comments: [comments.nostat, comments.flow],
 });
 ```
 
-`packages/fcaf-render` renders a definition to FCAF markdown (`renderTestCase`, `testCasePath`). In Phase 0 a test checks that every definition renders byte-identical to the committed file in `fcaf-overlay/`. Phase 1 completes the renderer and replaces the Python generator:
+The definitions are grouped by area (`packages/definitions/src/<class>/<layer>/<Area>.ts`); where the FCAF test cases of an objective differ only in the credential format or the flow, one function produces each variant, and the variant a later phase implements carries text only (steps without `run`). The controller executes only definitions whose steps all have an action.
 
-1. Port `generator/render.py` and `generator/pages.py` to TypeScript. The port is correct when it reproduces the current 121 files and the shared pages exactly.
-2. Run the patched FCAF lint (`fcaf-overlay/fcaf_lint-rp.patch`, Python) on the generated output in CI; CI also fails if the rendered files differ from the committed ones.
-3. Remove the Python `generator/`.
+`packages/fcaf-render` renders the whole overlay `fcaf-overlay/docs/fcaf` (`pnpm fcaf:render`): the test cases from the definitions, the overview, area and layer pages and baseline lists, the Relying Party ICS and defaults from `packages/fcaf-render/pages`, and the four modified FCAF pages from their unmodified originals in `packages/fcaf-render/upstream` (`submitted` at `0ed4ab1`). `pnpm test` and CI fail when the committed overlay differs from the rendered one, and CI runs the patched FCAF lint (`scripts/fcaf-lint.sh`, `fcaf-overlay/fcaf_lint-rp.patch`) on the rendered output with every finding blocking. The Python generator this replaced was removed in Phase 1, after the port had reproduced its 121 test cases and 21 shared pages byte for byte.
 
 ### 4.3 Artifact forge and fault injection
 
@@ -172,6 +163,8 @@ Two layers:
 | Trust list | new version without an entity; new version with an added entity |
 
 Faults for later areas (KB-JWT, DeviceAuth, SessionTranscript, disclosures, certificate paths, LoTE seal, rollback) plug into the same points.
+
+Implementation (Phase 1). The catalogue `FAULTS` in `packages/core/src/faults.ts` names each fault with its point (`credential`, `status-list`, `response`), the one check of the reference validator it must fail (`null` for a variant that must pass every check, such as `credential.exp-within-skew` or `response.extra-member`) and its FCAF wording, so a definition names a fault once and the scenario text follows from it. `packages/forge/src/faults.ts` implements all 54 SD-JWT VC, JWT and redirect faults of the table after a valid build: the issuer-signed JWT or the Status List Token is decoded, changed and signed again, or a signer from the test PKI replaces the valid one; responses are encrypted with the faulty parameters or changed after encryption. A step applies at most one fault. Issuer selection, the status value, the bits per status, the signer of a valid Status List Token and list changes are parameters of the step action (`CredentialSpec.issuer`, `StatusListSpec`, `TrustListAction`), not faults; the self-validation of the definitions covers them (section 7). `forgePresentation` builds a step's credential and Status List Token for the controller and the self-validation alike.
 
 ### 4.4 Test PKI and trust configuration
 
@@ -243,8 +236,11 @@ Expected-result codes from the catalogue map to checks:
 | `REJ` | `outcome = failure`, or HTTP 4xx at `response_uri`; never HTTP 5xx; no released attributes |
 | `NOFETCH` / `FETCHED` | Test Status Provider log for the step's URL |
 | `NOSTAT` | `REJ` for PIDs; for other categories the ICS policy, and `status-unknown` in `flags` when accepted |
-| `POLICY` | Compared with the ICS declaration |
-| Trust list retrieved | Test Trust Infrastructure log |
+| `POLICY` | Compared with the ICS declaration the expectation names: for an application-specific status value RP.R.3 (`None`: `REJ`; `0x03=valid`: `ACC`; `0x03=invalid`: `REJ`; other text: REVIEW) |
+| `LIST_RETRIEVED` | Test Trust Infrastructure log: a retrieval of the published version; checked after the wait and once more after the next step, for Relying Parties that fetch lists only when they need them |
+| `ENC_KEY` | The request of a started transaction carries an encryption key in `client_metadata` |
+
+A step's verdict is the worst of its codes (FAIL, INCONCLUSIVE, REVIEW, PASS); a test case's verdict the worst of its steps. Phase 1 writes `report.json` and `summary.md`; JUnit XML follows with the nightly CI job (Phase 4).
 
 Each test case produces a record like this, collected into JSON, JUnit XML and a markdown summary:
 
@@ -281,6 +277,12 @@ A wrong fault produces a false PASS, so every fault is tested before it is used 
 2. The mutated artifact must fail the targeted check and only that check (for example, `exp` in the past must fail the validity check but still pass the signature and digest checks).
 3. The harness runs the whole baseline against a reference RP built from that validator in CI. Every test case must PASS there, which also proves each positive control is reachable.
 
+Implementation (Phase 1). The reference validator (`packages/validator`) evaluates each named check on its own: 9 credential checks (`format`, `issuer-trust`, `trusted-authorities`, `issuer-signature`, `disclosures`, `validity`, `key-binding`, `kb-freshness`, `status-reference`), 11 Status List Token checks (`status-list-fetch` to `status`) and 7 response checks (`response-encrypted` to `response-payload`). A check is `pass`, `fail`, or `skip` when a check it depends on did not pass. In `first-failure` mode, which the reference RP uses, validation stops at the first failure, and status list checks run only for an otherwise valid credential (Token Status List section 8.3); in `all` mode every check runs. `pnpm test` proves:
+
+- `packages/validator/test/faults.test.ts`: the valid presentation passes all 27 checks, and each of the 54 faults fails exactly its target check and no other in `all` mode;
+- `packages/validator/test/definitions.test.ts`: every step of every executable definition, built as the controller builds it and with the trust list changes of earlier steps applied, passes every check when the step expects acceptance and fails exactly one check (its fault's target, where it has a fault) when it expects rejection;
+- `packages/controller/test/reference-run.test.ts`: every executable test case passes against the reference RP.
+
 ## 8. Deployment and CI
 
 - `docker compose up` starts the harness services and, for EUDIPLO runs, the EUDIPLO image with PostgreSQL. The RP under test trusts the harness TLS CA and allows the harness hosts.
@@ -296,7 +298,6 @@ A wrong fault produces a false PASS, so every fault is tested before it is used 
 | EUDIPLO `apps/client/e2e/support/wallet.ts` | Starting point for the Conformance Wallet |
 | EUDIPLO `apps/backend/test/oidf` | OIDF bridge |
 | WILMA (`cre8/walter`) | Run and verdict model, report conventions |
-| `rp-conformance/generator` | Test text, replaced by the executable definitions |
 
 ## 10. Gaps and risks
 
@@ -316,7 +317,7 @@ A wrong fault produces a false PASS, so every fault is tested before it is used 
 | Phase | Content | Baseline test cases enabled |
 | --- | --- | --- |
 | 0 | Repository, controller skeleton, test PKI, Test Status Provider, Test Trust Infrastructure (LoTE), Conformance Wallet for SD-JWT VC via redirects, EUDIPLO adapter, reference RP, self-validation | Positive control `RP_WS_IA_MainInteraction_001a` |
-| 1 | SD-JWT VC faults, Status List Tokens in JWT, response encryption via redirects; the TypeScript renderer replaces the Python generator (section 4.2) | 53 (`a` variants of `Validity`, `Revocation`, `RP_PP_SM_Revocation`, PID `TrustMechanisms`, `SessionEncryption` via redirects), including the control |
+| 1 | SD-JWT VC faults, Status List Tokens in JWT, response encryption via redirects; the TypeScript renderer replaces the Python generator (section 4.2) | 53 (`a` variants of `Validity`, `Revocation`, `RP_PP_SM_Revocation`, PID `TrustMechanisms`, `SessionEncryption` via redirects), including the control. Done. ETSI TS 119 602 Annex D gives a PID Providers list no `ServiceStatus`, so `TL-PID` expresses the withdrawn PID/Issuance service of `PP-W` (`TrustMechanisms_006a`) by listing only its PID/Revocation service. `TrustMechanisms_002a` uses the PKI of `QP-A`; `TL-QEAA` is published from Phase 4 |
 | 2 | mdoc: MSO, COSE, Status List Tokens in CWT, identifier lists | 45 (`b` variants and mdoc-only test cases) |
 | 3 | DC API shim | 11 (`SessionEncryption` via the DC API), plus every earlier test case repeated per flow |
 | 4 | QEAA (Trusted List XML), PuB-EAA, non-qualified EAA; OIDF bridge; nightly CI | 12 (`TrustMechanisms_010`–`_015`) |

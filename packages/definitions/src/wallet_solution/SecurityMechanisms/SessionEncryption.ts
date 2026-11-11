@@ -38,19 +38,10 @@ const CONTROLS: [string, string] = [positiveControlOf(formats.sdJwtVc), positive
 const via = (flow: Flow) => flows[flow].via;
 /** Where the encrypted response travels. */
 const responseOf = (flow: Flow) => (flow === 'redirect' ? 'the `response` parameter' : 'the `response` member of the returned `data` object');
-const rejected = (flow: Flow, differences: string[]) =>
-  differences.map((difference) => step({ text: scenario.encryption(flow, difference), expect: rej() }));
 
-/**
- * Steps with a response fault: executable via redirects, text only via the DC API until Phase 3 (the text of a DC API
- * variant, where it differs, is given by `dcApiText`).
- */
-const faulty = (flow: Flow, faults: FaultId[], dcApiText?: (fault: FaultId) => string) =>
-  faults.map((fault) =>
-    flow === 'redirect'
-      ? step({ ...presentationStep.encryptionFault(flow, fault), expect: rej() })
-      : step({ text: dcApiText?.(fault) ?? scenario.encryption(flow, faultInfo(fault).text), expect: rej() }),
-  );
+/** Steps with a response fault; `text` replaces the scenario text where the DC API variant words the fault differently. */
+const faulty = (flow: Flow, faults: FaultId[], text?: (fault: FaultId) => string) =>
+  faults.map((fault) => step({ ...presentationStep.encryptionFault(flow, fault, text ? { text: text(fault) } : {}), expect: rej() }));
 
 interface EncryptionTestCase {
   number: number;
@@ -78,13 +69,11 @@ const sessionEncryption = (testCase: EncryptionTestCase) =>
   );
 
 const BOTH: Flow[] = ['redirect', 'dc-api'];
-/** A step expected to be accepted; executable via redirects with the given response. */
-const accepted = (flow: Flow, text: string, response: { enc?: 'A128GCM' | 'A256GCM'; faults?: FaultId[] }): StepDefinition =>
+/** A step expected to be accepted, with the given response. */
+const accepted = (text: string, response: { enc?: 'A128GCM' | 'A256GCM'; faults?: FaultId[] }): StepDefinition =>
   step({
     text,
-    ...(flow === 'redirect'
-      ? { run: presentation({ query: 'default_query_pid', credential: pid.sdJwtVc(), response: { faults: [], ...response } }) }
-      : {}),
+    run: presentation({ query: 'default_query_pid', credential: pid.sdJwtVc(), response: { faults: [], ...response } }),
     expect: acc({ credential: PID }) as Expectation,
   });
 
@@ -97,7 +86,6 @@ export const definitions = [
       objective: (flow) => `Verify that the Relying Party accepts an Authorization Response ${via(flow)} encrypted with \`ECDH-ES\` on P-256 and \`${enc}\`.`,
       steps: (flow) => [
         accepted(
-          flow,
           `Perform a presentation for ${QUERY_PID} ${via(flow)} in which the Conformance Wallet presents ${PID} in a valid Authorization Response, encrypted as a JWE with \`alg\` \`ECDH-ES\` (P-256) and \`enc\` \`${enc}\` to the encryption key from the \`client_metadata\` of the request.`,
           { enc },
         ),
@@ -127,14 +115,12 @@ export const definitions = [
     steps: (flow) => [
       step({
         text: `Start a presentation for ${QUERY_PID} ${via(flow)} (transaction T1) and record the encryption key from the \`client_metadata\` of its request. Send no response for T1.`,
-        ...(flow === 'redirect' ? { run: { kind: 'start' as const, query: 'default_query_pid' as const } } : {}),
+        run: { kind: 'start', query: 'default_query_pid' },
         expect: encryptionKeyOf('T1'),
       }),
       step({
         text: `Perform a presentation for ${QUERY_PID} ${via(flow)} (transaction T2) in which ${faultInfo('response.other-transaction-key').text}.`,
-        ...(flow === 'redirect'
-          ? { run: presentation({ query: 'default_query_pid', credential: pid.sdJwtVc(), response: { faults: ['response.other-transaction-key'], keyOfStep: 1 } }) }
-          : {}),
+        run: presentation({ query: 'default_query_pid', credential: pid.sdJwtVc(), response: { faults: ['response.other-transaction-key'], keyOfStep: 1 } }),
         expect: rej(),
       }),
     ],
@@ -189,10 +175,7 @@ export const definitions = [
     flows: ['dc-api'],
     unhappyFlow: true,
     objective: () => 'Verify that the Relying Party rejects an unencrypted Authorization Response via the W3C Digital Credentials API.',
-    steps: (flow) =>
-      rejected(flow, [
-        'it is not encrypted: the `data` object returned through the Digital Credentials API carries the `vp_token` directly instead of an encrypted `response`',
-      ]),
+    steps: (flow) => faulty(flow, ['response.dc-api-unencrypted']),
   }),
   ...sessionEncryption({
     number: 12,
@@ -201,7 +184,6 @@ export const definitions = [
     objective: (flow) => `Verify that the Relying Party ignores unrecognised members in a decrypted Authorization Response ${via(flow)}.`,
     steps: (flow) => [
       accepted(
-        flow,
         `Perform a presentation for ${QUERY_PID} ${via(flow)} in which the Conformance Wallet presents ${PID} in a valid Authorization Response whose ${faultInfo('response.extra-member').text.replace(/^its /, '')}.`,
         { faults: ['response.extra-member'] },
       ),

@@ -1,6 +1,6 @@
 # Implementation Conformance Statement of the reference Relying Party (see fcaf-overlay/docs/fcaf/ics-rp.md).
 RP.G.1: "Yes"   # requests credentials in IETF SD-JWT VC format
-RP.G.2: "No"    # mdoc (Phase 2)
+RP.G.2: "Yes"   # requests credentials in ISO/IEC 18013-5 mdoc format
 RP.G.3: "No"
 RP.G.4: "No"
 RP.G.5: "No"

@@ -14,7 +14,6 @@ import {
   rej,
   relevancy,
   presentationStep,
-  scenario,
   step,
   testCaseId,
 } from '@rp-conformance/core';
@@ -34,19 +33,13 @@ const base = (format: FormatWording) => ({
 const STATUS_BEFORE_VALIDITY =
   '[Token Status List] section 8.3 requires the validation of the credential itself to precede any evaluation of its status, and states that status list procedures, such as fetching the Status List Token, must not be performed once the credential is found invalid, unless the use case requires further evaluation. Presenting a PID does not.';
 
-/** The scenario of a credential fault: executable for SD-JWT VC, text only for mdoc until Phase 2. */
-const credentialFault = (format: FormatWording, fault: FaultId, mdocDifference: string) =>
-  format === sdJwtVc ? presentationStep.credentialFault(fault) : { text: scenario.credentialVariant(mdocDifference) };
+/** The fault of a credential in each format. */
+const byFormat = (format: FormatWording, sdJwtVcFault: FaultId, mdocFault: FaultId) =>
+  presentationStep.credentialFault(format === sdJwtVc ? sdJwtVcFault : mdocFault);
 
-const expired = (format: FormatWording) =>
-  credentialFault(
-    format,
-    'credential.exp-past',
-    'the `validUntil` value in the `validityInfo` of its MSO is set to the current time minus `T_skew` minus one hour',
-  );
+const expired = (format: FormatWording) => byFormat(format, 'credential.exp-past', 'mdoc.valid-until-past');
 
-const badSignature = (format: FormatWording) =>
-  credentialFault(format, 'credential.signature-bitflip', 'one bit of the signature value of its `IssuerAuth` structure is flipped');
+const badSignature = (format: FormatWording) => byFormat(format, 'credential.signature-bitflip', 'mdoc.signature-bitflip');
 
 const expiredWithValidStatus = (format: FormatWording) =>
   defineTestCase({
@@ -117,26 +110,16 @@ const sdJwtVcOnly = [
 
 const mdocOnly = (
   [
-    [
-      10,
-      'the `validUntil` value in the `validityInfo` of its MSO is set to the current time minus `T_skew` minus one hour',
-      rej(),
-      'Verify that the Relying Party rejects a credential in mdoc format whose validity period has ended.',
-    ],
-    [
-      11,
-      'the `validFrom` value in the `validityInfo` of its MSO is set to the current time plus `T_skew` plus one hour',
-      rej(),
-      'Verify that the Relying Party rejects a credential in mdoc format whose validity period has not started.',
-    ],
+    [10, 'mdoc.valid-until-past', rej(), 'Verify that the Relying Party rejects a credential in mdoc format whose validity period has ended.'],
+    [11, 'mdoc.valid-from-future', rej(), 'Verify that the Relying Party rejects a credential in mdoc format whose validity period has not started.'],
     [
       12,
-      'the `expectedUpdate` value in the `validityInfo` of its MSO lies one day in the past, while `validUntil` lies in the future',
+      'mdoc.expected-update-past',
       acc(),
       'Verify that the Relying Party accepts a credential in mdoc format whose expected update time has passed while its validity period has not ended.',
     ],
   ] as const
-).map(([number, difference, expect, objective]) =>
+).map(([number, fault, expect, objective]) =>
   defineTestCase({
     id: testCaseId('WS', 'SM', 'Validity', number, '', expect.codes[0] === 'REJ'),
     objective,
@@ -144,7 +127,7 @@ const mdocOnly = (
     profile: [mdoc.profile],
     ...base(mdoc),
     preconditions: [...preconditions.base, preconditions.control(positiveControlOf(mdoc))],
-    steps: [step({ text: scenario.credentialVariant(difference), expect })],
+    steps: [step({ ...presentationStep.credentialFault(fault), expect })],
     comments: [comments.flow],
   }),
 );

@@ -13,6 +13,8 @@ import {
   listRetrieved,
   PID,
   pid,
+  type PidOptions,
+  pidQueryOf,
   positiveControlOf,
   preconditions,
   presentationStep,
@@ -49,10 +51,11 @@ const trustMechanisms = (format: FormatWording) => {
     preconditions: [...preconditions.base, preconditions.control(positiveControlOf(format))],
     control: positiveControlOf(format),
   });
-  const executable = format === sdJwtVc;
-  /** A PID that differs only in its issuer or signer: executable for SD-JWT VC, text only for mdoc until Phase 2. */
-  const variant = (difference: string, credential: CredentialSpec, query: DefaultQueryId = 'default_query_pid') =>
-    executable ? presentationStep.credentialVariant(difference, { credential, query }) : { text: scenario.credentialVariant(difference) };
+  /** `default_credential_pid` in the format of the test case, issued by `issuer` or signed under another anchor. */
+  const pidOf = (options: PidOptions = {}) => pid.of(format.credentialFormat, options);
+  /** A PID that differs only in its issuer or signer. */
+  const variant = (difference: string, credential: CredentialSpec, query: DefaultQueryId = pidQueryOf(format.credentialFormat)) =>
+    presentationStep.credentialVariant(difference, { credential, query });
   const issuedBy = (difference: string, options?: { credential: string; query: string }) =>
     step({ text: scenario.credentialVariant(difference, options), expect: rej() });
   const rejectedVariant = (difference: string, credential: CredentialSpec, query?: DefaultQueryId) =>
@@ -81,7 +84,7 @@ const trustMechanisms = (format: FormatWording) => {
       ...base(),
       objective: `Verify that the Relying Party accepts a PID in ${format.name} format signed under a PID/Issuance anchor of the PID Provider list.`,
       references: referencesOf(format, 'OIA_12, PPNot_05'),
-      steps: [step({ ...(executable ? presentationStep.valid() : { text: scenario.valid() }), expect: acc({ credential: PID }) })],
+      steps: [step({ ...presentationStep.valid({ credential: pidOf() }), expect: acc({ credential: PID }) })],
       comments: [comments.flow],
     }),
     defineTestCase({
@@ -89,7 +92,7 @@ const trustMechanisms = (format: FormatWording) => {
       ...base(),
       objective: `Verify that the Relying Party rejects a PID in ${format.name} format signed by a QTSP whose anchor appears only in a Trusted List.`,
       references: referencesOf(format, 'OIA_12, OIA_15', ['[ETSI TS 119 602]', '[ETSI TS 119 612]']),
-      steps: [rejectedVariant('it is issued by `QP-A`', pid.sdJwtVc({ issuer: 'QP-A' }))],
+      steps: [rejectedVariant('it is issued by `QP-A`', pidOf({ issuer: 'QP-A' }))],
       comments: [comments.flow],
     }),
     defineTestCase({
@@ -98,9 +101,9 @@ const trustMechanisms = (format: FormatWording) => {
       objective: `Verify that the Relying Party rejects a PID in ${format.name} format signed under an anchor of a list other than the PID Provider list.`,
       references: referencesOf(format, 'OIA_12, OIA_15'),
       steps: [
-        rejectedVariant('it is issued by the Wallet Provider `WP-A` from `TL-WP`', pid.sdJwtVc({ issuer: 'WP-A' })),
-        rejectedVariant('it is issued by `AC-A` from `TL-AC`', pid.sdJwtVc({ issuer: 'AC-A' })),
-        rejectedVariant('it is issued by the PuB-EAA Provider `PB-A` from `TL-PUB`', pid.sdJwtVc({ issuer: 'PB-A' })),
+        rejectedVariant('it is issued by the Wallet Provider `WP-A` from `TL-WP`', pidOf({ issuer: 'WP-A' })),
+        rejectedVariant('it is issued by `AC-A` from `TL-AC`', pidOf({ issuer: 'AC-A' })),
+        rejectedVariant('it is issued by the PuB-EAA Provider `PB-A` from `TL-PUB`', pidOf({ issuer: 'PB-A' })),
       ],
       comments: [comments.flow],
     }),
@@ -112,7 +115,7 @@ const trustMechanisms = (format: FormatWording) => {
       steps: [
         rejectedVariant(
           'it is signed by a certificate under the revocation anchor `CA-PP-A-REV` of `PP-A`',
-          pid.sdJwtVc({ issuer: 'PP-A', signedUnder: 'revocation' }),
+          pidOf({ issuer: 'PP-A', signedUnder: 'revocation' }),
         ),
       ],
       comments: [comments.flow],
@@ -122,7 +125,7 @@ const trustMechanisms = (format: FormatWording) => {
       ...base(),
       objective: `Verify that the Relying Party rejects a PID in ${format.name} format from an issuer that is on no trust list.`,
       references: referencesOf(format, 'OIA_12'),
-      steps: [rejectedVariant('it is issued by `CA-X`', pid.sdJwtVc({ issuer: 'CA-X' }))],
+      steps: [rejectedVariant('it is issued by `CA-X`', pidOf({ issuer: 'CA-X' }))],
       comments: [comments.flow],
     }),
     defineTestCase({
@@ -130,7 +133,7 @@ const trustMechanisms = (format: FormatWording) => {
       ...base(),
       objective: `Verify that the Relying Party rejects a PID in ${format.name} format from a PID Provider whose PID/Issuance service is withdrawn.`,
       references: referencesOf(format, 'OIA_12, OIA_15a'),
-      steps: [rejectedVariant('it is issued by `PP-W`, whose PID/Issuance service is withdrawn', pid.sdJwtVc({ issuer: 'PP-W' }))],
+      steps: [rejectedVariant('it is issued by `PP-W`, whose PID/Issuance service is withdrawn', pidOf({ issuer: 'PP-W' }))],
       comments: [
         '[ETSI TS 119 602] Annex D gives PID Providers lists no service status. `TL-PID` therefore expresses the withdrawal by listing only the PID/Revocation service of `PP-W`. Its anchor `CA-PP-W` is the one the PID is signed under.',
         comments.flow,
@@ -142,13 +145,13 @@ const trustMechanisms = (format: FormatWording) => {
       objective: `Verify that the Relying Party stops accepting PIDs in ${format.name} format from a PID Provider once its entry is removed from the PID Provider list.`,
       references: referencesOf(format, 'OIA_15a'),
       steps: [
-        step({ ...variant('it is issued by `PP-D`', pid.sdJwtVc({ issuer: 'PP-D' })), expect: acc() }),
+        step({ ...variant('it is issued by `PP-D`', pidOf({ issuer: 'PP-D' })), expect: acc() }),
         step({
           text: `The Test Trust Infrastructure publishes a new version of \`TL-PID\` without the entry of \`PP-D\`. ${WAIT}`,
-          ...(executable ? { run: { kind: 'trust-list' as const, list: 'TL-PID' as const, remove: ['PP-D'] } } : {}),
+          run: { kind: 'trust-list', list: 'TL-PID', remove: ['PP-D'] },
           expect: listRetrieved('TL-PID'),
         }),
-        rejectedVariant('it is issued by `PP-D`', pid.sdJwtVc({ issuer: 'PP-D' })),
+        rejectedVariant('it is issued by `PP-D`', pidOf({ issuer: 'PP-D' })),
       ],
       comments: [comments.restoreTrustList, comments.flow],
     }),
@@ -158,13 +161,13 @@ const trustMechanisms = (format: FormatWording) => {
       objective: `Verify that the Relying Party starts accepting PIDs in ${format.name} format from a PID Provider once its entry is added to the PID Provider list.`,
       references: referencesOf(format, 'OIA_15a'),
       steps: [
-        rejectedVariant('it is issued by `PP-C`', pid.sdJwtVc({ issuer: 'PP-C' })),
+        rejectedVariant('it is issued by `PP-C`', pidOf({ issuer: 'PP-C' })),
         step({
           text: `The Test Trust Infrastructure publishes a new version of \`TL-PID\` that adds an entry for \`PP-C\` with a granted PID/Issuance and PID/Revocation service. ${WAIT}`,
-          ...(executable ? { run: { kind: 'trust-list' as const, list: 'TL-PID' as const, add: ['PP-C'] } } : {}),
+          run: { kind: 'trust-list', list: 'TL-PID', add: ['PP-C'] },
           expect: listRetrieved('TL-PID'),
         }),
-        step({ ...variant('it is issued by `PP-C`', pid.sdJwtVc({ issuer: 'PP-C' })), expect: acc() }),
+        step({ ...variant('it is issued by `PP-C`', pidOf({ issuer: 'PP-C' })), expect: acc() }),
       ],
       comments: [comments.restoreTrustList, comments.flow],
     }),
@@ -173,7 +176,7 @@ const trustMechanisms = (format: FormatWording) => {
       ...base(),
       objective: `Verify that the Relying Party rejects a PID in ${format.name} format signed under an expired trust anchor.`,
       references: referencesOf(format, 'OIA_15a'),
-      steps: [rejectedVariant('it is issued by `PP-E`, whose PID/Issuance anchor certificate has expired', pid.sdJwtVc({ issuer: 'PP-E' }))],
+      steps: [rejectedVariant('it is issued by `PP-E`, whose PID/Issuance anchor certificate has expired', pidOf({ issuer: 'PP-E' }))],
       comments: [comments.flow],
     }),
     ...categories,
@@ -211,7 +214,7 @@ const trustMechanisms = (format: FormatWording) => {
       objective: `Verify that the Relying Party enforces the \`trusted_authorities\` of its own request and rejects a PID in ${format.name} format from another trusted PID Provider.`,
       references: ['[OpenID4VP] section 6.1.1.1, 14.9', '[HAIP] section 5', ...trustReferencesOf(format), '[CIR 2024/2982 amended] Annex II'],
       preconditions: [...preconditions.base, preconditions.control(positiveControlOf(format)), preconditions.trustedAuthoritiesOfPpA],
-      steps: [rejectedVariant('it is issued by `PP-B`', pid.sdJwtVc({ issuer: 'PP-B' }), 'default_query_pid_trusted_authorities')],
+      steps: [rejectedVariant('it is issued by `PP-B`', pidOf({ issuer: 'PP-B' }), pidQueryOf(format.credentialFormat, { trustedAuthorities: true }))],
       comments: ['[OpenID4VP] section 14.9 states that the Verifier must not rely on the Wallet to enforce the constraints of its request.', comments.flow],
     }),
   ];

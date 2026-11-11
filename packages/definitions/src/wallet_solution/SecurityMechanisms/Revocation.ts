@@ -18,10 +18,8 @@ import {
   positiveControlOf,
   preconditions,
   presentationStep,
-  QUERY_PID,
   rej,
   relevancy,
-  scenario,
   step,
   technology,
   testCaseId,
@@ -53,26 +51,16 @@ const base = (format: FormatWording) => ({
   control: positiveControlOf(format),
 });
 
-const MALFORMED_SD_JWT_VC: FaultId[] = [
-  'credential.status-no-idx',
-  'credential.status-no-uri',
-  'credential.status-idx-negative',
-  'credential.status-idx-string',
-  'credential.status-uri-invalid',
-];
-const MALFORMED_MDOC = [
-  'the `status_list` map in the `status` element of its MSO has no `idx` entry',
-  'the `status_list` map in the `status` element of its MSO has no `uri` entry',
-  'the `idx` entry of the `status_list` map in its MSO is -1',
-  'the `idx` entry of the `status_list` map in its MSO is the text string `7` instead of an unsigned integer',
-  'the `uri` entry of the `status_list` map in its MSO is the text string `not a uri`',
-];
+/** The malformed status references (`_005`), the same kinds in both formats. */
+const MALFORMED: Record<'a' | 'b', FaultId[]> = {
+  a: ['credential.status-no-idx', 'credential.status-no-uri', 'credential.status-idx-negative', 'credential.status-idx-string', 'credential.status-uri-invalid'],
+  b: ['mdoc.status-no-idx', 'mdoc.status-no-uri', 'mdoc.status-idx-negative', 'mdoc.status-idx-text', 'mdoc.status-uri-invalid'],
+};
 
-/** Executable for SD-JWT VC; text only for mdoc until Phase 2. */
-const credentialFault = (format: FormatWording, fault: FaultId, mdocDifference: string) =>
-  format === sdJwtVc ? presentationStep.credentialFault(fault) : { text: scenario.credentialVariant(mdocDifference) };
-const statusValue = (format: FormatWording, value: string, status: number) =>
-  format === sdJwtVc ? presentationStep.statusValue(value, status) : { text: scenario.statusValue(value) };
+/** The credential fault of each format. */
+const credentialFault = (format: FormatWording, sdJwtVcFault: FaultId, mdocFault: FaultId) =>
+  presentationStep.credentialFault(format === sdJwtVc ? sdJwtVcFault : mdocFault);
+const statusValue = (format: FormatWording, value: string, status: number) => presentationStep.statusValue(value, status, format.credentialFormat);
 
 const revocation = (format: FormatWording) => {
   const references = referencesOf(format);
@@ -120,7 +108,7 @@ const revocation = (format: FormatWording) => {
       relevancy: relevancy.genericRequired,
       objective: `Verify that the Relying Party rejects a PID in ${format.name} format whose status reference is malformed.`,
       references,
-      steps: MALFORMED_SD_JWT_VC.map((fault, i) => step({ ...credentialFault(format, fault, MALFORMED_MDOC[i]), expect: nostat() })),
+      steps: MALFORMED[format.letter].map((fault) => step({ ...presentationStep.credentialFault(fault), expect: nostat() })),
       comments: [comments.nostat, comments.flow],
     }),
     defineTestCase({
@@ -131,11 +119,7 @@ const revocation = (format: FormatWording) => {
       references,
       steps: [
         step({
-          ...credentialFault(
-            format,
-            'credential.status-idx-out-of-range',
-            'the index in its status reference equals the number of entries in the referenced status list, one past the last valid index',
-          ),
+          ...credentialFault(format, 'credential.status-idx-out-of-range', 'mdoc.status-idx-out-of-range'),
           expect: rej(),
         }),
       ],
@@ -149,7 +133,7 @@ const revocation = (format: FormatWording) => {
       references: [...withoutAnchor, '[ARF] Annex 2, VCR_01, VCR_01b', '[CIR 2024/2979 amended] Annex II'],
       steps: [
         step({
-          ...(format === sdJwtVc ? presentationStep.valid({ credential: pid.shortSdJwtVc() }) : { text: scenario.valid({ credential: credentials.pidShort }) }),
+          ...presentationStep.valid({ credential: pid.shortOf(format.credentialFormat) }),
           expect: acc({ credential: credentials.pidShort }),
         }),
       ],
@@ -162,7 +146,7 @@ const revocation = (format: FormatWording) => {
       objective: `Verify that the Relying Party rejects a PID in ${format.name} format without revocation information whose validity period is longer than 24 hours.`,
       references: [...withoutAnchor, '[ARF] Annex 2, VCR_01, VCR_01b, VCR_14', '[CIR 2024/2979 amended] Annex II'],
       steps: [
-        step({ ...credentialFault(format, 'credential.no-status', 'its MSO carries no `status` element'), expect: nostat() }),
+        step({ ...credentialFault(format, 'credential.no-status', 'mdoc.no-status'), expect: nostat() }),
       ],
       comments: [
         'A PID valid for longer than 24 hours must carry revocation information ([ARF] Annex 2, VCR_01 and VCR_01b). Without it no reliable revocation status is available, and the Relying Party SUT rejects PIDs in that case.',
@@ -189,12 +173,7 @@ const identifierList = (number: number, listed: boolean) =>
       preconditions.identifierList,
     ],
     control: positiveControlOf(mdoc),
-    steps: [
-      step({
-        text: `Perform a presentation for ${QUERY_PID} in which the Conformance Wallet presents ${PID} in a valid Authorization Response, while the referenced identifier list ${listed ? 'contains' : 'does not contain'} the credential's identifier.`,
-        expect: listed ? rej() : all(acc({ credential: PID }), fetchedIdentifierList()),
-      }),
-    ],
+    steps: [step({ ...presentationStep.identifierList(listed), expect: listed ? rej() : all(acc({ credential: PID }), fetchedIdentifierList()) })],
     comments: listed
       ? [comments.oidf('oid4vp-1final-verifier-present-credential-on-identifier-list'), comments.flow]
       : [comments.flow],

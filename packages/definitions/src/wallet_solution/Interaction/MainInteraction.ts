@@ -10,7 +10,6 @@ import {
   preconditions,
   presentationStep,
   relevancy,
-  scenario,
   step,
   testCaseId,
 } from '@rp-conformance/core';
@@ -31,11 +30,7 @@ const mainInteraction = (format: FormatWording) =>
     relevancy: relevancy.specificRequired,
     technology: [format.technology],
     preconditions: preconditions.base,
-    steps: [
-      format === formats.sdJwtVc
-        ? step({ ...presentationStep.valid({ query: 'default_query_pid', credential: pid.sdJwtVc() }), expect: acc({ credential: PID }) })
-        : step({ text: scenario.valid(), expect: acc({ credential: PID }) }),
-    ],
+    steps: [step({ ...presentationStep.valid({ credential: pid.of(format.credentialFormat) }), expect: acc({ credential: PID }) })],
     comments: [comments.positiveControl(format), comments.flow],
   });
 

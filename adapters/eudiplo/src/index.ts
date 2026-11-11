@@ -1,11 +1,15 @@
-import type {
-  DcqlQuery,
-  DefaultQueryId,
-  Flow,
-  RelyingPartyAdapter,
-  RelyingPartyResult,
-  StartedPresentation,
-  TestEnvironment,
+import {
+  type DcqlQuery,
+  type DefaultQueryId,
+  type Flow,
+  type RelyingPartyAdapter,
+  type RelyingPartyResult,
+  type RunningServer,
+  type StartedPresentation,
+  sendJson,
+  sendText,
+  startServer,
+  type TestEnvironment,
 } from '@rp-conformance/core';
 
 export interface EudiploAdapterOptions {
@@ -19,6 +23,14 @@ export interface EudiploAdapterOptions {
   clientSecret?: string;
   /** Host name under which EUDIPLO reaches the harness services; default `host.docker.internal`. */
   harnessHost?: string;
+  /** Port of the adapter's relying-party page for the DC API flow (on 127.0.0.1); default `EUDIPLO_PAGE_PORT` or a free port. */
+  pagePort?: number;
+}
+
+/** A DC API presentation the adapter's page runs: EUDIPLO's signed request object and where the page posts the response. */
+interface DcApiPage {
+  requestObject: string;
+  responseUri: string;
 }
 
 /** The fields of `GET /api/session/:id` the adapter reads. */
@@ -37,7 +49,8 @@ const PENDING = new Set(['active', 'fetched']);
  * Adapter for EUDIPLO (harness design section 4.8). One tenant per namespace: `setUp` creates the tenant, imports the
  * access certificate with its key, and creates a presentation configuration per default query, trusting `TL-PID`
  * through `trusted_authorities` (`etsi_tl`, pinned to the scheme operator certificate) and carrying the registration
- * certificate. Presentations start with `POST /api/verifier/offer`; the result is `GET /api/session/:id`.
+ * certificate. Presentations start with `POST /api/verifier/offer`, via redirects (`response_type` `uri`) or the DC API
+ * (`dc-api`, answered on the adapter's own page); the result is `GET /api/session/:id`.
  */
 export class EudiploAdapter implements RelyingPartyAdapter {
   readonly name = 'eudiplo';
@@ -49,6 +62,9 @@ export class EudiploAdapter implements RelyingPartyAdapter {
   private queries?: Record<DefaultQueryId, DcqlQuery>;
   /** The default query of each started transaction, to read its released attributes. */
   private readonly transactionQueries = new Map<string, DefaultQueryId>();
+  /** The relying-party page of the DC API flow, by EUDIPLO session. */
+  private readonly pages = new Map<string, DcApiPage>();
+  private pageServer?: RunningServer;
 
   constructor(private readonly options: EudiploAdapterOptions = {}) {
     this.baseUrl = (options.baseUrl ?? process.env.EUDIPLO_URL ?? `http://127.0.0.1:${process.env.EUDIPLO_PORT ?? 3000}`).replace(/\/$/, '');
@@ -80,6 +96,7 @@ export class EudiploAdapter implements RelyingPartyAdapter {
   }
 
   async setUp(env: TestEnvironment, namespace: string): Promise<void> {
+    await this.startPageServer();
     const rootToken = await this.getToken(
       this.options.clientId ?? process.env.EUDIPLO_CLIENT_ID ?? 'rp-conformance',
       this.options.clientSecret ?? process.env.EUDIPLO_CLIENT_SECRET ?? 'rp-conformance-secret',
@@ -136,8 +153,29 @@ export class EudiploAdapter implements RelyingPartyAdapter {
     }
   }
 
+  /** The Origin of the adapter's relying-party page, which EUDIPLO signs into `expected_origins`. */
+  private get pageOrigin(): string {
+    if (!this.pageServer) throw new Error('the EUDIPLO adapter is not set up');
+    return this.pageServer.localUrl;
+  }
+
+  /**
+   * EUDIPLO has no page of its own for the DC API, so the adapter serves a minimal relying-party page on its own origin
+   * (127.0.0.1, which a browser treats as a secure context), as a relying party's frontend would.
+   */
+  private async startPageServer() {
+    if (this.pageServer) return;
+    const port = this.options.pagePort ?? Number(process.env.EUDIPLO_PAGE_PORT ?? 0);
+    this.pageServer = await startServer({ host: '127.0.0.1', port }, (req, res) => {
+      const match = /^\/dc-api\/([^/?]+)$/.exec(new URL(req.url ?? '/', 'http://localhost').pathname);
+      const page = match && this.pages.get(decodeURIComponent(match[1]));
+      if (req.method !== 'GET' || !page) return sendJson(res, 404, { error: 'not_found' });
+      return sendText(res, 200, dcApiPage(page), 'text/html; charset=utf-8');
+    });
+  }
+
   async startPresentation(req: { query: DefaultQueryId; flow: Flow }): Promise<StartedPresentation> {
-    if (req.flow !== 'redirect') throw new Error(`flow ${req.flow} is not implemented by the EUDIPLO adapter in Phase 0`);
+    if (req.flow === 'dc-api') return this.startDcApiPresentation(req.query);
     const offer = await this.call<{ uri: string; session: string }>('POST', '/api/verifier/offer', {
       response_type: 'uri',
       requestId: req.query,
@@ -145,6 +183,35 @@ export class EudiploAdapter implements RelyingPartyAdapter {
     });
     this.transactionQueries.set(offer.session, req.query);
     return { transactionId: offer.session, invocation: { uri: offer.uri } };
+  }
+
+  /**
+   * `POST /api/verifier/offer` with `response_type` `dc-api` and the page's Origin as `expected_origin`, then the signed
+   * request object EUDIPLO stored for the session (`GET /api/session/:id`, or its `request_uri`). The page passes it to
+   * `navigator.credentials.get` and posts the returned `data` to the request's `response_uri`
+   * (`POST /presentations/:id/oid4vp`), as EUDIPLO's SDK does.
+   */
+  private async startDcApiPresentation(query: DefaultQueryId): Promise<StartedPresentation> {
+    const offer = await this.call<{ uri: string; session: string }>('POST', '/api/verifier/offer', {
+      response_type: 'dc-api',
+      requestId: query,
+      expected_origin: this.pageOrigin,
+      skewSeconds: this.skewSeconds,
+    });
+    this.transactionQueries.set(offer.session, query);
+    const session = await this.call<{ requestObject?: string }>('GET', `/api/session/${offer.session}`);
+    let requestObject = session.requestObject;
+    if (!requestObject) {
+      const requestUri = new URLSearchParams(offer.uri.replace(/^[^?]*\?/, '')).get('request_uri');
+      if (!requestUri) throw new Error('EUDIPLO returned neither a request object nor a request_uri for the DC API session');
+      const fetched = await fetch(requestUri, { headers: { accept: 'application/oauth-authz-req+jwt' } });
+      if (!fetched.ok) throw new Error(`EUDIPLO GET ${requestUri}: HTTP ${fetched.status}`);
+      requestObject = await fetched.text();
+    }
+    const payload = JSON.parse(Buffer.from(requestObject.split('.')[1] ?? '', 'base64url').toString('utf8')) as { response_uri?: unknown };
+    if (typeof payload.response_uri !== 'string') throw new Error('the request object of the DC API session has no response_uri');
+    this.pages.set(offer.session, { requestObject, responseUri: payload.response_uri });
+    return { transactionId: offer.session, invocation: { dcApiPage: `${this.pageOrigin}/dc-api/${encodeURIComponent(offer.session)}` } };
   }
 
   /**
@@ -184,6 +251,44 @@ export class EudiploAdapter implements RelyingPartyAdapter {
   async refreshTrust(): Promise<void> {
     await this.call('DELETE', '/api/cache/trust-list');
   }
+
+  async tearDown(): Promise<void> {
+    await this.pageServer?.close();
+    this.pageServer = undefined;
+  }
+}
+
+/**
+ * The adapter's relying-party page: it passes EUDIPLO's signed request to `navigator.credentials.get` (protocol
+ * `openid4vp-v1-signed`) and posts the returned `data` as JSON to the request's `response_uri`, which EUDIPLO opens to
+ * every origin (CORS) for this purpose.
+ */
+function dcApiPage(page: DcApiPage): string {
+  return `<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>EUDIPLO relying party</title></head>
+<body>
+<p id="status">Requesting a credential</p>
+<script type="module">
+const status = document.getElementById('status');
+try {
+  const credential = await navigator.credentials.get({
+    mediation: 'required',
+    digital: { requests: [{ protocol: 'openid4vp-v1-signed', data: { request: ${JSON.stringify(page.requestObject)} } }] },
+  });
+  const response = await fetch(${JSON.stringify(page.responseUri)}, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ ...credential.data }),
+  });
+  status.textContent = response.status + ' ' + (await response.text());
+} catch (error) {
+  status.textContent = 'error: ' + error.name + ': ' + error.message;
+}
+</script>
+</body>
+</html>
+`;
 }
 
 export function createAdapter(): RelyingPartyAdapter {

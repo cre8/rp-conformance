@@ -4,7 +4,7 @@
 // Response.
 import { createHash, createHmac, createPublicKey, generateKeyPairSync, randomUUID, sign as nodeSign } from 'node:crypto';
 import { createDeflate } from 'node:zlib';
-import { type FaultId, faultInfo, type FaultPoint } from '@rp-conformance/core';
+import { type FaultId, faultInfo, type FaultPoint, type Flow } from '@rp-conformance/core';
 import { CompactEncrypt, CompactSign, exportJWK, generateKeyPair, importJWK, type JWK } from 'jose';
 import { createCertificate } from '@owf/x509';
 import { base64url, type EcKeyPair, randomSerial, sha256, signEs256 } from './crypto';
@@ -268,7 +268,7 @@ export interface ResponseInput {
   otherTransactionKey?: JWK;
 }
 
-/** Encrypts a response payload as `direct_post.jwt` (ECDH-ES unless `alg` says otherwise). */
+/** Encrypts a response payload as `direct_post.jwt` or `dc_api.jwt` (ECDH-ES unless `alg` says otherwise). */
 export async function encryptResponse(payload: Record<string, unknown>, recipient: JWK, options: { alg?: string; enc: string; kid?: string }) {
   const alg = options.alg ?? 'ECDH-ES';
   const kid = options.kid ?? recipient.kid;
@@ -290,9 +290,34 @@ function offCurvePoint(): JWK {
   return { kty: 'EC', crv: 'P-256', x: base64url.encode(x), y: base64url.encode(y) };
 }
 
-/** The form parameters the Conformance Wallet posts to `response_uri`: the valid response, or one with a fault. */
+function ensureFlow(fault: FaultId, flow: Flow) {
+  ensurePoint(fault, 'response');
+  const faultFlow = faultInfo(fault).flow;
+  if (faultFlow && faultFlow !== flow) throw new Error(`fault ${fault} applies to the ${faultFlow} flow, not ${flow}`);
+}
+
+/**
+ * The form parameters the Conformance Wallet posts to `response_uri` (response mode `direct_post.jwt`): the valid
+ * response, or one with a fault.
+ */
 export async function buildAuthorizationResponse(input: ResponseInput, fault?: FaultId): Promise<Record<string, string>> {
-  if (fault) ensurePoint(fault, 'response');
+  if (fault) ensureFlow(fault, 'redirect');
+  return buildEncryptedResponse(input, fault);
+}
+
+/**
+ * The `data` object the Conformance Wallet returns through the W3C Digital Credentials API (OpenID4VP 1.0 Appendix
+ * A.4, response mode `dc_api.jwt`): `response` with the JWE, or the response with a fault. The payload carries no
+ * `state`, which the DC API does not use.
+ */
+export async function buildDcApiResponse(input: ResponseInput, fault?: FaultId): Promise<Record<string, unknown>> {
+  if (fault) ensureFlow(fault, 'dc-api');
+  if (fault === 'response.dc-api-unencrypted') return { vp_token: input.payload.vp_token };
+  return buildEncryptedResponse(input, fault);
+}
+
+/** The `response` parameter of both flows: the JWE, or the response fault that both flows share. */
+async function buildEncryptedResponse(input: ResponseInput, fault?: FaultId): Promise<Record<string, string>> {
   const encrypted = (jwe: string) => ({ response: jwe });
   const valid = () => encryptResponse(input.payload, input.recipient, { enc: input.enc });
   switch (fault) {

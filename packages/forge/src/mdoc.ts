@@ -98,31 +98,37 @@ export async function jwkThumbprint(jwk: JsonWebKey): Promise<Uint8Array> {
   return new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical)));
 }
 
+/**
+ * What the SessionTranscript of OpenID4VP 1.0 Appendix B.2.6 binds besides the nonce and the encryption key: via
+ * redirects (`OpenID4VPHandover`, B.2.6.1) the Client Identifier and `response_uri`, via the W3C Digital Credentials
+ * API (`OpenID4VPDCAPIHandover`, B.2.6.2) the Origin of the page, without the `origin:` prefix.
+ */
+export type Oid4vpHandover = { flow: 'redirect'; clientId: string; responseUri: string } | { flow: 'dc-api'; origin: string };
+
 export interface MdocPresentOptions {
   /** The device key the MSO binds (`deviceKeyInfo`). */
   holderPrivateKey: CryptoKey;
-  /** `client_id` of the request, with its prefix. */
-  clientId: string;
+  handover: Oid4vpHandover;
   nonce: string;
-  /** `response_uri` of the request. */
-  responseUri: string;
-  /** Thumbprint of the Verifier's encryption key, for an encrypted response (`direct_post.jwt`); otherwise null. */
+  /** Thumbprint of the Verifier's encryption key, for an encrypted response (`direct_post.jwt`, `dc_api.jwt`); otherwise null. */
   jwkThumbprint: Uint8Array | null;
   /** The elements to disclose, by namespace. */
   elements: Record<string, string[]>;
 }
 
-/** The SessionTranscript of OpenID4VP 1.0 Appendix B.2.6.1, computed with @owf/mdoc, as a CBOR value. */
-export async function oid4vpSessionTranscript(options: Pick<MdocPresentOptions, 'clientId' | 'nonce' | 'responseUri' | 'jwkThumbprint'>) {
-  const transcript = await SessionTranscript.forOid4Vp(
-    { clientId: options.clientId, nonce: options.nonce, responseUri: options.responseUri, jwkThumbprint: options.jwkThumbprint ?? undefined },
-    mdocContext,
-  );
+/** The SessionTranscript of OpenID4VP 1.0 Appendix B.2.6.1 or B.2.6.2, computed with @owf/mdoc, as a CBOR value. */
+export async function oid4vpSessionTranscript(options: Pick<MdocPresentOptions, 'handover' | 'nonce' | 'jwkThumbprint'>) {
+  const { handover, nonce } = options;
+  const jwkThumbprint = options.jwkThumbprint ?? undefined;
+  const transcript =
+    handover.flow === 'dc-api'
+      ? await SessionTranscript.forOid4VpDcApi({ origin: handover.origin, nonce, jwkThumbprint }, mdocContext)
+      : await SessionTranscript.forOid4Vp({ clientId: handover.clientId, nonce, responseUri: handover.responseUri, jwkThumbprint }, mdocContext);
   return decodeCbor<unknown[]>(transcript.encode());
 }
 
 /**
- * Presents an mdoc (OpenID4VP Appendix B.2): a DeviceResponse with one document that discloses the requested
+ * Presents an mdoc (OpenID4VP Appendix B.2), via redirects or the DC API: a DeviceResponse with one document that discloses the requested
  * `IssuerSignedItem`s as issued, and a device signature (ES256) over `DeviceAuthenticationBytes` with an empty
  * `DeviceNameSpaces`. The `IssuerSigned` structure is passed through as raw CBOR, so a credential the fault layer
  * changed is presented exactly as it was changed. Returns the DeviceResponse as CBOR.

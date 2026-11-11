@@ -1,6 +1,8 @@
 import { identifierListToken, pid, presentation, statusListToken } from '@rp-conformance/core';
 import {
   createTestPki,
+  encodeCbor,
+  oid4vpSessionTranscript,
   forgePresentation,
   generateEcKeyPair,
   jwkThumbprint,
@@ -15,6 +17,7 @@ import { CoseKey, DeviceResponse, IdentifierListCwt, SessionTranscript, Verifier
 import { StatusListCwt } from '@owf/token-status-list';
 import { parseCertificate } from '@owf/x509';
 import { describe, expect, it } from 'vitest';
+import { openid4vpSessionTranscript } from '../src/index';
 
 // Cross-check of the mdoc artifacts the harness builds and the Conformance Wallet presents, with the verifier of
 // @owf/mdoc and @owf/token-status-list (which EUDIPLO uses), independent of the reference validator.
@@ -29,7 +32,9 @@ describe('mdoc artifacts against @owf/mdoc', () => {
     const encryptionKey = await generateEcKeyPair();
     const options = { clientId: 'x509_hash:interop', nonce: 'n-interop', responseUri: 'https://rp.rp-test/response', jwkThumbprint: await jwkThumbprint(encryptionKey.publicJwk) };
     const deviceResponse = await presentMdoc(forged.credential as Uint8Array, {
-      ...options,
+      handover: { flow: 'redirect', clientId: options.clientId, responseUri: options.responseUri },
+      nonce: options.nonce,
+      jwkThumbprint: options.jwkThumbprint,
       holderPrivateKey: holder.privateKey,
       elements: requestedElements(PID_MDOC_QUERY.credentials[0].claims),
     });
@@ -48,6 +53,20 @@ describe('mdoc artifacts against @owf/mdoc', () => {
     expect(document.document.docType).toBe(PID_DOCTYPE);
     expect(document.document.issuerSigned.getPrettyClaims(PID_NAMESPACE)).toMatchObject({ family_name: 'Mustermann', given_name: 'Erika' });
     expect(DeviceResponse.decode(deviceResponse).documents).toHaveLength(1);
+  });
+
+  it('the SessionTranscript of the reference validator equals that of @owf/mdoc, via redirects and via the DC API', async () => {
+    const thumbprint = await jwkThumbprint((await generateEcKeyPair()).publicJwk);
+    for (const handover of [
+      { flow: 'redirect', clientId: 'x509_hash:interop', responseUri: 'https://rp.rp-test/response' },
+      { flow: 'dc-api', origin: 'https://rp.rp-test' },
+    ] as const) {
+      for (const key of [thumbprint, null]) {
+        const expected = await oid4vpSessionTranscript({ handover, nonce: 'n-interop', jwkThumbprint: key });
+        const own = openid4vpSessionTranscript({ handover, nonce: 'n-interop', jwkThumbprint: key });
+        expect(encodeCbor(own), `${handover.flow}, ${key ? 'encrypted' : 'unencrypted'}`).toEqual(encodeCbor(expected));
+      }
+    }
   });
 
   it('the Status List Token in CWT format and the identifier list verify', async () => {

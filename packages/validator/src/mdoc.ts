@@ -13,6 +13,7 @@ import {
   embedded,
   encodeCbor,
   MDOC_DS_EXTENDED_KEY_USAGE,
+  type Oid4vpHandover,
   readCose,
   sha256,
   sigStructure,
@@ -45,10 +46,12 @@ export interface MdocValidationOptions {
   issuerList: string;
   /** The doctype the Relying Party requested (`meta.doctype_value`). */
   expectedDocType: string;
-  /** `client_id`, `nonce` and `response_uri` of the request, and the thumbprint of its encryption key (B.2.6.1). */
-  clientId: string;
+  /**
+   * What the SessionTranscript binds: `client_id` and `response_uri` of the request (redirects, B.2.6.1), or the
+   * Origin of the page (DC API, B.2.6.2); with the `nonce` and the thumbprint of the request's encryption key.
+   */
+  handover: Oid4vpHandover;
   nonce: string;
-  responseUri: string;
   jwkThumbprint: Uint8Array | null;
   /** Clock tolerance `T_skew`, seconds. */
   skewSeconds: number;
@@ -65,9 +68,17 @@ export interface MdocValidationOptions {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** The SessionTranscript of OpenID4VP 1.0 Appendix B.2.6.1 for a response via redirects. */
-export function openid4vpSessionTranscript(options: Pick<MdocValidationOptions, 'clientId' | 'nonce' | 'responseUri' | 'jwkThumbprint'>) {
-  const info = encodeCbor([options.clientId, options.nonce, options.jwkThumbprint, options.responseUri]);
+/**
+ * The SessionTranscript of OpenID4VP 1.0 Appendix B.2.6: `OpenID4VPHandover` over `[client_id, nonce, jwkThumbprint,
+ * response_uri]` via redirects (B.2.6.1), `OpenID4VPDCAPIHandover` over `[origin, nonce, jwkThumbprint]` via the DC
+ * API (B.2.6.2), the origin without the `origin:` prefix.
+ */
+export function openid4vpSessionTranscript(options: Pick<MdocValidationOptions, 'handover' | 'nonce' | 'jwkThumbprint'>) {
+  const { handover } = options;
+  if (handover.flow === 'dc-api') {
+    return [null, null, ['OpenID4VPDCAPIHandover', sha256(encodeCbor([handover.origin, options.nonce, options.jwkThumbprint]))]];
+  }
+  const info = encodeCbor([handover.clientId, options.nonce, options.jwkThumbprint, handover.responseUri]);
   return [null, null, ['OpenID4VPHandover', sha256(info)]];
 }
 

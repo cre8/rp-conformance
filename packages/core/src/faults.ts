@@ -3,6 +3,7 @@
 // `null` marks a variant that must pass every check. `text` is the FCAF wording of the difference, so a test case
 // names a fault and describes it in one place. The implementations are in packages/forge/src/faults.
 import type { CheckId } from './checks';
+import type { Flow } from './definition';
 
 export type FaultPoint = 'credential' | 'status-list' | 'identifier-list' | 'response';
 
@@ -16,6 +17,8 @@ export interface FaultInfo {
   target: CheckId | null;
   /** The difference from the valid artifact, as the FCAF scenario words it (after "except that" / "only in that"). */
   text: string;
+  /** The presentation flow a response fault belongs to; left out when it applies to both. */
+  flow?: Flow;
 }
 
 const credential = (target: CheckId | null, text: string): FaultInfo => ({ point: 'credential', format: 'dc+sd-jwt', target, text });
@@ -23,7 +26,7 @@ const mdoc = (target: CheckId | null, text: string): FaultInfo => ({ point: 'cre
 const statusList = (target: CheckId | null, text: string): FaultInfo => ({ point: 'status-list', format: 'jwt', target, text });
 const statusListCwt = (target: CheckId | null, text: string): FaultInfo => ({ point: 'status-list', format: 'cwt', target, text });
 const identifierList = (target: CheckId | null, text: string): FaultInfo => ({ point: 'identifier-list', format: 'cwt', target, text });
-const response = (target: CheckId | null, text: string): FaultInfo => ({ point: 'response', target, text });
+const response = (target: CheckId | null, text: string, flow?: Flow): FaultInfo => ({ point: 'response', target, text, ...(flow ? { flow } : {}) });
 
 /** Wording shared by faults of both formats. */
 const SHARED_TEXT = {
@@ -179,10 +182,17 @@ export const FAULTS = {
   ),
   'identifier-list.signer-ca-x': identifierList('identifier-list-trust', 'the referenced identifier list is signed by a certificate issued by `CA-X`'),
 
-  // Authorization Response (direct_post.jwt): built from the valid payload and the Relying Party's encryption key.
+  // Authorization Response (direct_post.jwt via redirects, dc_api.jwt via the W3C Digital Credentials API): built from
+  // the valid payload and the Relying Party's encryption key. Only the unencrypted response differs between the flows.
   'response.unencrypted': response(
     'response-encrypted',
     'it is not encrypted: the Conformance Wallet posts `vp_token` and `state` as form parameters to the `response_uri`, as in response mode `direct_post`',
+    'redirect',
+  ),
+  'response.dc-api-unencrypted': response(
+    'response-encrypted',
+    'it is not encrypted: the `data` object returned through the Digital Credentials API carries the `vp_token` directly instead of an encrypted `response`',
+    'dc-api',
   ),
   'response.foreign-key': response(
     'response-decryption',

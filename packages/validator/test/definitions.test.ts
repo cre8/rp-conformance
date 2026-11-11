@@ -1,11 +1,11 @@
-import { faultInfo, faultsOf, type TestCaseDefinition } from '@rp-conformance/core';
+import { type Flow, faultInfo, faultsOf, flowsOf, type TestCaseDefinition } from '@rp-conformance/core';
 import { executableDefinitions } from '@rp-conformance/definitions';
 import { defaultEntitiesOf } from '@rp-conformance/forge';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { Fixture, type Transaction } from './fixture';
 
 // Harness design section 7 for the test definitions: every executable step is built exactly as the controller builds
-// it and run through the reference validator in `all` mode. A step expected to be accepted passes every check; a step
+// it, in every flow the test case runs in, and run through the reference validator in `all` mode. A step expected to be accepted passes every check; a step
 // expected to be rejected fails exactly one check, the target of its fault if it has one. So each negative step
 // carries one deliberate fault and nothing else.
 
@@ -17,7 +17,7 @@ beforeAll(async () => {
 
 const rejects = (codes: string[]) => codes.some((c) => c === 'REJ' || c === 'NOSTAT' || c === 'POLICY');
 
-async function selfValidate(definition: TestCaseDefinition) {
+async function selfValidate(definition: TestCaseDefinition, flow: Flow) {
   const outcomes: { step: number; expected: string; failures: string[]; target?: string }[] = [];
   const transactions = new Map<number, Transaction>();
   let pidList = defaultEntitiesOf(fixture.pki, 'TL-PID');
@@ -32,7 +32,7 @@ async function selfValidate(definition: TestCaseDefinition) {
         await fixture.publish(action.list, pidList);
       } else {
         const other = action.response.keyOfStep ? transactions.get(action.response.keyOfStep) : undefined;
-        const result = await fixture.validate(action, { other });
+        const result = await fixture.validate(action, { other, flow });
         const [fault] = faultsOf(action);
         outcomes.push({ step: i + 1, expected: step.expect.codes.join('+'), failures: result.failures, target: fault && (faultInfo(fault).target ?? undefined) });
       }
@@ -48,8 +48,10 @@ describe('executable definitions against the reference validator', () => {
     expect(executableDefinitions).toHaveLength(98);
   });
 
-  it.each(executableDefinitions.map((d) => [d.id, d] as const))('%s: each step carries exactly its one fault', async (_id, definition) => {
-    for (const outcome of await selfValidate(definition)) {
+  const runs = executableDefinitions.flatMap((d) => flowsOf(d).map((flow) => [d.id, flow, d] as const));
+
+  it.each(runs)('%s via %s: each step carries exactly its one fault', async (_id, flow, definition) => {
+    for (const outcome of await selfValidate(definition, flow)) {
       const label = `step ${outcome.step} (${outcome.expected})`;
       if (!rejects(outcome.expected.split('+'))) {
         expect(outcome.failures, label).toEqual([]);

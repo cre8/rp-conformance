@@ -2,9 +2,10 @@
 // served from memory, and one function that builds a presentation step exactly as the controller does (forge, fault
 // layer, Conformance Wallet response) and runs the reference validator over it in `all` mode.
 import { randomUUID } from 'node:crypto';
-import type { DcqlQuery, DefaultQueryId, PresentationAction } from '@rp-conformance/core';
+import { type DcqlQuery, type DefaultQueryId, type Flow, faultsOf, faultInfo, type PresentationAction } from '@rp-conformance/core';
 import {
   buildAuthorizationResponse,
+  buildDcApiResponse,
   buildSealedLote,
   createTestPki,
   defaultEntitiesOf,
@@ -44,6 +45,8 @@ export const SKEW = 60;
 export const KB_MAX_AGE = 300;
 export const MAX_STATUS_LIST_BYTES = 1 << 20;
 export const RESPONSE_URI = 'https://rp.rp-test/self-validation/response';
+/** The Origin of the Relying Party's page in the DC API flow. */
+export const ORIGIN = 'https://rp.rp-test';
 const BASE = 'https://trust.rp-test/self-validation';
 
 export interface Transaction {
@@ -112,9 +115,16 @@ export class Fixture {
     return { key: { kid, privateKey: privateKey as CryptoKey, publicJwk: { ...(await exportJWK(publicKey)), kid, use: 'enc', alg: 'ECDH-ES' } }, nonce: randomUUID(), state: randomUUID() };
   }
 
-  /** Builds a presentation step and validates it in `all` mode, like the reference Relying Party but without stopping. */
-  async validate(action: PresentationAction, options: { mode?: ValidationMode; other?: Transaction } = {}): Promise<SelfValidation> {
+  /**
+   * Builds a presentation step and validates it in `all` mode, like the reference Relying Party but without stopping. The
+   * flow is that of the step's response fault, if it has one of its own, or `options.flow` (default redirects): via the
+   * DC API the KB-JWT is addressed to `origin:<origin>`, the mdoc SessionTranscript carries the DC API handover, and
+   * the response is the `data` object of response mode `dc_api.jwt`, without `state`.
+   */
+  async validate(action: PresentationAction, options: { mode?: ValidationMode; other?: Transaction; flow?: Flow } = {}): Promise<SelfValidation> {
     const mode = options.mode ?? 'all';
+    const [fault] = faultsOf(action);
+    const flow = (fault && faultInfo(fault).flow) || options.flow || 'redirect';
     const forged = await forgePresentation(action, {
       pki: this.pki,
       holderPublicJwk: this.holder.publicJwk,
@@ -126,14 +136,15 @@ export class Fixture {
     const tx = await this.transaction();
     const query = this.queries[action.query];
     const credentialQuery = query.credentials[0];
+    const handover = flow === 'dc-api' ? ({ flow, origin: ORIGIN } as const) : ({ flow, clientId: AUDIENCE, responseUri: RESPONSE_URI } as const);
+    const audience = flow === 'dc-api' ? `origin:${ORIGIN}` : AUDIENCE;
     const presentation =
       forged.format === 'mso_mdoc'
         ? encodeDeviceResponse(
             await presentMdoc(forged.credential as Uint8Array, {
               holderPrivateKey: this.holder.privateKey,
-              clientId: AUDIENCE,
+              handover,
               nonce: tx.nonce,
-              responseUri: RESPONSE_URI,
               jwkThumbprint: await jwkThumbprint(tx.key.publicJwk as JsonWebKey),
               elements: requestedElements(credentialQuery.claims),
             }),
@@ -141,21 +152,20 @@ export class Fixture {
         : await presentSdJwtVc(forged.credential as string, {
             holderPrivateKey: this.holder.privateKey,
             disclose: (credentialQuery.claims ?? []).map((c) => String(c.path[0])),
-            audience: AUDIENCE,
+            audience,
             nonce: tx.nonce,
           });
     const encValues = ['A128GCM', 'A256GCM'];
-    const form = await buildAuthorizationResponse(
-      {
-        payload: { vp_token: { [credentialQuery.id]: [presentation] }, state: tx.state },
-        recipient: tx.key.publicJwk,
-        enc: action.response.enc ?? 'A128GCM',
-        walletKey: this.walletKey,
-        otherTransactionKey: options.other?.key.publicJwk,
-      },
-      action.response.faults[0],
-    );
-    const response = await validateAuthorizationResponse(form, { keys: [tx.key], encValues, state: tx.state, mode });
+    const state = flow === 'dc-api' ? undefined : tx.state;
+    const input = {
+      payload: { vp_token: { [credentialQuery.id]: [presentation] }, ...(state ? { state } : {}) },
+      recipient: tx.key.publicJwk,
+      enc: action.response.enc ?? 'A128GCM',
+      walletKey: this.walletKey,
+      otherTransactionKey: options.other?.key.publicJwk,
+    };
+    const form = flow === 'dc-api' ? await buildDcApiResponse(input, action.response.faults[0]) : await buildAuthorizationResponse(input, action.response.faults[0]);
+    const response = await validateAuthorizationResponse(form, { keys: [tx.key], encValues, state, mode });
     const presented = (response.payload?.vp_token as Record<string, string[]> | undefined)?.[credentialQuery.id]?.[0];
     const fetchList = async (uri: string): Promise<FetchedStatusList> => {
       const served = this.statusLists.get(uri);
@@ -177,8 +187,7 @@ export class Fixture {
         ? await validateMdocPresentation(presented, {
             ...common,
             expectedDocType: PID_DOCTYPE,
-            clientId: AUDIENCE,
-            responseUri: RESPONSE_URI,
+            handover,
             jwkThumbprint: await jwkThumbprint(tx.key.publicJwk as JsonWebKey),
             fetchStatusList: fetchList,
             fetchIdentifierList: fetchList,
@@ -186,7 +195,7 @@ export class Fixture {
         : await validateSdJwtVcPresentation(presented, {
             ...common,
             expectedVct: [PID_VCT],
-            audience: AUDIENCE,
+            audience,
             kbMaxAgeSeconds: KB_MAX_AGE,
             fetchStatusList: fetchList,
           });

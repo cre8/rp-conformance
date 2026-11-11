@@ -37,6 +37,9 @@ export const flowIcsItems: Record<Flow, string> = {
   'dc-api': ics.supportsDcApi.item,
 };
 
+/** Every presentation flow, in the order the controller runs them. */
+export const FLOWS: Flow[] = ['redirect', 'dc-api'];
+
 /** `EUDI-wallet relevancy` values of the FCAF methodology. */
 export const relevancy = {
   genericRequired: 'EUDI_generic | EUDI_required',
@@ -216,6 +219,16 @@ export function parseTestCaseId(id: string): TestCaseId {
 /** A definition is executable when every step has an action. */
 export function isExecutable(definition: TestCaseDefinition): boolean {
   return definition.steps.every((s) => s.run !== undefined);
+}
+
+/**
+ * The presentation flows a test case is executed in: the flow its `Profile applicability` names (the
+ * `SessionEncryption` variants), otherwise every flow, as the comment "Execute this test case once for each
+ * presentation flow the Relying Party supports" instructs.
+ */
+export function flowsOf(definition: TestCaseDefinition): Flow[] {
+  const named = FLOWS.filter((flow) => definition.profile.some((condition) => condition.item === flowIcsItems[flow]));
+  return named.length ? named : FLOWS;
 }
 
 /** The controls of a definition as a list. */

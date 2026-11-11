@@ -27,11 +27,13 @@ const fail = (message: string): never => {
 };
 
 /**
- * Validates an Authorization Response in response mode `direct_post.jwt` (OpenID4VP section 8.3.1, HAIP section 5): an
- * encrypted `response` parameter, a JWE with `ECDH-ES` on P-256 and a content encryption the request listed, a valid
- * ephemeral key, decryption with this transaction's key, and a payload with `vp_token` and the request's `state`.
+ * Validates an Authorization Response in response mode `direct_post.jwt` (OpenID4VP section 8.3.1, HAIP section 5) or
+ * `dc_api.jwt` (OpenID4VP Appendix A.4, HAIP section 5.2): an encrypted `response` parameter, a JWE with `ECDH-ES` on
+ * P-256 and a content encryption the request listed, a valid ephemeral key, decryption with this transaction's key,
+ * and a payload with `vp_token` and the request's `state`, if it had one. `form` is the form posted to `response_uri`,
+ * or the `data` object the Digital Credentials API returned, whose unencrypted `vp_token` is an object, not JSON text.
  */
-export async function validateAuthorizationResponse(form: Record<string, string>, options: ResponseValidationOptions): Promise<ResponseValidation> {
+export async function validateAuthorizationResponse(form: Record<string, unknown>, options: ResponseValidationOptions): Promise<ResponseValidation> {
   const recorder = new CheckRecorder(options.mode ?? 'first-failure');
   let header: Record<string, unknown> = {};
   let payload: Record<string, unknown> | undefined;
@@ -39,10 +41,11 @@ export async function validateAuthorizationResponse(form: Record<string, string>
   let plain: Record<string, unknown> | undefined;
   const result = await recorder.collect(async () => {
     await recorder.run('response-encrypted', [], () => {
-      if (typeof form.response === 'string') return;
+      if (form.response !== undefined) return;
       if (form.vp_token !== undefined) {
         try {
-          plain = { vp_token: JSON.parse(form.vp_token), ...(form.state !== undefined ? { state: form.state } : {}) };
+          const vpToken = typeof form.vp_token === 'string' ? JSON.parse(form.vp_token) : form.vp_token;
+          plain = { vp_token: vpToken, ...(form.state !== undefined ? { state: form.state } : {}) };
         } catch {
           plain = undefined;
         }
@@ -50,7 +53,8 @@ export async function validateAuthorizationResponse(form: Record<string, string>
       fail('the response is not encrypted: no response parameter');
     });
     await recorder.run('response-format', ['response-encrypted'], () => {
-      const parts = form.response.split('.');
+      if (typeof form.response !== 'string') fail(`response is a ${typeof form.response}, not a compact JWE`);
+      const parts = (form.response as string).split('.');
       if (parts.length !== 5) fail(`not a compact JWE (${parts.length} parts)`);
       try {
         header = base64url.decodeJson(parts[0] ?? '');
@@ -78,7 +82,7 @@ export async function validateAuthorizationResponse(form: Record<string, string>
       const key = kid !== undefined ? options.keys.find((k) => k.kid === kid) : options.keys.length === 1 ? options.keys[0] : undefined;
       if (!key) fail(`no encryption key of this transaction has kid ${String(kid)}`);
       try {
-        const { plaintext } = await compactDecrypt(form.response, (key as TransactionKey).privateKey, {
+        const { plaintext } = await compactDecrypt(form.response as string, (key as TransactionKey).privateKey, {
           keyManagementAlgorithms: ['ECDH-ES'],
           contentEncryptionAlgorithms: options.encValues,
         });

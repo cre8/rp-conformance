@@ -299,8 +299,10 @@ export const presentationStep = {
       run: run({ credential: pid.mdoc(), identifierList: identifierListToken.cwt({ contains: false, faults: [fault] }) }),
     };
   },
-  /** A presentation via `flow` whose Authorization Response has a fault. */
+  /** A presentation via `flow` whose Authorization Response has a fault; refuses a fault of the other flow. */
   encryptionFault(flow: Flow, fault: FaultId, options: { text?: string; response?: Omit<ResponseSpec, 'faults'> } = {}): ScenarioStep {
+    const faultFlow = faultInfo(fault).flow;
+    if (faultFlow && faultFlow !== flow) throw new Error(`fault ${fault} applies to the ${faultFlow} flow, not ${flow}`);
     return {
       text: options.text ?? scenario.encryption(flow, faultInfo(fault).text),
       run: run({ response: { ...options.response, faults: [fault] } }),

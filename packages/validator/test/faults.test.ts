@@ -54,6 +54,13 @@ describe('fault self-validation', () => {
     expect(statuses(result.credential?.checks)).toEqual(MDOC_STATUS_LIST_CHECKS.map((c) => [c, 'pass']));
   });
 
+  it.each(['dc+sd-jwt', 'mso_mdoc'] as const)('the valid %s presentation via the DC API (dc_api.jwt, origin audience) passes every check', async (format) => {
+    const result = await fixture.validate(actionWith(undefined, format), { flow: 'dc-api' });
+    expect(result.failures).toEqual([]);
+    expect(statuses(result.response)).toEqual(RESPONSE_CHECKS.map((c) => [c, 'pass']));
+    expect(statuses(result.credential?.checks)).toEqual((format === 'mso_mdoc' ? MDOC_STATUS_LIST_CHECKS : SD_JWT_VC_CHECKS).map((c) => [c, 'pass']));
+  });
+
   it('the valid mdoc presentation with an identifier list passes every check', async () => {
     const action = presentation({
       query: 'default_query_pid_mdoc',
@@ -73,6 +80,16 @@ describe('fault self-validation', () => {
     });
     expect((await fixture.validate(action)).failures).toEqual(['identifier-status']);
   });
+
+  it.each(FAULT_IDS.filter((fault) => faultInfo(fault).point === 'response' && !faultInfo(fault).flow))(
+    '%s fails exactly its target check via the DC API too',
+    async (fault) => {
+      const other = fault === 'response.other-transaction-key' ? await fixture.transaction() : undefined;
+      const result = await fixture.validate(actionWith(fault), { other, flow: 'dc-api' });
+      const target = faultInfo(fault).target;
+      expect(result.failures).toEqual(target ? [target] : []);
+    },
+  );
 
   it.each(FAULT_IDS)('%s fails exactly its target check', async (fault) => {
     const other = fault === 'response.other-transaction-key' ? await fixture.transaction() : undefined;

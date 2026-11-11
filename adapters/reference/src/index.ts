@@ -49,8 +49,9 @@ export class ReferenceAdapter implements RelyingPartyAdapter {
       body: JSON.stringify(req),
     });
     if (response.status !== 201) throw new Error(`start presentation: HTTP ${response.status} ${await response.text()}`);
-    const { transactionId, uri } = (await response.json()) as { transactionId: string; uri: string };
-    return { transactionId, invocation: { uri } };
+    const started = (await response.json()) as { transactionId: string; uri?: string; dcApiPage?: string };
+    if (started.dcApiPage) return { transactionId: started.transactionId, invocation: { dcApiPage: started.dcApiPage } };
+    return { transactionId: started.transactionId, invocation: { uri: started.uri as string } };
   }
 
   async readResult(transactionId: string, timeoutMs: number): Promise<RelyingPartyResult> {

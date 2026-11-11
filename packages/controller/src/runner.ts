@@ -225,6 +225,8 @@ interface TestCaseState {
   entities: Map<'TL-PID', string[]>;
   /** A list retrieval still awaited, checked again after the next step. */
   pendingRetrieval?: { record: StepRecord; list: 'TL-PID'; version: number; publishedAt: Date; checks: number };
+  /** Whether the Relying Party answered a request of this test case (a started presentation). */
+  rpReached: boolean;
 }
 
 async function runTestCase(definition: TestCaseDefinition, flow: Flow, flowSupported: boolean, ctx: Context): Promise<TestCaseRecord> {
@@ -242,8 +244,9 @@ async function runTestCase(definition: TestCaseDefinition, flow: Flow, flowSuppo
   if (control && control.verdict !== 'PASS') {
     return end('INCONCLUSIVE', `positive control ${outcomes.map((o) => o.id).join(' or ')} did not pass`);
   }
-  const state: TestCaseState = { encryptionKeys: new Map(), changedLists: new Set(), entities: new Map() };
+  const state: TestCaseState = { encryptionKeys: new Map(), changedLists: new Set(), entities: new Map(), rpReached: false };
   const steps: StepRecord[] = [];
+  let restoreError: string | undefined;
   try {
     for (const [index, step] of definition.steps.entries()) {
       steps.push(await runStep(definition, flow, index + 1, step, ctx, state));
@@ -251,13 +254,26 @@ async function runTestCase(definition: TestCaseDefinition, flow: Flow, flowSuppo
     }
     await checkPendingRetrieval(state, ctx, true);
   } finally {
-    // Restore the lists the test case changed (comment of TrustMechanisms_007 and _008).
+    // Restore the lists the test case changed (comment of TrustMechanisms_007 and _008). A Relying Party that does not
+    // answer the refresh leaves the list restored at the Test Trust Infrastructure; the run goes on.
     for (const list of state.changedLists) {
       await ctx.harness.publishList(list);
-      await ctx.adapter.refreshTrust?.(ctx.harness.namespace);
+      await ctx.adapter.refreshTrust?.(ctx.harness.namespace).catch((error: unknown) => {
+        restoreError = `restoring ${list}: the trust refresh failed: ${(error as Error).message}`;
+      });
     }
   }
-  return { ...base, verdict: worst(steps.map((s) => s.verdict)), control, steps };
+  return { ...base, verdict: worst(steps.map((s) => s.verdict)), control, steps, ...(restoreError ? { reason: restoreError } : {}) };
+}
+
+/** Whether an error is a failed connection to a server (refused, reset, closed), not a fault of the harness itself. */
+function isConnectionError(error: unknown): boolean {
+  const codes = ['ECONNREFUSED', 'ECONNRESET', 'EPIPE', 'UND_ERR_SOCKET', 'UND_ERR_CLOSED', 'ETIMEDOUT'];
+  for (let current: unknown = error; current; current = (current as { cause?: unknown }).cause) {
+    if (codes.includes(String((current as { code?: unknown }).code))) return true;
+    if (current instanceof TypeError && current.message === 'fetch failed') return true;
+  }
+  return false;
 }
 
 function newRecord(index: number, step: StepDefinition): StepRecord {
@@ -308,13 +324,26 @@ async function runStep(
         record.reason = 'the step is text only';
     }
   } catch (error) {
-    record.verdict = 'INCONCLUSIVE';
-    record.reason = `the harness could not execute the step: ${(error as Error).message}`;
+    if (state.rpReached && isConnectionError(error)) {
+      // The Relying Party answered earlier in this test case and stopped answering: it did not stay available
+      // (RP_PP_SM_Revocation_016). A Relying Party unreachable from the start of a test case stays INCONCLUSIVE.
+      record.verdict = 'FAIL';
+      record.reason = `the Relying Party became unavailable during the test case: ${describeError(error)}`;
+    } else {
+      record.verdict = 'INCONCLUSIVE';
+      record.reason = `the harness could not execute the step: ${describeError(error)}`;
+    }
   }
   return record;
 }
 
 type Save = (name: string, content: string | Uint8Array | undefined) => Promise<void>;
+
+/** An error message with the code of its cause, for example `fetch failed (ECONNREFUSED)`. */
+const describeError = (error: unknown) => {
+  const code = (error as { cause?: { code?: string } }).cause?.code;
+  return `${(error as Error).message}${code ? ` (${code})` : ''}`;
+};
 
 const sameBody = (a: string | Uint8Array, b: string | Uint8Array) =>
   typeof a === 'string' || typeof b === 'string' ? a === b : Buffer.from(a).equals(Buffer.from(b));
@@ -372,6 +401,7 @@ async function runPresentation(
   const query = ctx.harness.env.queries[action.query];
   const stepStart = new Date();
   const { transactionId, uri } = await startPresentation(action, flow, record, save, ctx);
+  state.rpReached = true;
   const otherKey = action.response.keyOfStep ? state.encryptionKeys.get(action.response.keyOfStep) : undefined;
   if (action.response.keyOfStep && !otherKey) throw new Error(`step ${action.response.keyOfStep} recorded no encryption key`);
   const held: HeldCredential = mdoc
@@ -410,6 +440,7 @@ async function runPresentation(
 /** Starts a presentation and records the encryption key of its request without answering (`ENC_KEY`). */
 async function runStart(action: StartAction, flow: Flow, index: number, record: StepRecord, save: Save, ctx: Context, state: TestCaseState) {
   const { uri } = await startPresentation(action, flow, record, save, ctx);
+  state.rpReached = true;
   const evidence = await ctx.wallet.start(uri);
   await save('request.jwt', evidence.requestFetch?.body);
   await save('wallet-evidence.json', JSON.stringify(evidence, null, 2));

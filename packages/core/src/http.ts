@@ -16,7 +16,7 @@ export interface ServerOptions {
 }
 
 export interface RunningServer {
-  /** `http(s)://localhost:<port>` */
+  /** `http(s)://127.0.0.1:<port>`: the services listen on IPv4, and `localhost` may resolve to `::1` first. */
   localUrl: string;
   port: number;
   close(): Promise<void>;
@@ -48,7 +48,7 @@ export async function startServer(options: ServerOptions, handler: Handler): Pro
   });
   const { port } = server.address() as AddressInfo;
   return {
-    localUrl: `${options.tls ? 'https' : 'http'}://localhost:${port}`,
+    localUrl: `${options.tls ? 'https' : 'http'}://127.0.0.1:${port}`,
     port,
     close: () =>
       new Promise<void>((resolve) => {

@@ -81,7 +81,7 @@ export interface StartedPresentation {
 /** The only Relying Party specific code of the harness (harness design section 4.8). */
 export interface RelyingPartyAdapter {
   name: string;
-  /** Host name under which the Relying Party reaches the harness services; default `localhost`. */
+  /** Host name under which the Relying Party reaches the harness services; default `127.0.0.1`. */
   harnessHost?: string;
   /** Configure the Relying Party: trust anchors, access and registration certificate, default queries. */
   setUp(env: TestEnvironment, namespace: string): Promise<void>;

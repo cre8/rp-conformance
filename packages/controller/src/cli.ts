@@ -62,7 +62,7 @@ async function main() {
     only: values.only?.flatMap((v) => v.split(',')),
     flows: values.flows?.split(',') as Flow[] | undefined,
     reportDir: resolve(values['report-dir']),
-    harnessHost: values['harness-host'] ?? adapter.harnessHost ?? 'localhost',
+    harnessHost: values['harness-host'] ?? adapter.harnessHost ?? '127.0.0.1',
     log: (line) => process.stdout.write(`${line}\n`),
   });
   const summary = Object.entries(report.run.summary).map(([k, v]) => `${k} ${v}`).join(', ');

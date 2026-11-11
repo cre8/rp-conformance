@@ -8,7 +8,10 @@ import type {
 } from '@rp-conformance/core';
 
 export interface EudiploAdapterOptions {
-  /** Base URL of EUDIPLO as the harness reaches it; default `EUDIPLO_URL` or `http://localhost:3000`. */
+  /**
+   * Base URL of EUDIPLO as the harness reaches it; default `EUDIPLO_URL`, or `http://127.0.0.1:<EUDIPLO_PORT>` (port 3000
+   * by default). Not `localhost`: Docker publishes EUDIPLO on 127.0.0.1 only, and `localhost` may resolve to `::1` first.
+   */
   baseUrl?: string;
   /** Root client of EUDIPLO (`AUTH_CLIENT_ID` / `AUTH_CLIENT_SECRET`). */
   clientId?: string;
@@ -44,7 +47,7 @@ export class EudiploAdapter implements RelyingPartyAdapter {
   private skewSeconds?: number;
 
   constructor(private readonly options: EudiploAdapterOptions = {}) {
-    this.baseUrl = (options.baseUrl ?? process.env.EUDIPLO_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+    this.baseUrl = (options.baseUrl ?? process.env.EUDIPLO_URL ?? `http://127.0.0.1:${process.env.EUDIPLO_PORT ?? 3000}`).replace(/\/$/, '');
     this.harnessHost = options.harnessHost ?? process.env.HARNESS_HOST ?? 'host.docker.internal';
   }
 

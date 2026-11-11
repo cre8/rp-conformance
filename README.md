@@ -57,6 +57,16 @@ pnpm rp-conformance run --adapter eudiplo
 
 `EUDIPLO_URL`, `EUDIPLO_CLIENT_ID`, `EUDIPLO_CLIENT_SECRET` and `HARNESS_HOST` override the defaults of the Compose file. The harness serves plain HTTP; the Compose file allows that with `OUTBOUND_URL_ALLOW_HTTP`.
 
+Everything on the host uses `127.0.0.1`, not `localhost`: Docker publishes EUDIPLO on `127.0.0.1` only, and Node.js may resolve `localhost` to `::1` first, where another process can hold the same port (an adapter login then fails with HTTP 401 and `request_uri` with 404). The adapter defaults to `http://127.0.0.1:3000`, EUDIPLO's `PUBLIC_URL` in the Compose file names `127.0.0.1`, and the CLI resolves host names IPv4 first. For a second EUDIPLO next to a running one, give it another project name and port; `EUDIPLO_PORT` sets the published port, the `PUBLIC_URL` and the adapter's default URL together:
+
+```bash
+EUDIPLO_PORT=3100 docker compose -p rp-conformance-eudiplo-2 -f adapters/eudiplo/docker-compose.yml up -d --wait
+```
+
+```bash
+EUDIPLO_PORT=3100 pnpm rp-conformance run --adapter eudiplo
+```
+
 Decisions on the open points of [harness-design.md](harness-design.md) §12: the executable TypeScript definitions in `packages/definitions` are the source of truth, and `packages/fcaf-render` produces the FCAF markdown from them (§4.2); the reference RP is built on the reference validator; the OIDF bridge is optional and not implemented yet.
 
 ## Rendering the baseline

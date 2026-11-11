@@ -13,7 +13,7 @@ describe('run against the reference Relying Party', () => {
   it('every executable test definition passes', async () => {
     const reportDir = await mkdtemp(join(tmpdir(), 'rp-conformance-'));
     const ics = await loadIcs(new URL('../../../adapters/reference/ics.yaml', import.meta.url).pathname);
-    const { report, reportPath } = await runConformance({ adapter: new ReferenceAdapter(), ics, definitions, reportDir, harnessHost: 'localhost' });
+    const { report, reportPath } = await runConformance({ adapter: new ReferenceAdapter(), ics, definitions, reportDir, harnessHost: '127.0.0.1' });
     const notPassed = report.results
       .filter((r) => r.verdict !== 'PASS')
       .map((r) => `${r.testCase}: ${r.verdict} ${r.reason ?? r.steps.filter((s) => s.verdict !== 'PASS').map((s) => `step ${s.step} ${s.reason}`).join('; ')}`);

@@ -3,16 +3,19 @@
 #   docker compose -f adapters/eudiplo/docker-compose.yml up -d --wait
 #   pnpm rp-conformance run --adapter eudiplo --only RP_WS_IA_MainInteraction_001a
 #
-# The harness services run on the host; EUDIPLO reaches them as host.docker.internal.
+# The harness services run on the host; EUDIPLO reaches them as host.docker.internal. EUDIPLO is published on
+# 127.0.0.1 only, and its PUBLIC_URL (request_uri, response_uri) names 127.0.0.1 rather than localhost: localhost may
+# resolve to ::1 first, where another process can listen on the same port. EUDIPLO_PORT moves the host port, for a
+# second stack next to this one (with another project name: docker compose -p <name>).
 name: rp-conformance-eudiplo
 
 services:
   eudiplo:
     image: ${EUDIPLO_IMAGE:-ghcr.io/eudiplo/eudiplo:latest}
     ports:
-      - '127.0.0.1:3000:3000'
+      - '127.0.0.1:${EUDIPLO_PORT:-3000}:3000'
     environment:
-      PUBLIC_URL: http://localhost:3000
+      PUBLIC_URL: http://127.0.0.1:${EUDIPLO_PORT:-3000}
       MASTER_SECRET: rp-conformance-test-master-secret-not-for-production
       AUTH_CLIENT_ID: rp-conformance
       AUTH_CLIENT_SECRET: rp-conformance-secret

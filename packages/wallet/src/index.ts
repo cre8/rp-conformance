@@ -4,8 +4,19 @@
 import { createHash, X509Certificate } from 'node:crypto';
 import { type CallbackContext, type Jwk, setGlobalConfig } from '@openid4vc/oauth2';
 import { Openid4vpClient } from '@openid4vc/openid4vp';
-import type { FaultId } from '@rp-conformance/core';
-import { base64url, buildAuthorizationResponse, type EcKeyPair, generateEcKeyPair, presentSdJwtVc, verifyEs256 } from '@rp-conformance/forge';
+import type { CredentialFormat, FaultId } from '@rp-conformance/core';
+import {
+  base64url,
+  buildAuthorizationResponse,
+  type EcKeyPair,
+  encodeDeviceResponse,
+  generateEcKeyPair,
+  jwkThumbprint,
+  presentMdoc,
+  presentSdJwtVc,
+  requestedElements,
+  verifyEs256,
+} from '@rp-conformance/forge';
 import { validatePath } from '@rp-conformance/validator';
 import { type Certificate, parseCertificate } from '@owf/x509';
 import type { JWK } from 'jose';
@@ -58,6 +69,9 @@ const hash: CallbackContext['hash'] = (data, alg) => createHash(alg.replace('-',
 
 const SUPPORTED_ENC = ['A128GCM', 'A256GCM'];
 
+/** A credential the Conformance Wallet holds: an SD-JWT VC (compact, without KB-JWT) or an mdoc's `IssuerSigned` (CBOR). */
+export type HeldCredential = { format: 'dc+sd-jwt'; value: string } | { format: 'mso_mdoc'; value: Uint8Array };
+
 /** How the Conformance Wallet answers: the content encryption to use and the fault of the response, if any. */
 export interface ResponseOptions {
   enc?: string;
@@ -97,26 +111,39 @@ export class ConformanceWallet {
 
   /**
    * Answers the request behind `invocationUri` (redirect flow): resolves `request_uri`, verifies the signed request
-   * and its `x509_hash` Client Identifier against `TL-AC`, presents the credential with a KB-JWT bound to the request,
-   * encrypts the response (`direct_post.jwt`), or applies the step's response fault, posts it to `response_uri` and
-   * follows `redirect_uri`.
+   * and its `x509_hash` Client Identifier against `TL-AC`, presents the credential bound to the request (an SD-JWT VC
+   * with a KB-JWT, or an mdoc DeviceResponse with a device signature over the SessionTranscript of OpenID4VP
+   * Appendix B.2.6.1), encrypts the response (`direct_post.jwt`), or applies the step's response fault, posts it to
+   * `response_uri` and follows `redirect_uri`.
    */
-  async present(invocationUri: string, credential: string, options: ResponseOptions = {}): Promise<PresentationEvidence> {
+  async present(invocationUri: string, credential: HeldCredential, options: ResponseOptions = {}): Promise<PresentationEvidence> {
     const evidence: PresentationEvidence = { invocationUri, findings: [] };
     try {
       const request = await this.resolve(invocationUri, evidence);
-      const query = request.dcql_query as { credentials: { id: string; claims?: { path: (string | number | null)[] }[] }[] };
-      const [credentialQuery] = query.credentials;
-      const disclose = [...new Set((credentialQuery.claims ?? []).map((claim) => String(claim.path[0])))];
-      evidence.presentation = await presentSdJwtVc(credential, {
-        holderPrivateKey: this.holderKey.privateKey,
-        disclose,
-        audience: request.client_id as string,
-        nonce: request.nonce as string,
-      });
+      const query = request.dcql_query as { credentials: { id: string; format: CredentialFormat; claims?: { path: (string | number | null)[] }[] }[] };
+      const credentialQuery = query.credentials.find((c) => c.format === credential.format);
+      if (!credentialQuery) throw new Error(`the request asks for no credential in ${credential.format} format`);
+      if (!evidence.encryptionKey) throw new Error('client_metadata has no encryption key');
+      if (credential.format === 'mso_mdoc') {
+        const deviceResponse = await presentMdoc(credential.value, {
+          holderPrivateKey: this.holderKey.privateKey,
+          clientId: request.client_id as string,
+          nonce: request.nonce as string,
+          responseUri: request.response_uri as string,
+          jwkThumbprint: await jwkThumbprint(evidence.encryptionKey as JsonWebKey),
+          elements: requestedElements(credentialQuery.claims),
+        });
+        evidence.presentation = encodeDeviceResponse(deviceResponse);
+      } else {
+        evidence.presentation = await presentSdJwtVc(credential.value, {
+          holderPrivateKey: this.holderKey.privateKey,
+          disclose: [...new Set((credentialQuery.claims ?? []).map((claim) => String(claim.path[0])))],
+          audience: request.client_id as string,
+          nonce: request.nonce as string,
+        });
+      }
 
       const metadata = request.client_metadata as { encrypted_response_enc_values_supported?: string[] };
-      if (!evidence.encryptionKey) throw new Error('client_metadata has no encryption key');
       const enc = options.enc ?? metadata.encrypted_response_enc_values_supported?.find((e) => SUPPORTED_ENC.includes(e)) ?? 'A128GCM';
       const payload = { vp_token: { [credentialQuery.id]: [evidence.presentation] }, ...(request.state ? { state: request.state } : {}) };
       const form = await buildAuthorizationResponse(

@@ -3,13 +3,16 @@ import { type CallbackContext, type Jwk, setGlobalConfig } from '@openid4vc/oaut
 import { Openid4vpVerifier } from '@openid4vc/openid4vp';
 import type { DcqlQuery, DefaultQueryId, KeyedCertificate, RunningServer, ServerOptions } from '@rp-conformance/core';
 import { sendJson, sendText, startServer } from '@rp-conformance/core';
-import { base64url, PID_VCT, signCompactJws } from '@rp-conformance/forge';
+import { base64url, jwkThumbprint, PID_DOCTYPE, PID_VCT, signCompactJws } from '@rp-conformance/forge';
 import type { CheckResult } from '@rp-conformance/core';
 import {
+  type FetchedStatusList,
   type ListSource,
+  type MdocValidation,
   type SdJwtVcValidation,
   TrustStore,
   validateAuthorizationResponse,
+  validateMdocPresentation,
   validateSdJwtVcPresentation,
 } from '@rp-conformance/validator';
 import { exportJWK, generateKeyPair, importJWK } from 'jose';
@@ -47,7 +50,7 @@ interface Transaction {
   attributes?: Record<string, unknown>;
   error?: string;
   response?: CheckResult[];
-  validations?: SdJwtVcValidation[];
+  validations?: (SdJwtVcValidation | MdocValidation)[];
 }
 
 /** The verification result the reference Relying Party exposes for a transaction (its ICS item RP.G.6: API). */
@@ -59,10 +62,17 @@ export interface ReferenceRpResult {
   error?: string;
   /** The checks of the Authorization Response. */
   response?: CheckResult[];
-  validations?: SdJwtVcValidation[];
+  validations?: (SdJwtVcValidation | MdocValidation)[];
 }
 
 const hash: CallbackContext['hash'] = (data, alg) => createHash(alg.replace('-', '').toLowerCase()).update(data).digest();
+
+/** Fetches a status list or identifier list: text for a JWT, bytes for a CWT. */
+async function fetchList(uri: string, accept: string): Promise<FetchedStatusList> {
+  const fetched = await fetch(uri, { headers: { accept }, signal: AbortSignal.timeout(5000) });
+  const bytes = new Uint8Array(await fetched.arrayBuffer());
+  return { status: fetched.status, body: accept.endsWith('+jwt') ? new TextDecoder().decode(bytes) : bytes, contentType: fetched.headers.get('content-type') };
+}
 
 /** `x509_hash` Client Identifier (OpenID4VP 1.0 section 5.9.3): base64url SHA-256 of the DER leaf certificate. */
 export function x509HashClientId(certificateBase64Der: string): string {
@@ -181,7 +191,11 @@ export class ReferenceRelyingParty {
         client_metadata: {
           jwks: { keys: [encryptionJwk] },
           encrypted_response_enc_values_supported: ['A128GCM', 'A256GCM'],
-          vp_formats_supported: { 'dc+sd-jwt': { 'sd-jwt_alg_values': ['ES256'], 'kb-jwt_alg_values': ['ES256'] } },
+          vp_formats_supported: {
+            'dc+sd-jwt': { 'sd-jwt_alg_values': ['ES256'], 'kb-jwt_alg_values': ['ES256'] },
+            // OpenID4VP 1.0 Appendix B.2.2: COSE algorithm identifiers, ES256.
+            mso_mdoc: { issuerauth_alg_values: [-7], deviceauth_alg_values: [-7] },
+          },
         },
         verifier_info: [{ format: 'registration_cert', data: this.options.registrationCertificate }],
       },
@@ -230,30 +244,42 @@ export class ReferenceRelyingParty {
     const presentations = response.payload.vp_token as Record<string, unknown>;
     const query = this.options.queries[tx.query];
     const attributes: Record<string, unknown> = {};
-    const validations: SdJwtVcValidation[] = [];
+    const validations: (SdJwtVcValidation | MdocValidation)[] = [];
     for (const credentialQuery of query.credentials) {
       const entries = presentations[credentialQuery.id];
       if (!Array.isArray(entries) || entries.length !== 1 || typeof entries[0] !== 'string') {
         return this.fail(tx, res, `expected one presentation for ${credentialQuery.id}`);
       }
-      const validation = await validateSdJwtVcPresentation(entries[0], {
+      const common = {
         trust: this.trust,
         issuerList: 'TL-PID',
-        expectedVct: (credentialQuery.meta?.vct_values as string[] | undefined) ?? [PID_VCT],
         nonce: tx.requestPayload.nonce as string,
-        audience: this.clientId,
         skewSeconds: this.options.skewSeconds,
-        kbMaxAgeSeconds: this.options.kbMaxAgeSeconds,
         // A PID without reliable revocation status is rejected (catalogue decision 2).
         requireStatus: true,
         maxStatusListBytes: this.options.maxStatusListBytes,
         validStatuses: this.options.validStatuses,
         trustedAuthorities: credentialQuery.trusted_authorities,
-        fetchStatusList: async (uri) => {
-          const fetched = await fetch(uri, { headers: { accept: 'application/statuslist+jwt' }, signal: AbortSignal.timeout(5000) });
-          return { status: fetched.status, body: await fetched.text(), contentType: fetched.headers.get('content-type') };
-        },
-      });
+      };
+      const validation =
+        credentialQuery.format === 'mso_mdoc'
+          ? await validateMdocPresentation(entries[0], {
+              ...common,
+              expectedDocType: (credentialQuery.meta?.doctype_value as string | undefined) ?? PID_DOCTYPE,
+              clientId: this.clientId,
+              responseUri: tx.requestPayload.response_uri as string,
+              // OpenID4VP Appendix B.2.6.1: the thumbprint of the key the response was encrypted to.
+              jwkThumbprint: await jwkThumbprint(tx.encryptionJwk as JsonWebKey),
+              fetchStatusList: (uri) => fetchList(uri, 'application/statuslist+cwt'),
+              fetchIdentifierList: (uri) => fetchList(uri, 'application/identifierlist+cwt'),
+            })
+          : await validateSdJwtVcPresentation(entries[0], {
+              ...common,
+              expectedVct: (credentialQuery.meta?.vct_values as string[] | undefined) ?? [PID_VCT],
+              audience: this.clientId,
+              kbMaxAgeSeconds: this.options.kbMaxAgeSeconds,
+              fetchStatusList: (uri) => fetchList(uri, 'application/statuslist+jwt'),
+            });
       validations.push(validation);
       tx.validations = validations;
       if (!validation.valid) return this.fail(tx, res, `${credentialQuery.id}: ${validation.failed}: ${validation.checks.at(-1)?.detail}`);

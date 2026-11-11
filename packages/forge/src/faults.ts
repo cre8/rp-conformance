@@ -16,8 +16,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const x5cOf = (key: CertifiedKey) => key.chain.map((certificate) => Buffer.from(certificate.der).toString('base64'));
 const seconds = (date: Date) => Math.floor(date.getTime() / 1000);
 
-function ensurePoint(fault: FaultId, point: FaultPoint) {
-  if (faultInfo(fault).point !== point) throw new Error(`fault ${fault} does not apply to the ${point}`);
+function ensurePoint(fault: FaultId, point: FaultPoint, format?: string) {
+  const info = faultInfo(fault);
+  if (info.point !== point) throw new Error(`fault ${fault} does not apply to the ${point}`);
+  if (format && info.format !== format) throw new Error(`fault ${fault} applies to ${info.format}, not ${format}`);
 }
 
 // --------------------------------------------------------------------------- credential
@@ -58,7 +60,7 @@ function statusListOf(payload: Payload): Record<string, unknown> {
 
 /** Applies a credential fault to an issued SD-JWT VC (issuer-signed JWT `~` disclosures `~`, without KB-JWT). */
 export async function applyCredentialFault(fault: FaultId, sdJwt: string, ctx: CredentialFaultContext): Promise<string> {
-  ensurePoint(fault, 'credential');
+  ensurePoint(fault, 'credential', 'dc+sd-jwt');
   const [issuerJwt, ...rest] = sdJwt.split('~');
   if (fault === 'credential.signature-bitflip') return [flipBitInSegment(issuerJwt, 2), ...rest].join('~');
   const change = CREDENTIAL_CHANGES[fault];
@@ -83,8 +85,9 @@ export interface StatusListFaultContext {
   skewSeconds: number;
 }
 
+/** What the Test Status Provider serves for a status list or identifier list URI: text (JWT, JSON) or CBOR. */
 export interface ServedStatusList {
-  body: string;
+  body: string | Uint8Array;
   contentType: string;
 }
 
@@ -119,33 +122,36 @@ const validity = (now: Date, notBefore: number, notAfter: number) => ({
   notAfter: new Date(now.getTime() + notAfter),
 });
 
-/** Status list signers that differ from the valid one only in the property the fault names. */
-async function otherSigner(fault: FaultId, ctx: StatusListFaultContext): Promise<CertifiedKey> {
+/**
+ * Status list signers that differ from the valid one only in the property the fault names; the same signers serve the
+ * faults of both formats (`status-list.signer-ca-x`, `status-list-cwt.signer-ca-x`, …).
+ */
+export async function otherSigner(fault: FaultId, ctx: StatusListFaultContext): Promise<CertifiedKey> {
   const { pki, now } = ctx;
   const revocationAnchor = pki.entities[ctx.issuer].anchors.revocation;
-  switch (fault) {
-    case 'status-list.signer-ca-x':
+  switch (fault.replace(/^status-list(-cwt)?\./, '')) {
+    case 'signer-ca-x':
       return pki.entities['CA-X'].signers.revocation;
-    case 'status-list.signer-pp-b-revocation':
+    case 'signer-pp-b-revocation':
       return pki.entities['PP-B'].signers.revocation;
-    case 'status-list.signer-wp-a-revocation':
+    case 'signer-wp-a-revocation':
       return pki.entities['WP-A'].signers.revocation;
-    case 'status-list.signer-ac-a':
+    case 'signer-ac-a':
       return pki.entities['AC-A'].signers.issuance;
-    case 'status-list.signer-credential-certificate':
+    case 'signer-credential-certificate':
       return ctx.credentialSigner;
-    case 'status-list.signer-self-signed':
+    case 'signer-self-signed':
       return createSelfSignedSigner('RP conformance untrusted signer', 'Self-signed status list signer', now);
-    case 'status-list.signer-other-issuance-certificate':
+    case 'signer-other-issuance-certificate':
       return createEndEntity(pki.entities[ctx.issuer].anchors.issuance, ctx.issuer, `${ctx.issuer} other issuance certificate`, validity(now, -DAY_MS, 365 * DAY_MS));
-    case 'status-list.embedded-root': {
+    case 'embedded-root': {
       const root = await createSelfSignedCa('RP conformance untrusted root', 'Untrusted root', validity(now, -DAY_MS, 365 * DAY_MS));
       const leaf = await createEndEntity(root, 'RP conformance untrusted root', 'Status list signer under an untrusted root', validity(now, -DAY_MS, 365 * DAY_MS));
       return { ...leaf, chain: [leaf.certificate, root.certificate] };
     }
-    case 'status-list.signer-expired':
+    case 'signer-expired':
       return createEndEntity(revocationAnchor, ctx.issuer, `${ctx.issuer} expired status list signer`, validity(now, -365 * DAY_MS, -DAY_MS));
-    case 'status-list.signer-not-yet-valid':
+    case 'signer-not-yet-valid':
       return createEndEntity(revocationAnchor, ctx.issuer, `${ctx.issuer} future status list signer`, validity(now, DAY_MS, 365 * DAY_MS));
     default:
       throw new Error(`fault ${fault} does not change the signer`);
@@ -176,7 +182,7 @@ async function secp256k1Signer(ctx: StatusListFaultContext) {
 
 /** Applies a Status List Token fault to a valid token and returns what the Test Status Provider serves. */
 export async function applyStatusListFault(fault: FaultId, token: string, ctx: StatusListFaultContext): Promise<ServedStatusList> {
-  ensurePoint(fault, 'status-list');
+  ensurePoint(fault, 'status-list', 'jwt');
   const jwt = (body: string) => ({ body, contentType: STATUS_LIST_JWT });
   const resign = async (change: Parameters<typeof resignJws>[1], key = ctx.signer.key.privateKey) => jwt(await resignJws(token, change, key));
   const removeFromList = (member: string) => resign(({ payload }) => void delete (payload.status_list as Record<string, unknown>)[member]);

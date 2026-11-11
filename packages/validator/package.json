@@ -18,8 +18,9 @@
     "jose": "^6.2.15"
   },
   "devDependencies": {
+    "@owf/mdoc": "0.9.3",
+    "@rp-conformance/definitions": "workspace:*",
     "@rp-conformance/status-provider": "workspace:*",
-    "@rp-conformance/trust-infrastructure": "workspace:*",
-    "@rp-conformance/definitions": "workspace:*"
+    "@rp-conformance/trust-infrastructure": "workspace:*"
   }
 }

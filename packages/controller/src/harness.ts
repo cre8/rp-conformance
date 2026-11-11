@@ -79,7 +79,7 @@ export async function startHarness(options: HarnessOptions): Promise<Harness> {
       privateJwk: access.key.privateJwk,
       privateKeyPem: access.key.privateKeyPem,
     },
-    registrationCertificate: await issueRegistrationCertificate(pki, [queries.default_query_pid]),
+    registrationCertificate: await issueRegistrationCertificate(pki, [queries.default_query_pid, queries.default_query_pid_mdoc]),
     queries,
     ics: options.ics,
   };

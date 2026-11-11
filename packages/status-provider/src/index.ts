@@ -14,7 +14,7 @@ export interface StatusBehaviour {
 }
 
 interface Registration {
-  body?: string;
+  body?: string | Uint8Array;
   behaviour: StatusBehaviour;
 }
 
@@ -68,8 +68,8 @@ export class StatusProvider {
     return `${this.publicBaseUrl}/${runId}/${randomUUID()}`;
   }
 
-  /** Registers what the URL serves. */
-  register(url: string, body: string | undefined, behaviour: StatusBehaviour = {}) {
+  /** Registers what the URL serves: text (JWT, JSON) or bytes (CWT, CBOR). */
+  register(url: string, body: string | Uint8Array | undefined, behaviour: StatusBehaviour = {}) {
     this.registrations.set(new URL(url).pathname, { body, behaviour });
   }
 

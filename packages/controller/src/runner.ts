@@ -17,8 +17,8 @@ import {
   type Verdict,
   controlsOf,
 } from '@rp-conformance/core';
-import { defaultEntitiesOf, forgePresentation } from '@rp-conformance/forge';
-import { ConformanceWallet, type PresentationEvidence } from '@rp-conformance/wallet';
+import { base64url, defaultEntitiesOf, forgePresentation } from '@rp-conformance/forge';
+import { ConformanceWallet, type HeldCredential, type PresentationEvidence } from '@rp-conformance/wallet';
 import { evaluate, worst } from './evaluate';
 import { type Harness, startHarness } from './harness';
 import { applicability, icsAnswer } from './ics';
@@ -288,7 +288,7 @@ async function runStep(
   const record = newRecord(index, step);
   const dir = join(ctx.runDir, 'artifacts', definition.id, flow, `step-${index}`);
   await mkdir(dir, { recursive: true });
-  const save = async (name: string, content: string | undefined) => {
+  const save = async (name: string, content: string | Uint8Array | undefined) => {
     if (content === undefined) return;
     await writeFile(join(dir, name), content);
     record.artifacts.push(relative(ctx.runDir, join(dir, name)));
@@ -314,7 +314,10 @@ async function runStep(
   return record;
 }
 
-type Save = (name: string, content: string | undefined) => Promise<void>;
+type Save = (name: string, content: string | Uint8Array | undefined) => Promise<void>;
+
+const sameBody = (a: string | Uint8Array, b: string | Uint8Array) =>
+  typeof a === 'string' || typeof b === 'string' ? a === b : Buffer.from(a).equals(Buffer.from(b));
 
 async function startPresentation(action: { query: PresentationAction['query'] }, flow: Flow, record: StepRecord, save: Save, ctx: Context) {
   const started = await ctx.adapter.startPresentation({ query: action.query, flow, namespace: ctx.harness.namespace });
@@ -350,22 +353,34 @@ async function runPresentation(
     allocateStatusUri: () => ctx.harness.status.allocate(ctx.harness.env.runId),
     skewSeconds,
   });
+  const mdoc = forged.format === 'mso_mdoc';
   if (forged.statusList) {
-    ctx.harness.status.register(forged.statusList.uri, forged.statusList.served.body, { contentType: forged.statusList.served.contentType });
-    await save(forged.statusList.served.contentType === 'application/json' ? 'status-list.json' : 'status-list.jwt', forged.statusList.served.body);
-    if (forged.statusList.served.body !== forged.statusList.validToken) await save('status-list.valid.jwt', forged.statusList.validToken);
+    const { served, validToken } = forged.statusList;
+    ctx.harness.status.register(forged.statusList.uri, served.body, { contentType: served.contentType });
+    const extension = mdoc ? 'cwt' : 'jwt';
+    await save(/json|cbor/.test(served.contentType) ? `status-list.${mdoc ? 'cbor' : 'json'}` : `status-list.${extension}`, served.body);
+    if (!sameBody(served.body, validToken)) await save(`status-list.valid.${extension}`, validToken);
   }
-  await save('credential.sd-jwt', forged.compact);
+  if (forged.identifierList) {
+    const { served, validToken } = forged.identifierList;
+    ctx.harness.status.register(forged.identifierList.uri, served.body, { contentType: served.contentType });
+    await save('identifier-list.cwt', served.body);
+    if (!sameBody(served.body, validToken)) await save('identifier-list.valid.cwt', validToken);
+  }
+  await save(mdoc ? 'credential.issuer-signed.cbor' : 'credential.sd-jwt', forged.credential);
 
   const query = ctx.harness.env.queries[action.query];
   const stepStart = new Date();
   const { transactionId, uri } = await startPresentation(action, flow, record, save, ctx);
   const otherKey = action.response.keyOfStep ? state.encryptionKeys.get(action.response.keyOfStep) : undefined;
   if (action.response.keyOfStep && !otherKey) throw new Error(`step ${action.response.keyOfStep} recorded no encryption key`);
-  const evidence = await ctx.wallet.present(uri, forged.compact, { enc: action.response.enc, fault: action.response.faults[0], otherTransactionKey: otherKey });
+  const held: HeldCredential = mdoc
+    ? { format: 'mso_mdoc', value: forged.credential as Uint8Array }
+    : { format: 'dc+sd-jwt', value: forged.credential as string };
+  const evidence = await ctx.wallet.present(uri, held, { enc: action.response.enc, fault: action.response.faults[0], otherTransactionKey: otherKey });
   if (evidence.encryptionKey) state.encryptionKeys.set(record.step, evidence.encryptionKey);
   await save('request.jwt', evidence.requestFetch?.body);
-  await save('presentation.sd-jwt', evidence.presentation);
+  await save(mdoc ? 'presentation.device-response.cbor' : 'presentation.sd-jwt', mdoc && evidence.presentation ? base64url.decode(evidence.presentation) : evidence.presentation);
   await save('response.form.json', evidence.responseForm && JSON.stringify(evidence.responseForm, null, 2));
   await save('wallet-evidence.json', JSON.stringify(evidence, null, 2));
   record.wallet = walletRecord(evidence);
@@ -375,9 +390,9 @@ async function runPresentation(
 
   record.rpResult = await ctx.adapter.readResult(transactionId, ctx.resultTimeoutMs ?? 15_000);
   await save('rp-result.json', JSON.stringify(record.rpResult.raw, null, 2));
-  record.statusLog = forged.statusList
-    ? ctx.harness.status.requestsFor(forged.statusList.uri, stepStart).map(({ url, at, status }) => ({ url, at, status }))
-    : [];
+  // The status list or identifier list the credential references; `FETCHED` and `NOFETCH` read its log.
+  const listUri = forged.statusList?.uri ?? forged.identifierList?.uri;
+  record.statusLog = listUri ? ctx.harness.status.requestsFor(listUri, stepStart).map(({ url, at, status }) => ({ url, at, status })) : [];
 
   const evaluation = evaluate(step.expect, {
     result: record.rpResult,

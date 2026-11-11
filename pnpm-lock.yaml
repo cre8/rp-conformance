@@ -92,6 +92,9 @@ importers:
 
   packages/forge:
     dependencies:
+      '@owf/cose':
+        specifier: 0.7.0
+        version: 0.7.0
       '@owf/crypto':
         specifier: ^0.7.0
         version: 0.7.0
@@ -110,6 +113,9 @@ importers:
       '@owf/identity-common':
         specifier: ^0.7.0
         version: 0.7.0
+      '@owf/mdoc':
+        specifier: 0.9.3
+        version: 0.9.3
       '@owf/token-status-list':
         specifier: ^0.7.0
         version: 0.7.0
@@ -125,6 +131,9 @@ importers:
       '@sd-jwt/sd-jwt-vc':
         specifier: ^0.24.3
         version: 0.24.3
+      cborg:
+        specifier: 6.1.4
+        version: 6.1.4
       jose:
         specifier: ^6.2.15
         version: 6.2.15
@@ -204,6 +213,9 @@ importers:
         specifier: ^6.2.15
         version: 6.2.15
     devDependencies:
+      '@owf/mdoc':
+        specifier: 0.9.3
+        version: 0.9.3
       '@rp-conformance/definitions':
         specifier: workspace:*
         version: link:../definitions
@@ -476,6 +488,9 @@ packages:
   '@owf/identity-common@0.7.0':
     resolution: {integrity: sha512-CNRUzoPRx7V0+uMS6+5wMxuvqhlCxlRgTt8ul7ty31Jxy3JwPhcG0EPPdWjaYDpKji5FqoE0WftglS9AC8G4Ag==}
 
+  '@owf/mdoc@0.9.3':
+    resolution: {integrity: sha512-36ricbgBRbqVlJp26FVSrd7QX2mkqRpCBXuQhTbLEvlN665is2FuI5vJBA26RWlsnX9LVA+gpJQwdTm7ZahnoA==}
+
   '@owf/token-status-list@0.7.0':
     resolution: {integrity: sha512-KhDOetcR70xi7NH9ZmaRXv7G/syBqOZTzrAmWqMiLTmM6YlEFc0qfk5RgC3pwh77GAg88P2GYlYP9B2BLz9JaQ==}
 
@@ -663,6 +678,10 @@ packages:
 
   cbor-x@1.6.9:
     resolution: {integrity: sha512-TCT9XHLb4iPGQ99fpQjcTRncbus6cXHvSD/RY+bPrDACBCJKiQLmAM6r7/BgQcI5i+8h4gwp4vjfb6S6T8bPGw==}
+
+  cborg@6.1.4:
+    resolution: {integrity: sha512-JqjDDfTuED2qUvy570NGQUXqfzC34H++AHJIZnLAmiAdHNqHJKbtzox5yViRz5rc0gM9OPSX7n7Sh+BNU263Xw==}
+    hasBin: true
 
   chai@6.3.0:
     resolution: {integrity: sha512-XWAtwJ6OHO+tj0EKCs0Y2UamnyOxseZWltU4x2U2wh8g4AigdjwvtUjvLP2tqkA/avxHEtzxNaqGq/YGNwckKg==}
@@ -1126,6 +1145,14 @@ snapshots:
 
   '@owf/identity-common@0.7.0': {}
 
+  '@owf/mdoc@0.9.3':
+    dependencies:
+      '@owf/cose': 0.7.0
+      '@owf/identity-common': 0.7.0
+      '@owf/token-status-list': 0.7.0
+      '@owf/x509': 0.7.0
+      zod: 4.6.7
+
   '@owf/token-status-list@0.7.0':
     dependencies:
       '@owf/cose': 0.7.0
@@ -1293,6 +1320,8 @@ snapshots:
   cbor-x@1.6.9:
     optionalDependencies:
       cbor-extract: 2.2.3
+
+  cborg@6.1.4: {}
 
   chai@6.3.0: {}
 

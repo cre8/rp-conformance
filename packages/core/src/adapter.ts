@@ -2,10 +2,24 @@ import type { Flow } from './definition';
 
 /**
  * A default DCQL query of `default_configuration_rp_1`, see the FCAF defaults "Relying Party testing".
- * `default_query_pid_trusted_authorities` is `default_query_pid` restricted with a `trusted_authorities` entry of type
- * `aki` naming the PID/Issuance anchor of `PP-A` (TrustMechanisms_016); test cases call it `default_query_pid`.
+ * `default_query_pid` asks for a PID "in the credential format of the test case", so it has one variant per format:
+ * `default_query_pid` for SD-JWT VC and `default_query_pid_mdoc` for mdoc. `…_trusted_authorities` is the variant
+ * restricted with a `trusted_authorities` entry of type `aki` naming the PID/Issuance anchor of `PP-A`
+ * (TrustMechanisms_016). Test cases call all four `default_query_pid`.
  */
-export type DefaultQueryId = 'default_query_pid' | 'default_query_pid_trusted_authorities';
+export type DefaultQueryId =
+  | 'default_query_pid'
+  | 'default_query_pid_trusted_authorities'
+  | 'default_query_pid_mdoc'
+  | 'default_query_pid_mdoc_trusted_authorities';
+
+/** Every default query, in the order the adapters configure them. */
+export const DEFAULT_QUERY_IDS: DefaultQueryId[] = [
+  'default_query_pid',
+  'default_query_pid_trusted_authorities',
+  'default_query_pid_mdoc',
+  'default_query_pid_mdoc_trusted_authorities',
+];
 
 /** A certificate with its private key, as the harness hands it to the Relying Party under test. */
 export interface KeyedCertificate {

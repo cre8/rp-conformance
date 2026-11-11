@@ -1,6 +1,6 @@
 import { createAccessCertificate } from '@owf/eudi-access-certificate';
 import { type Certificate, createCertificate, type KeyUsageType,
-  type NameAttributeInput, parseCertificate } from '@owf/x509';
+  type NameAttributeInput, parseCertificate, type X509Extension } from '@owf/x509';
 import { type EcKeyPair, generateEcKeyPair, randomSerial, sha256, signEs256 } from './crypto';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -60,9 +60,14 @@ export interface TestEntity {
   spec: EntitySpec;
   /** `iss` of credentials and status lists the entity signs. */
   issuerUri: string;
+  /** Self-signed anchors in the IACA root profile of ISO/IEC 18013-5 Annex B, which also serve SD-JWT VC. */
   anchors: { issuance: CertifiedKey; revocation: CertifiedKey };
-  /** End-entity signing certificates under the anchors. */
-  signers: { issuance: CertifiedKey; revocation: CertifiedKey };
+  /**
+   * End-entity signing certificates: `issuance` signs SD-JWT VCs, `mdoc` is the document signer (DS) of mdocs in the
+   * profile of ISO/IEC 18013-5 Annex B, both under the issuance anchor; `revocation` signs status and identifier lists
+   * under the revocation anchor.
+   */
+  signers: { issuance: CertifiedKey; mdoc: CertifiedKey; revocation: CertifiedKey };
 }
 
 export interface TestPki {
@@ -82,12 +87,47 @@ const subjectFor = (organization: string, commonName: string): NameAttributeInpu
 
 const keyIdHasher = (data: ArrayBuffer) => sha256(new Uint8Array(data));
 
+/** `id-mdl-kp-mdlDS` (ISO/IEC 18013-5 Annex B, Table B.3): the extended key usage of an mdoc document signer. */
+export const MDOC_DS_EXTENDED_KEY_USAGE = '1.0.18013.5.1.2';
+
+/** DER of a length. */
+const derLength = (length: number) =>
+  length < 0x80 ? [length] : length < 0x100 ? [0x81, length] : [0x82, length >> 8, length & 0xff];
+const der = (tag: number, content: number[] | Uint8Array) => new Uint8Array([tag, ...derLength(content.length), ...content]);
+
+/** DER of an object identifier in dotted form. */
+function derOid(oid: string): Uint8Array {
+  const [first, second, ...rest] = oid.split('.').map(Number);
+  const bytes = [40 * first + second];
+  for (const arc of rest) {
+    const groups = [arc & 0x7f];
+    for (let value = arc >> 7; value > 0; value >>= 7) groups.unshift((value & 0x7f) | 0x80);
+    bytes.push(...groups);
+  }
+  return der(0x06, bytes);
+}
+
+/** The extensions of the ISO/IEC 18013-5 Annex B profiles that `@owf/x509` has no template field for. */
+const annexBExtensions = (uri: string, documentSigner: boolean): X509Extension[] => [
+  // IssuerAltName (2.5.29.18): GeneralNames with one uniformResourceIdentifier [6].
+  { oid: '2.5.29.18', critical: false, value: der(0x30, der(0x86, new TextEncoder().encode(uri))) },
+  // ExtendedKeyUsage (2.5.29.37), critical for a document signer.
+  ...(documentSigner ? [{ oid: '2.5.29.37', critical: true, value: der(0x30, derOid(MDOC_DS_EXTENDED_KEY_USAGE)) }] : []),
+];
+
+/**
+ * A self-signed CA in the IACA root profile of ISO/IEC 18013-5 Annex B (Table B.1): `basicConstraints` CA with path
+ * length 0 and `keyUsage` keyCertSign and cRLSign, both critical, a subject key identifier, an issuer alternative name
+ * and a CRL distribution point. The same profile serves as the anchor of SD-JWT VC issuers.
+ */
 export async function createSelfSignedCa(
   organization: string,
   commonName: string,
   validity: { notBefore: Date; notAfter: Date },
+  options: { uri?: string } = {},
 ): Promise<CertifiedKey> {
   const key = await generateEcKeyPair();
+  const uri = options.uri ?? `https://${commonName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.rp-test`;
   const certificate = await createCertificate({
     subject: subjectFor(organization, commonName),
     subjectPublicKey: key.publicJwk,
@@ -96,10 +136,43 @@ export async function createSelfSignedCa(
     notAfter: validity.notAfter,
     signatureAlgorithm: 'ES256',
     basicConstraints: { cA: true, pathLenConstraint: 0 },
+    keyUsage: ['keyCertSign', 'crlSign'],
+    crlDistributionPoints: [`${uri}/crl`],
+    extensions: annexBExtensions(uri, false),
     hasher: keyIdHasher,
     signer: (tbs) => signEs256(key.privateKey, tbs),
   });
   return { certificate, key, chain: [] };
+}
+
+/**
+ * An mdoc document signer certificate in the profile of ISO/IEC 18013-5 Annex B (Table B.3): `keyUsage`
+ * digitalSignature and the extended key usage `1.0.18013.5.1.2`, both critical, authority and subject key identifiers,
+ * an issuer alternative name, a CRL distribution point, and the issuer's country in the subject.
+ */
+export async function createDocumentSigner(
+  issuer: CertifiedKey,
+  organization: string,
+  commonName: string,
+  validity: { notBefore: Date; notAfter: Date },
+  uri = `https://${organization.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.rp-test`,
+): Promise<CertifiedKey> {
+  const key = await generateEcKeyPair();
+  const certificate = await createCertificate({
+    subject: subjectFor(organization, commonName),
+    subjectPublicKey: key.publicJwk,
+    issuerCertificate: issuer.certificate.der,
+    serialNumber: randomSerial(),
+    notBefore: validity.notBefore,
+    notAfter: validity.notAfter,
+    signatureAlgorithm: 'ES256',
+    keyUsage: ['digitalSignature'],
+    crlDistributionPoints: [`${uri}/crl`],
+    extensions: annexBExtensions(uri, true),
+    hasher: keyIdHasher,
+    signer: (tbs) => signEs256(issuer.key.privateKey, tbs),
+  });
+  return { certificate, key, chain: [certificate, ...issuer.chain] };
 }
 
 export async function createEndEntity(
@@ -149,15 +222,22 @@ export async function createSelfSignedSigner(organization: string, commonName: s
   return { certificate, key, chain: [certificate] };
 }
 
+/** Validity of a document signer certificate: at most 457 days (ISO/IEC 18013-5 Annex B, Table B.3). */
+export const documentSignerValidity = (now: Date, anchorNotAfter = new Date(now.getTime() + YEAR)) => ({
+  // Starts before the `signed` time of the MSOs the harness issues (two days in the past).
+  notBefore: new Date(Math.min(now.getTime() - 10 * DAY, anchorNotAfter.getTime() - YEAR)),
+  notAfter: new Date(now.getTime() + YEAR),
+});
+
 async function createEntity(spec: EntitySpec, now: Date): Promise<TestEntity> {
   const anchorValidity = spec.expiredAnchor
     ? { notBefore: new Date(now.getTime() - 2 * YEAR), notAfter: new Date(now.getTime() - DAY) }
-    : { notBefore: new Date(now.getTime() - DAY), notAfter: new Date(now.getTime() + 10 * YEAR) };
-  const issuanceAnchor = await createSelfSignedCa(spec.id, `CA-${spec.id}`, anchorValidity);
-  const revocationAnchor = spec.separateRevocationAnchor
-    ? await createSelfSignedCa(spec.id, `CA-${spec.id}-REV`, anchorValidity)
-    : issuanceAnchor;
+    : { notBefore: new Date(now.getTime() - 30 * DAY), notAfter: new Date(now.getTime() + 10 * YEAR) };
   const issuerUri = `https://${spec.host}`;
+  const issuanceAnchor = await createSelfSignedCa(spec.id, `CA-${spec.id}`, anchorValidity, { uri: issuerUri });
+  const revocationAnchor = spec.separateRevocationAnchor
+    ? await createSelfSignedCa(spec.id, `CA-${spec.id}-REV`, anchorValidity, { uri: issuerUri })
+    : issuanceAnchor;
   const leafValidity = {
     notBefore: new Date(Math.min(now.getTime() - DAY, anchorValidity.notAfter.getTime() - YEAR)),
     notAfter: new Date(now.getTime() + 2 * YEAR),
@@ -165,12 +245,19 @@ async function createEntity(spec: EntitySpec, now: Date): Promise<TestEntity> {
     uris: [issuerUri],
   };
   const issuanceSigner = await createEndEntity(issuanceAnchor, spec.id, `${spec.id} issuance signer`, leafValidity);
+  const documentSigner = await createDocumentSigner(
+    issuanceAnchor,
+    spec.id,
+    `${spec.id} document signer`,
+    documentSignerValidity(now, anchorValidity.notAfter),
+    issuerUri,
+  );
   const revocationSigner = await createEndEntity(revocationAnchor, spec.id, `${spec.id} status list signer`, leafValidity);
   return {
     spec,
     issuerUri,
     anchors: { issuance: issuanceAnchor, revocation: revocationAnchor },
-    signers: { issuance: issuanceSigner, revocation: revocationSigner },
+    signers: { issuance: issuanceSigner, mdoc: documentSigner, revocation: revocationSigner },
   };
 }
 

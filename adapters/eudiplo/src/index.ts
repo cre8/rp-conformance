@@ -1,4 +1,5 @@
 import type {
+  DcqlQuery,
   DefaultQueryId,
   Flow,
   RelyingPartyAdapter,
@@ -45,6 +46,9 @@ export class EudiploAdapter implements RelyingPartyAdapter {
   private token?: string;
   private tenantId?: string;
   private skewSeconds?: number;
+  private queries?: Record<DefaultQueryId, DcqlQuery>;
+  /** The default query of each started transaction, to read its released attributes. */
+  private readonly transactionQueries = new Map<string, DefaultQueryId>();
 
   constructor(private readonly options: EudiploAdapterOptions = {}) {
     this.baseUrl = (options.baseUrl ?? process.env.EUDIPLO_URL ?? `http://127.0.0.1:${process.env.EUDIPLO_PORT ?? 3000}`).replace(/\/$/, '');
@@ -108,6 +112,7 @@ export class EudiploAdapter implements RelyingPartyAdapter {
       .replace(/-----(BEGIN|END) CERTIFICATE-----/g, '')
       .replace(/\s+/g, '');
     this.skewSeconds = Number(env.ics.items['RP.P.4'] ?? 60);
+    this.queries = env.queries;
 
     for (const [id, query] of Object.entries(env.queries)) {
       // The ICS declares RP.P.3 No: EUDIPLO is configured with trusted_authorities of its own (etsi_tl below), so the
@@ -138,7 +143,26 @@ export class EudiploAdapter implements RelyingPartyAdapter {
       requestId: req.query,
       skewSeconds: this.skewSeconds,
     });
+    this.transactionQueries.set(offer.session, req.query);
     return { transactionId: offer.session, invocation: { uri: offer.uri } };
+  }
+
+  /**
+   * The released attributes in the shape of the query's claim paths. EUDIPLO reports the elements of an mdoc as one
+   * flat map over all namespaces; each element goes back under the namespace the query requested it in, and an element
+   * the query did not request under the first requested namespace, so the evaluation still sees it.
+   */
+  private releasedAttributes(transactionId: string, values: Record<string, unknown>): Record<string, unknown> {
+    const query = this.queries?.[this.transactionQueries.get(transactionId) ?? 'default_query_pid'];
+    const credential = query?.credentials[0];
+    if (credential?.format !== 'mso_mdoc') return values;
+    const paths = (credential.claims ?? []).map((claim) => claim.path.map(String));
+    const released: Record<string, Record<string, unknown>> = {};
+    for (const [element, value] of Object.entries(values)) {
+      const namespace = paths.find((path) => path[1] === element)?.[0] ?? paths[0]?.[0] ?? 'unknown';
+      (released[namespace] ??= {})[element] = value;
+    }
+    return released;
   }
 
   async readResult(transactionId: string, timeoutMs: number): Promise<RelyingPartyResult> {
@@ -151,8 +175,8 @@ export class EudiploAdapter implements RelyingPartyAdapter {
     } while (Date.now() < deadline);
     if (PENDING.has(session.status)) return { outcome: 'pending', raw: session };
     if (session.status === 'completed') {
-      const releasedAttributes = Object.assign({}, ...(session.credentials ?? []).flatMap((c) => c.values));
-      return { outcome: 'success', releasedAttributes, raw: session };
+      const values = Object.assign({}, ...(session.credentials ?? []).flatMap((c) => c.values));
+      return { outcome: 'success', releasedAttributes: this.releasedAttributes(transactionId, values), raw: session };
     }
     return { outcome: 'failure', raw: session };
   }

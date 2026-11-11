@@ -7,6 +7,9 @@ const LIBRARIES = [
   '@owf/eudi-lote',
   '@owf/eudi-jades',
   '@owf/token-status-list',
+  '@owf/mdoc',
+  '@owf/cose',
+  'cborg',
   '@owf/eudi-access-certificate',
   '@owf/eudi-registration-certificate',
 ];
@@ -24,7 +27,7 @@ export function harnessInfo() {
   };
   return {
     name: 'rp-conformance',
-    phase: 0,
+    phase: 2,
     node: process.version,
     libraries: {
       ...Object.fromEntries(LIBRARIES.map((name) => [name, version(fromForge, name)])),

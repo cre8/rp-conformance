@@ -1,11 +1,12 @@
-import { inflateSync } from 'node:zlib';
 import { type CheckId, CREDENTIAL_CHECKS, STATUS_LIST_CHECKS } from '@rp-conformance/core';
 import { base64url, sdJwtHasher, sha256, verifyEs256 } from '@rp-conformance/forge';
 import { decodeSdJwtSync, unpackSync } from '@sd-jwt/core';
 import { parseCertificate } from '@owf/x509';
-import { CheckFailure, CheckRecorder, NotApplicable, type ValidationMode, type ValidationResult } from './checks';
+import { CheckRecorder, type ValidationMode, type ValidationResult } from './checks';
+import { decodeSegment, evaluateStatusList, type FetchedStatusList, fail, isUri, leafJwk } from './status-list';
 import type { TrustedEntity, TrustStore } from './trust';
-import { validatePath } from './x509-path';
+
+export type { FetchedStatusList };
 
 /** Every check of an SD-JWT VC presentation and its Status List Token, in the order the reference validator runs them. */
 export const SD_JWT_VC_CHECKS: CheckId[] = [...CREDENTIAL_CHECKS, ...STATUS_LIST_CHECKS];
@@ -17,12 +18,6 @@ export interface SdJwtVcValidation extends ValidationResult {
   issuer?: string;
   /** Whether the validator retrieved the status list. */
   statusListFetched: boolean;
-}
-
-export interface FetchedStatusList {
-  status: number;
-  body: string;
-  contentType?: string | null;
 }
 
 export interface SdJwtVcValidationOptions {
@@ -55,36 +50,6 @@ export interface SdJwtVcValidationOptions {
 }
 
 const DAY = 24 * 60 * 60;
-
-const decodeSegment = (segment: string | undefined, what: string): Record<string, unknown> => {
-  let value: unknown;
-  try {
-    value = base64url.decodeJson(segment ?? '');
-  } catch {
-    throw new CheckFailure(`${what} cannot be decoded`);
-  }
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CheckFailure(`${what} is not a JSON object`);
-  return value as Record<string, unknown>;
-};
-
-const fail = (message: string): never => {
-  throw new CheckFailure(message);
-};
-
-const isUri = (value: unknown) => {
-  if (typeof value !== 'string') return false;
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' || url.protocol === 'http:';
-  } catch {
-    return false;
-  }
-};
-
-const leafJwk = (x5c: unknown): JsonWebKey | undefined => {
-  if (!Array.isArray(x5c) || typeof x5c[0] !== 'string') return undefined;
-  return parseCertificate(x5c[0]).publicKey.jwk;
-};
 
 /**
  * The reference validator for an SD-JWT VC presentation with KB-JWT (SD-JWT VC, RFC 9901, Token Status List). Every
@@ -215,100 +180,20 @@ export async function validateSdJwtVcPresentation(presentation: string, options:
     });
 
     // Status list procedures (Token Status List section 8). In first-failure mode they run only for a valid credential.
-    const noReference = () => (reference ? undefined : new NotApplicable('the credential has no status reference'));
-    let token = { header: {} as Record<string, unknown>, payload: {} as Record<string, unknown>, compact: '' };
-    let decoded: Uint8Array | undefined;
-    let bits = 0;
-
-    await recorder.run('status-list-fetch', ['status-reference'], async () => {
-      if (!reference) return noReference();
-      statusListFetched = true;
-      const fetched = await options.fetchStatusList(reference.uri);
-      if (fetched.status !== 200) fail(`HTTP ${fetched.status}`);
-      token.compact = fetched.body.trim();
-    });
-
-    await recorder.run('status-list-format', ['status-list-fetch'], () => {
-      const parts = token.compact.split('.');
-      if (parts.length !== 3) fail(`not a compact JWS (${parts.length} parts)`);
-      token = { ...token, header: decodeSegment(parts[0], 'the Status List Token header'), payload: decodeSegment(parts[1], 'the Status List Token payload') };
-    });
-
-    await recorder.run('status-list-type', ['status-list-format'], () => {
-      if (token.header.typ !== 'statuslist+jwt') fail(`typ is ${String(token.header.typ)}, expected statuslist+jwt`);
-    });
-
-    await recorder.run('status-list-trust', ['status-list-format', 'issuer-trust'], async () => {
-      const chain = token.header.x5c;
-      if (!Array.isArray(chain) || chain.length === 0) fail('the Status List Token has no x5c');
-      const anchors = entity ? options.trust.revocationAnchors(entity) : [];
-      const path = await validatePath(chain as string[], anchors, now);
-      if (!path.ok) fail(`not under a revocation anchor of ${entity?.name}: ${path.reason}`);
-      return path.ok ? `${path.leaf.subject.commonName} under ${path.anchor.subject.commonName}` : undefined;
-    });
-
-    await recorder.run('status-list-signature', ['status-list-format'], async () => {
-      if (token.header.alg !== 'ES256') fail(`alg ${String(token.header.alg)} is not accepted`);
-      if (!Array.isArray(token.header.x5c) || token.header.x5c.length === 0) return new NotApplicable('no x5c, so no key to verify with');
-      const jwk = leafJwk(token.header.x5c);
-      if (!jwk || jwk.crv !== 'P-256') fail('the signing certificate has no P-256 key');
-      const [h, p, s] = token.compact.split('.');
-      if (!(await verifyEs256(jwk as JsonWebKey, `${h}.${p}`, base64url.decode(s ?? '')))) fail('the Status List Token signature does not verify');
-    });
-
-    await recorder.run('status-list-claims', ['status-list-format'], () => {
-      const p = token.payload;
-      const missing = [
-        typeof p.sub !== 'string' && 'sub',
-        typeof p.iat !== 'number' && 'iat',
-        (!p.status_list || typeof p.status_list !== 'object') && 'status_list',
-      ].filter(Boolean);
-      if (missing.length) fail(`missing ${missing.join(', ')}`);
-      const list = p.status_list as Record<string, unknown>;
-      const listMissing = [list.bits === undefined && 'bits', list.lst === undefined && 'lst'].filter(Boolean);
-      if (listMissing.length) fail(`status_list has no ${listMissing.join(', ')}`);
-    });
-
-    await recorder.run('status-list-subject', ['status-list-format'], () => {
-      if (token.payload.sub === undefined) return new NotApplicable('no sub');
-      if (token.payload.sub !== reference?.uri) fail(`sub ${String(token.payload.sub)} is not the credential's status uri`);
-    });
-
-    await recorder.run('status-list-validity', ['status-list-format'], () => {
-      const exp = token.payload.exp;
-      if (exp === undefined) return new NotApplicable('no exp');
-      if (typeof exp !== 'number') fail('exp is not a number');
-      if (nowSeconds > (exp as number) + skew) fail(`expired: exp ${exp}, now ${nowSeconds}, T_skew ${skew}`);
-    });
-
-    await recorder.run('status-list-decoding', ['status-list-format'], () => {
-      const list = token.payload.status_list as { bits?: unknown; lst?: unknown } | undefined;
-      if (!list || list.bits === undefined || list.lst === undefined) return new NotApplicable('no bits or lst');
-      if (![1, 2, 4, 8].includes(list.bits as number)) fail(`bits ${String(list.bits)} is not 1, 2, 4 or 8`);
-      bits = list.bits as number;
-      if (typeof list.lst !== 'string' || !/^[A-Za-z0-9_-]+$/.test(list.lst)) fail('lst is not base64url');
-      try {
-        decoded = new Uint8Array(inflateSync(Buffer.from(list.lst as string, 'base64url'), { maxOutputLength: options.maxStatusListBytes }));
-      } catch (error) {
-        const tooLarge = (error as { code?: string }).code === 'ERR_BUFFER_TOO_LARGE' || error instanceof RangeError;
-        fail(tooLarge ? `the status list decompresses to more than ${options.maxStatusListBytes} bytes` : `lst is not valid ZLIB data: ${(error as Error).message}`);
-      }
-      return `${decoded?.length} bytes, ${bits} bits per status`;
-    });
-
-    await recorder.run('status-index', ['status-list-decoding', 'status-reference'], () => {
-      const entries = ((decoded?.length ?? 0) * 8) / bits;
-      if (!reference || reference.idx >= entries) fail(`index ${reference?.idx} is outside the ${entries} entries of the status list`);
-    });
-
-    await recorder.run('status', ['status-index'], () => {
-      const idx = reference?.idx ?? 0;
-      const byte = decoded?.[Math.floor((idx * bits) / 8)] ?? 0;
-      const value = (byte >> ((idx * bits) % 8)) & ((1 << bits) - 1);
-      const hex = `0x${value.toString(16).padStart(2, '0')}`;
-      if (value === 0) return `${hex} (VALID)`;
-      if (options.validStatuses?.includes(value)) return `${hex}, declared as valid`;
-      fail(`status ${hex} at index ${idx}${value === 1 ? ' (INVALID)' : value === 2 ? ' (SUSPENDED)' : ''}`);
+    await evaluateStatusList(recorder, {
+      format: 'jwt',
+      reference,
+      entity,
+      trust: options.trust,
+      fetchStatusList: options.fetchStatusList,
+      maxStatusListBytes: options.maxStatusListBytes,
+      validStatuses: options.validStatuses,
+      skewSeconds: skew,
+      now,
+      // Recorded before the request, so a failure that ends validation in first-failure mode still counts the fetch.
+      onFetched: () => {
+        statusListFetched = true;
+      },
     });
   });
   return { ...result, claims: result.failures.includes('disclosures') ? undefined : claims, issuer: entity?.name, statusListFetched };

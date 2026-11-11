@@ -10,25 +10,40 @@ import {
   defaultEntitiesOf,
   defaultQueries,
   type EcKeyPair,
+  encodeDeviceResponse,
   forgePresentation,
   type ForgedCredential,
   generateEcKeyPair,
+  jwkThumbprint,
   LIST_PROFILES,
   type LoteListId,
+  PID_DOCTYPE,
   PID_VCT,
+  presentMdoc,
   presentSdJwtVc,
+  requestedElements,
   type ServedStatusList,
   type TestPki,
 } from '@rp-conformance/forge';
 import { exportJWK, generateKeyPair, type JWK } from 'jose';
 import type { CheckResult } from '@rp-conformance/core';
-import { type SdJwtVcValidation, TrustStore, type ValidationMode, validateAuthorizationResponse, validateSdJwtVcPresentation } from '../src/index';
+import {
+  type FetchedStatusList,
+  type MdocValidation,
+  type SdJwtVcValidation,
+  TrustStore,
+  type ValidationMode,
+  validateAuthorizationResponse,
+  validateMdocPresentation,
+  validateSdJwtVcPresentation,
+} from '../src/index';
 
 export const LISTS: LoteListId[] = ['TL-PID', 'TL-PUB', 'TL-WP', 'TL-AC', 'TL-RC'];
 export const AUDIENCE = 'x509_hash:self-validation';
 export const SKEW = 60;
 export const KB_MAX_AGE = 300;
 export const MAX_STATUS_LIST_BYTES = 1 << 20;
+export const RESPONSE_URI = 'https://rp.rp-test/self-validation/response';
 const BASE = 'https://trust.rp-test/self-validation';
 
 export interface Transaction {
@@ -40,7 +55,7 @@ export interface Transaction {
 export interface SelfValidation {
   forged: ForgedCredential;
   response: CheckResult[];
-  credential?: SdJwtVcValidation;
+  credential?: SdJwtVcValidation | MdocValidation;
   /** Every failed check of the response and the credential. */
   failures: string[];
 }
@@ -107,15 +122,28 @@ export class Fixture {
       skewSeconds: SKEW,
     });
     if (forged.statusList) this.statusLists.set(forged.statusList.uri, forged.statusList.served);
+    if (forged.identifierList) this.statusLists.set(forged.identifierList.uri, forged.identifierList.served);
     const tx = await this.transaction();
     const query = this.queries[action.query];
     const credentialQuery = query.credentials[0];
-    const presentation = await presentSdJwtVc(forged.compact, {
-      holderPrivateKey: this.holder.privateKey,
-      disclose: (credentialQuery.claims ?? []).map((c) => String(c.path[0])),
-      audience: AUDIENCE,
-      nonce: tx.nonce,
-    });
+    const presentation =
+      forged.format === 'mso_mdoc'
+        ? encodeDeviceResponse(
+            await presentMdoc(forged.credential as Uint8Array, {
+              holderPrivateKey: this.holder.privateKey,
+              clientId: AUDIENCE,
+              nonce: tx.nonce,
+              responseUri: RESPONSE_URI,
+              jwkThumbprint: await jwkThumbprint(tx.key.publicJwk as JsonWebKey),
+              elements: requestedElements(credentialQuery.claims),
+            }),
+          )
+        : await presentSdJwtVc(forged.credential as string, {
+            holderPrivateKey: this.holder.privateKey,
+            disclose: (credentialQuery.claims ?? []).map((c) => String(c.path[0])),
+            audience: AUDIENCE,
+            nonce: tx.nonce,
+          });
     const encValues = ['A128GCM', 'A256GCM'];
     const form = await buildAuthorizationResponse(
       {
@@ -129,25 +157,39 @@ export class Fixture {
     );
     const response = await validateAuthorizationResponse(form, { keys: [tx.key], encValues, state: tx.state, mode });
     const presented = (response.payload?.vp_token as Record<string, string[]> | undefined)?.[credentialQuery.id]?.[0];
-    const credential = presented
-      ? await validateSdJwtVcPresentation(presented, {
-          trust: this.trust,
-          issuerList: 'TL-PID',
-          expectedVct: [PID_VCT],
-          nonce: tx.nonce,
-          audience: AUDIENCE,
-          skewSeconds: SKEW,
-          kbMaxAgeSeconds: KB_MAX_AGE,
-          requireStatus: true,
-          maxStatusListBytes: MAX_STATUS_LIST_BYTES,
-          trustedAuthorities: credentialQuery.trusted_authorities,
-          fetchStatusList: async (uri) => {
-            const served = this.statusLists.get(uri);
-            return served ? { status: 200, body: served.body, contentType: served.contentType } : { status: 404, body: '' };
-          },
-          mode,
-        })
-      : undefined;
+    const fetchList = async (uri: string): Promise<FetchedStatusList> => {
+      const served = this.statusLists.get(uri);
+      return served ? { status: 200, body: served.body, contentType: served.contentType } : { status: 404, body: '' };
+    };
+    const common = {
+      trust: this.trust,
+      issuerList: 'TL-PID',
+      nonce: tx.nonce,
+      skewSeconds: SKEW,
+      requireStatus: true,
+      maxStatusListBytes: MAX_STATUS_LIST_BYTES,
+      trustedAuthorities: credentialQuery.trusted_authorities,
+      mode,
+    };
+    const credential = !presented
+      ? undefined
+      : forged.format === 'mso_mdoc'
+        ? await validateMdocPresentation(presented, {
+            ...common,
+            expectedDocType: PID_DOCTYPE,
+            clientId: AUDIENCE,
+            responseUri: RESPONSE_URI,
+            jwkThumbprint: await jwkThumbprint(tx.key.publicJwk as JsonWebKey),
+            fetchStatusList: fetchList,
+            fetchIdentifierList: fetchList,
+          })
+        : await validateSdJwtVcPresentation(presented, {
+            ...common,
+            expectedVct: [PID_VCT],
+            audience: AUDIENCE,
+            kbMaxAgeSeconds: KB_MAX_AGE,
+            fetchStatusList: fetchList,
+          });
     return { forged, response: response.checks, credential, failures: [...response.failures, ...(credential?.failures ?? [])] };
   }
 }

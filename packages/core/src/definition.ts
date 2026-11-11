@@ -48,11 +48,14 @@ export const relevancy = {
 
 export type Relevancy = (typeof relevancy)[keyof typeof relevancy];
 
+/** Credential formats of the Relying Party SUT (OpenID4VP format identifiers). */
+export type CredentialFormat = 'dc+sd-jwt' | 'mso_mdoc';
+
 /** A credential the Test Issuers issue for a step, valid unless a fault is applied. */
 export interface CredentialSpec {
   /** The FCAF default credential: `default_credential_pid`, or `default_credential_pid_short` (under 24 hours, no status). */
   defaultCredential: 'default_credential_pid' | 'default_credential_pid_short';
-  format: 'dc+sd-jwt';
+  format: CredentialFormat;
   /** Entity of `default_trust_configuration_rp` that issues the credential. */
   issuer: string;
   /** The anchor of the issuer the signing certificate is under; default `issuance` (`revocation`: TrustMechanisms_004). */
@@ -61,9 +64,9 @@ export interface CredentialSpec {
   faults: FaultId[];
 }
 
-/** A Status List Token the Test Status Provider serves for the step's credential. */
+/** A Status List Token the Test Status Provider serves for the step's credential: JWT for SD-JWT VC, CWT for mdoc. */
 export interface StatusListSpec {
-  format: 'jwt';
+  format: 'jwt' | 'cwt';
   /** Status value at the credential's index; 0 is VALID. */
   status: number;
   /** Status value of every other entry; default 0. */
@@ -75,6 +78,18 @@ export interface StatusListSpec {
   /** Signer: an entity's revocation signer (default: the credential's issuer), or its issuance signer, the credential's own. */
   signer?: { entity: string; key: 'revocation' | 'issuance' };
   /** Named faults (at most one); empty for a valid token. */
+  faults: FaultId[];
+}
+
+/**
+ * An identifier list (ISO/IEC 18013-5 second edition section 12.3.6.4, CWT) the Test Status Provider serves for the
+ * step's mdoc, whose MSO then references it with an `identifier_list` entry instead of a `status_list` entry.
+ */
+export interface IdentifierListSpec {
+  format: 'cwt';
+  /** Whether the list contains the credential's identifier (the credential is revoked). */
+  contains: boolean;
+  /** Named faults (at most one); empty for a valid list. */
   faults: FaultId[];
 }
 
@@ -93,8 +108,10 @@ export interface PresentationAction {
   kind: 'presentation';
   query: DefaultQueryId;
   credential: CredentialSpec;
-  /** The Status List Token of the credential; `null` when the credential has no status reference. */
+  /** The Status List Token of the credential; `null` when the credential has no status list reference. */
   statusList: StatusListSpec | null;
+  /** The identifier list of an mdoc; left out or `null` when it has none. */
+  identifierList?: IdentifierListSpec | null;
   response: ResponseSpec;
 }
 
@@ -230,19 +247,37 @@ export function step(definition: StepDefinition): StepDefinition {
   return definition;
 }
 
+/** The status list format of a credential format: JWT for SD-JWT VC, CWT for mdoc. */
+export const statusListFormatOf = (format: CredentialFormat): StatusListSpec['format'] => (format === 'mso_mdoc' ? 'cwt' : 'jwt');
+
+/**
+ * A presentation step. Without `statusList` the credential references a valid Status List Token in the format that
+ * belongs to its own (none for `default_credential_pid_short`, nor for an mdoc that references an identifier list).
+ * Refuses more than one fault, a fault at another point, and a fault or list in another format.
+ */
 export function presentation(
   action: Omit<PresentationAction, 'kind' | 'statusList' | 'response'> & { statusList?: StatusListSpec | null; response?: ResponseSpec },
 ): PresentationAction {
-  const statusList = action.statusList === undefined ? (action.credential.defaultCredential === 'default_credential_pid_short' ? null : statusListToken.jwt()) : action.statusList;
+  const { credential } = action;
+  const withoutStatus = credential.defaultCredential === 'default_credential_pid_short' || Boolean(action.identifierList);
+  const statusList =
+    action.statusList === undefined ? (withoutStatus ? null : statusListToken.of(statusListFormatOf(credential.format))) : action.statusList;
   const result: PresentationAction = { kind: 'presentation', ...action, statusList, response: action.response ?? { faults: [] } };
   const faults = faultsOf(result);
   if (faults.length > 1) throw new Error(`a step applies one fault, not ${faults.join(', ')}`);
-  for (const [fault, point] of [
-    ...result.credential.faults.map((f) => [f, 'credential'] as const),
-    ...(result.statusList?.faults ?? []).map((f) => [f, 'status-list'] as const),
-    ...result.response.faults.map((f) => [f, 'response'] as const),
+  if (result.statusList && result.statusList.format !== statusListFormatOf(credential.format)) {
+    throw new Error(`a ${credential.format} credential references a Status List Token in ${statusListFormatOf(credential.format)} format`);
+  }
+  if (result.identifierList && credential.format !== 'mso_mdoc') throw new Error('only an mdoc references an identifier list');
+  for (const [fault, point, format] of [
+    ...credential.faults.map((f) => [f, 'credential', credential.format] as const),
+    ...(result.statusList?.faults ?? []).map((f) => [f, 'status-list', result.statusList?.format] as const),
+    ...(result.identifierList?.faults ?? []).map((f) => [f, 'identifier-list', 'cwt'] as const),
+    ...result.response.faults.map((f) => [f, 'response', undefined] as const),
   ]) {
-    if (faultInfo(fault).point !== point) throw new Error(`fault ${fault} does not apply to the ${point}`);
+    const info = faultInfo(fault);
+    if (info.point !== point) throw new Error(`fault ${fault} does not apply to the ${point}`);
+    if (info.format && info.format !== format) throw new Error(`fault ${fault} applies to ${info.format}, not ${format}`);
   }
   return result;
 }
@@ -250,30 +285,78 @@ export function presentation(
 /** Every fault of a presentation. */
 export function faultsOf(action: StepAction): FaultId[] {
   if (action.kind !== 'presentation') return [];
-  return [...action.credential.faults, ...(action.statusList?.faults ?? []), ...action.response.faults];
+  return [
+    ...action.credential.faults,
+    ...(action.statusList?.faults ?? []),
+    ...(action.identifierList?.faults ?? []),
+    ...action.response.faults,
+  ];
+}
+
+/** The default query for a PID in `format`, optionally the variant restricted with `trusted_authorities`. */
+export function pidQueryOf(format: CredentialFormat, options: { trustedAuthorities?: boolean } = {}): DefaultQueryId {
+  const base = format === 'mso_mdoc' ? 'default_query_pid_mdoc' : 'default_query_pid';
+  return (options.trustedAuthorities ? `${base}_trusted_authorities` : base) as DefaultQueryId;
+}
+
+export interface PidOptions {
+  issuer?: string;
+  signedUnder?: 'issuance' | 'revocation';
+  faults?: FaultId[];
 }
 
 /** Builders for the default credentials. */
 export const pid = {
-  /** `default_credential_pid` in SD-JWT VC format, issued by `PP-A`. */
-  sdJwtVc(options: { issuer?: string; signedUnder?: 'issuance' | 'revocation'; faults?: FaultId[] } = {}): CredentialSpec {
+  /** `default_credential_pid` in `format`, issued by `PP-A`. */
+  of(format: CredentialFormat, options: PidOptions = {}): CredentialSpec {
     return {
       defaultCredential: 'default_credential_pid',
-      format: 'dc+sd-jwt',
+      format,
       issuer: options.issuer ?? 'PP-A',
       ...(options.signedUnder ? { signedUnder: options.signedUnder } : {}),
       faults: options.faults ?? [],
     };
   },
+  /** `default_credential_pid_short` in `format`: valid for less than 24 hours, without status reference. */
+  shortOf(format: CredentialFormat): CredentialSpec {
+    return { defaultCredential: 'default_credential_pid_short', format, issuer: 'PP-A', faults: [] };
+  },
+  /** `default_credential_pid` in SD-JWT VC format, issued by `PP-A`. */
+  sdJwtVc(options: PidOptions = {}): CredentialSpec {
+    return pid.of('dc+sd-jwt', options);
+  },
   /** `default_credential_pid_short` in SD-JWT VC format: valid for less than 24 hours, without status reference. */
   shortSdJwtVc(): CredentialSpec {
-    return { defaultCredential: 'default_credential_pid_short', format: 'dc+sd-jwt', issuer: 'PP-A', faults: [] };
+    return pid.shortOf('dc+sd-jwt');
+  },
+  /** `default_credential_pid` in mdoc format (`eu.europa.ec.eudi.pid.1`), issued by `PP-A`. */
+  mdoc(options: PidOptions = {}): CredentialSpec {
+    return pid.of('mso_mdoc', options);
+  },
+  /** `default_credential_pid_short` in mdoc format. */
+  shortMdoc(): CredentialSpec {
+    return pid.shortOf('mso_mdoc');
   },
 };
 
 export const statusListToken = {
-  /** A Status List Token in JWT format holding `status` (default 0x00, VALID) at the credential's index. */
+  /** A Status List Token in `format` holding `status` (default 0x00, VALID) at the credential's index. */
+  of(format: StatusListSpec['format'], options: Partial<Omit<StatusListSpec, 'format'>> = {}): StatusListSpec {
+    return { format, ...options, status: options.status ?? 0, faults: options.faults ?? [] };
+  },
+  /** A Status List Token in JWT format, for an SD-JWT VC. */
   jwt(options: Partial<Omit<StatusListSpec, 'format'>> = {}): StatusListSpec {
-    return { format: 'jwt', ...options, status: options.status ?? 0, faults: options.faults ?? [] };
+    return statusListToken.of('jwt', options);
+  },
+  /** A Status List Token in CWT format, for an mdoc. */
+  cwt(options: Partial<Omit<StatusListSpec, 'format'>> = {}): StatusListSpec {
+    return statusListToken.of('cwt', options);
+  },
+};
+
+export const identifierListToken = {
+  /** An identifier list in CWT format that contains, or does not contain, the mdoc's identifier. */
+  cwt(options: { contains: boolean; faults?: FaultId[] }): IdentifierListSpec {
+    return { format: 'cwt', contains: options.contains, faults: options.faults ?? [] };
   },
 };

@@ -2,16 +2,21 @@
 // fcaf-overlay/ is rendered from the definitions (packages/fcaf-render); a test checks that it is up to date.
 import type { DefaultQueryId } from './adapter';
 import {
+  type CredentialFormat,
   type CredentialSpec,
   type Expectation,
   type Flow,
   type IcsCondition,
+  type IdentifierListSpec,
   ics,
+  identifierListToken,
   pid,
+  pidQueryOf,
   presentation,
   type ResponseSpec,
   type StatusListSpec,
   type StepAction,
+  statusListFormatOf,
   statusListToken,
 } from './definition';
 import { type FaultId, faultInfo } from './faults';
@@ -47,6 +52,8 @@ export interface FormatWording {
   /** Variant letter of the test case ID. */
   letter: 'a' | 'b';
   name: string;
+  /** The OpenID4VP format identifier the harness issues and requests. */
+  credentialFormat: CredentialFormat;
   profile: IcsCondition;
   technology: string;
   /** Technology line of the Status List Token in this format. */
@@ -57,6 +64,7 @@ export const formats = {
   sdJwtVc: {
     letter: 'a',
     name: 'SD-JWT VC',
+    credentialFormat: 'dc+sd-jwt',
     profile: ics.requestsSdJwtVc,
     technology: 'Presentation of a credential in IETF SD-JWT VC format.',
     statusListTechnology: 'Status List Token in JWT format.',
@@ -64,6 +72,7 @@ export const formats = {
   mdoc: {
     letter: 'b',
     name: 'mdoc',
+    credentialFormat: 'mso_mdoc',
     profile: ics.requestsMdoc,
     technology: 'Presentation of a credential in ISO/IEC 18013-5 mdoc format.',
     statusListTechnology: 'Status List Token in CWT format.',
@@ -210,18 +219,25 @@ export interface ScenarioStep {
   run: StepAction;
 }
 
-/** The FCAF name of a default query: the restricted variant of `default_query_pid` is still `default_query_pid`. */
-export const queryName = (query: DefaultQueryId) => item(query === 'default_query_pid_trusted_authorities' ? 'default_query_pid' : query);
-
-interface PresentationOptions {
+export interface PresentationOptions {
+  /** Default: `default_query_pid` in the credential's format. */
   query?: DefaultQueryId;
+  /** Default: `default_credential_pid` in SD-JWT VC format. */
   credential?: CredentialSpec;
   statusList?: StatusListSpec | null;
+  identifierList?: IdentifierListSpec | null;
   response?: ResponseSpec;
 }
 
-const run = (options: PresentationOptions) =>
-  presentation({ query: options.query ?? 'default_query_pid', credential: options.credential ?? pid.sdJwtVc(), ...options });
+const run = (options: PresentationOptions) => {
+  const credential = options.credential ?? pid.sdJwtVc();
+  return presentation({ ...options, query: options.query ?? pidQueryOf(credential.format), credential });
+};
+
+/** The format a credential fault applies to. */
+const formatOfCredentialFault = (fault: FaultId): CredentialFormat => (faultInfo(fault).format === 'mso_mdoc' ? 'mso_mdoc' : 'dc+sd-jwt');
+/** The credential format whose status list format a status list fault applies to. */
+const formatOfStatusListFault = (fault: FaultId): CredentialFormat => (faultInfo(fault).format === 'cwt' ? 'mso_mdoc' : 'dc+sd-jwt');
 
 /**
  * Steps whose text and execution are defined together: the fault a step applies is named once, and its FCAF wording
@@ -234,7 +250,7 @@ export const presentationStep = {
     return {
       text: scenario.valid({
         credential: options.text?.credential ?? item(credential.defaultCredential),
-        query: queryName(options.query ?? 'default_query_pid'),
+        query: QUERY_PID,
         extra: options.text?.extra,
       }),
       run: run(options),
@@ -242,24 +258,45 @@ export const presentationStep = {
   },
   /** A presentation of a variant of `default_credential_pid` that differs only in `difference`, for example its issuer. */
   credentialVariant(difference: string, options: PresentationOptions = {}): ScenarioStep {
-    return { text: scenario.credentialVariant(difference, { query: queryName(options.query ?? 'default_query_pid') }), run: run(options) };
+    return { text: scenario.credentialVariant(difference), run: run(options) };
   },
-  /** A presentation of `default_credential_pid` with a credential fault. */
+  /** A presentation of `default_credential_pid` with a credential fault, in the format the fault applies to. */
   credentialFault(fault: FaultId, options: PresentationOptions = {}): ScenarioStep {
     return presentationStep.credentialVariant(faultInfo(fault).text, {
       ...options,
-      credential: pid.sdJwtVc({ ...options.credential, faults: [fault] }),
+      credential: pid.of(formatOfCredentialFault(fault), { ...options.credential, faults: [fault] }),
     });
   },
   /** A presentation while the credential's status list holds `value` (for example `0x01 (INVALID)`) at its index. */
-  statusValue(value: string, status: number): ScenarioStep {
-    return { text: scenario.statusValue(value), run: run({ statusList: statusListToken.jwt({ status }) }) };
+  statusValue(value: string, status: number, format: CredentialFormat = 'dc+sd-jwt'): ScenarioStep {
+    return {
+      text: scenario.statusValue(value),
+      run: run({ credential: pid.of(format), statusList: statusListToken.of(statusListFormatOf(format), { status }) }),
+    };
   },
-  /** A presentation while the Status List Token has a fault; `text` replaces the wording where the scenario differs. */
+  /**
+   * A presentation while the Status List Token has a fault, in the format the fault applies to (JWT for an SD-JWT VC,
+   * CWT for an mdoc); `text` replaces the wording where the scenario differs.
+   */
   statusListFault(fault: FaultId, options: { text?: string } = {}): ScenarioStep {
+    const format = formatOfStatusListFault(fault);
     return {
       text: options.text ?? scenario.statusListToken(faultInfo(fault).text),
-      run: run({ statusList: statusListToken.jwt({ faults: [fault] }) }),
+      run: run({ credential: pid.of(format), statusList: statusListToken.of(statusListFormatOf(format), { faults: [fault] }) }),
+    };
+  },
+  /** A presentation of an mdoc whose identifier list contains, or does not contain, its identifier. */
+  identifierList(contains: boolean): ScenarioStep {
+    return {
+      text: `Perform a presentation for ${QUERY_PID} in which the Conformance Wallet presents ${PID} in a valid Authorization Response, while the referenced identifier list ${contains ? 'contains' : 'does not contain'} the credential's identifier.`,
+      run: run({ credential: pid.mdoc(), identifierList: identifierListToken.cwt({ contains }) }),
+    };
+  },
+  /** A presentation of an mdoc whose identifier list, which omits its identifier, has a fault. */
+  identifierListFault(fault: FaultId): ScenarioStep {
+    return {
+      text: `Perform a presentation for ${QUERY_PID} in which the Conformance Wallet presents ${PID} in a valid Authorization Response, while ${faultInfo(fault).text}.`,
+      run: run({ credential: pid.mdoc(), identifierList: identifierListToken.cwt({ contains: false, faults: [fault] }) }),
     };
   },
   /** A presentation via `flow` whose Authorization Response has a fault. */

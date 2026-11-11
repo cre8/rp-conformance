@@ -2,9 +2,11 @@ import { randomBytes } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import {
+  FLOWS,
   type Flow,
   faultsOf,
   flowIcsItems,
+  flowsOf,
   type Ics,
   isExecutable,
   type PresentationAction,
@@ -18,15 +20,16 @@ import {
   controlsOf,
 } from '@rp-conformance/core';
 import { base64url, defaultEntitiesOf, forgePresentation } from '@rp-conformance/forge';
-import { ConformanceWallet, type HeldCredential, type PresentationEvidence } from '@rp-conformance/wallet';
+import { DcApiShim, type DcApiOutcome, type DcApiRun } from '@rp-conformance/dc-api-shim';
+import { ConformanceWallet, type DcApiAnswer, type HeldCredential, type PresentationEvidence } from '@rp-conformance/wallet';
 import { evaluate, worst } from './evaluate';
 import { type Harness, startHarness } from './harness';
 import { applicability, icsAnswer } from './ics';
 import { harnessInfo } from './info';
 import { writeSummary } from './summary';
 
-/** The flows the harness implements; the DC API shim is Phase 3. */
-export const IMPLEMENTED_FLOWS: Flow[] = ['redirect'];
+/** The flows the harness implements: redirects, and the W3C Digital Credentials API through the DC API shim. */
+export const IMPLEMENTED_FLOWS: Flow[] = FLOWS;
 
 export interface StepRecord {
   step: number;
@@ -39,7 +42,13 @@ export interface StepRecord {
   /** The named fault of the step, `null` for valid material. */
   fault: string | null;
   transactionId?: string;
-  rpResponse?: { endpoint: 'response_uri'; url: string; status?: number; body?: string };
+  /**
+   * Where the Relying Party received the Authorization Response and how it answered: its `response_uri` (redirects),
+   * or the request in which its page forwarded the response the DC API returned (`dc-api-forward`).
+   */
+  rpResponse?: { endpoint: 'response_uri' | 'dc-api-forward'; url: string; status?: number; body?: string };
+  /** Via the DC API: the page, the Origin the shim saw, the protocol the wallet answered, and what went wrong. */
+  dcApi?: { page: string; origin?: string; protocol?: string; error?: string; pageErrors?: string[] };
   rpResult?: RelyingPartyResult;
   wallet?: {
     findings: PresentationEvidence['findings'];
@@ -139,10 +148,13 @@ export async function runConformance(options: RunOptions): Promise<{ report: Run
   const namespace = runId;
   const requestedFlows = options.flows ?? IMPLEMENTED_FLOWS;
   const notImplemented = requestedFlows.filter((f) => !IMPLEMENTED_FLOWS.includes(f));
-  if (notImplemented.length) throw new Error(`flow ${notImplemented.join(', ')} is not implemented (the DC API shim is Phase 3)`);
+  if (notImplemented.length) throw new Error(`unknown flow ${notImplemented.join(', ')} (flows: ${IMPLEMENTED_FLOWS.join(', ')})`);
   const flows = requestedFlows.filter((flow) => icsAnswer(options.ics, flowIcsItems[flow]) === 'Yes');
 
   const harness = await startHarness({ runId, harnessHost: options.harnessHost, namespace, ics: options.ics });
+  // The browser of the DC API shim starts with the first DC API step and stays open for the run.
+  let shim: Promise<DcApiShim> | undefined;
+  const dcApiShim = () => (shim ??= DcApiShim.launch());
   const report: RunReport = {
     run: {
       id: runId,
@@ -170,7 +182,7 @@ export async function runConformance(options: RunOptions): Promise<{ report: Run
       // Without a configured Relying Party no test case can produce a verdict.
       report.run.error = `adapter set-up failed: ${(error as Error).message}`;
       for (const definition of selected) {
-        for (const flow of flows) {
+        for (const flow of flowsOf(definition).filter((f) => flows.includes(f))) {
           report.results.push({ testCase: definition.id, flow, verdict: 'INCONCLUSIVE', reason: report.run.error, control: null, steps: [] });
         }
       }
@@ -183,8 +195,9 @@ export async function runConformance(options: RunOptions): Promise<{ report: Run
       allowInsecureUrls: true,
     });
     for (const definition of selected) {
-      for (const flow of flows.length ? flows : requestedFlows) {
-        const record = await runTestCase(definition, flow, flows.includes(flow), { ...options, harness, wallet, runDir, report });
+      // Every test case once per flow, except the SessionEncryption variants, whose profile names their flow.
+      for (const flow of flowsOf(definition).filter((f) => requestedFlows.includes(f))) {
+        const record = await runTestCase(definition, flow, flows.includes(flow), { ...options, harness, wallet, runDir, report, dcApiShim });
         report.results.push(record);
         log(`${record.verdict.padEnd(14)} ${record.testCase} [${record.flow}]${record.reason ? ` ${record.reason}` : ''}`);
         for (const step of record.steps.filter((s) => s.verdict !== 'PASS')) log(`    step ${step.step} ${step.verdict}: ${step.reason}`);
@@ -192,6 +205,7 @@ export async function runConformance(options: RunOptions): Promise<{ report: Run
     }
   } finally {
     await options.adapter.tearDown?.().catch(() => {});
+    await shim?.then((s) => s.close()).catch(() => {});
     await harness.stop();
   }
   return writeReport(report, runDir);
@@ -211,6 +225,7 @@ async function writeReport(report: RunReport, runDir: string): Promise<{ report:
 interface Context extends RunOptions {
   harness: Harness;
   wallet: ConformanceWallet;
+  dcApiShim: () => Promise<DcApiShim>;
   runDir: string;
   report: RunReport;
 }
@@ -348,12 +363,41 @@ const describeError = (error: unknown) => {
 const sameBody = (a: string | Uint8Array, b: string | Uint8Array) =>
   typeof a === 'string' || typeof b === 'string' ? a === b : Buffer.from(a).equals(Buffer.from(b));
 
+/** Starts a presentation at the Relying Party: the invocation URI of the redirect flow, or the page of the DC API flow. */
 async function startPresentation(action: { query: PresentationAction['query'] }, flow: Flow, record: StepRecord, save: Save, ctx: Context) {
   const started = await ctx.adapter.startPresentation({ query: action.query, flow, namespace: ctx.harness.namespace });
-  if (!('uri' in started.invocation)) throw new Error('the adapter returned no invocation URI for the redirect flow');
   record.transactionId = started.transactionId;
+  if (flow === 'dc-api') {
+    if (!('dcApiPage' in started.invocation)) throw new Error('the adapter returned no page for the DC API flow');
+    await save('dc-api-page.txt', started.invocation.dcApiPage);
+    return { transactionId: started.transactionId, uri: started.invocation.dcApiPage };
+  }
+  if (!('uri' in started.invocation)) throw new Error('the adapter returned no invocation URI for the redirect flow');
   await save('invocation.txt', started.invocation.uri);
   return { transactionId: started.transactionId, uri: started.invocation.uri };
+}
+
+/**
+ * The string by which the shim recognises the page's delivery of the response: the JWE (or the JWS of a fault), or, for
+ * an unencrypted response, the presentation up to its first `~`, which survives JSON and form encoding alike.
+ */
+function deliveryMarker(data: Record<string, unknown>, presentation: string | undefined): string | undefined {
+  if (typeof data.response === 'string') return data.response;
+  return presentation?.split('~')[0];
+}
+
+/** Saves what the DC API shim saw and the request the page passed, and records it on the step. */
+async function recordDcApiRun(run: DcApiRun, evidence: PresentationEvidence | undefined, record: StepRecord, save: Save) {
+  const signed = run.calls[0]?.requests.find((r) => r.protocol === evidence?.dcApi?.protocol)?.data as { request?: unknown } | undefined;
+  await save('request.jwt', typeof signed?.request === 'string' ? signed.request : undefined);
+  await save('dc-api-run.json', JSON.stringify(run, null, 2));
+  record.dcApi = {
+    page: run.pageUrl,
+    origin: run.calls[0]?.origin,
+    protocol: evidence?.dcApi?.protocol,
+    ...(run.error ? { error: run.error } : {}),
+    ...(run.pageErrors.length ? { pageErrors: run.pageErrors } : {}),
+  };
 }
 
 function walletRecord(evidence: PresentationEvidence): StepRecord['wallet'] {
@@ -407,16 +451,41 @@ async function runPresentation(
   const held: HeldCredential = mdoc
     ? { format: 'mso_mdoc', value: forged.credential as Uint8Array }
     : { format: 'dc+sd-jwt', value: forged.credential as string };
-  const evidence = await ctx.wallet.present(uri, held, { enc: action.response.enc, fault: action.response.faults[0], otherTransactionKey: otherKey });
+  const responseOptions = { enc: action.response.enc, fault: action.response.faults[0], otherTransactionKey: otherKey };
+
+  let evidence: PresentationEvidence;
+  /** Whether the Authorization Response reached the Relying Party: posted to `response_uri`, or returned to its page. */
+  let delivered: boolean;
+  if (flow === 'dc-api') {
+    let walletEvidence: PresentationEvidence | undefined;
+    let answer: DcApiAnswer | undefined;
+    const run = await (await ctx.dcApiShim()).run(uri, async (call): Promise<DcApiOutcome> => {
+      ({ evidence: walletEvidence, answer } = await ctx.wallet.presentDcApi(call, held, responseOptions));
+      // A wallet that cannot use the request answers with an OpenID4VP error (Appendix A.4), not a presentation.
+      if (!answer) return { kind: 'respond', protocol: call.requests[0]?.protocol ?? '', data: { error: 'invalid_request', error_description: walletEvidence.error } };
+      return { kind: 'respond', ...answer, marker: deliveryMarker(answer.data, walletEvidence.presentation) };
+    });
+    evidence = walletEvidence ?? { invocationUri: uri, findings: [], error: run.error ?? 'the page made no digital credential request' };
+    await recordDcApiRun(run, walletEvidence, record, save);
+    await save('response.data.json', evidence.responseData && JSON.stringify(evidence.responseData, null, 2));
+    delivered = Boolean(answer) && run.calls.length > 0;
+    if (run.delivery) {
+      record.rpResponse = { endpoint: 'dc-api-forward', url: run.delivery.url, status: run.delivery.status, body: run.delivery.body };
+    }
+    if (delivered && run.error) evidence.error = evidence.error ?? run.error;
+  } else {
+    evidence = await ctx.wallet.present(uri, held, responseOptions);
+    await save('request.jwt', evidence.requestFetch?.body);
+    await save('response.form.json', evidence.responseForm && JSON.stringify(evidence.responseForm, null, 2));
+    delivered = evidence.response?.status !== undefined;
+    if (evidence.response) {
+      record.rpResponse = { endpoint: 'response_uri', url: evidence.response.url, status: evidence.response.status, body: evidence.response.body };
+    }
+  }
   if (evidence.encryptionKey) state.encryptionKeys.set(record.step, evidence.encryptionKey);
-  await save('request.jwt', evidence.requestFetch?.body);
   await save(mdoc ? 'presentation.device-response.cbor' : 'presentation.sd-jwt', mdoc && evidence.presentation ? base64url.decode(evidence.presentation) : evidence.presentation);
-  await save('response.form.json', evidence.responseForm && JSON.stringify(evidence.responseForm, null, 2));
   await save('wallet-evidence.json', JSON.stringify(evidence, null, 2));
   record.wallet = walletRecord(evidence);
-  if (evidence.response) {
-    record.rpResponse = { endpoint: 'response_uri', url: evidence.response.url, status: evidence.response.status, body: evidence.response.body };
-  }
 
   record.rpResult = await ctx.adapter.readResult(transactionId, ctx.resultTimeoutMs ?? 15_000);
   await save('rp-result.json', JSON.stringify(record.rpResult.raw, null, 2));
@@ -428,7 +497,8 @@ async function runPresentation(
     result: record.rpResult,
     query,
     issuedClaims: forged.claims,
-    responseStatus: evidence.response?.status,
+    delivered,
+    responseStatus: record.rpResponse?.status,
     ics: ctx.ics,
     category: 'pid',
     statusRequests: record.statusLog.length,
@@ -437,12 +507,26 @@ async function runPresentation(
   record.reason = evidence.error && evaluation.verdict !== 'PASS' ? `${evaluation.reason}; Conformance Wallet: ${evidence.error}` : evaluation.reason;
 }
 
-/** Starts a presentation and records the encryption key of its request without answering (`ENC_KEY`). */
+/**
+ * Starts a presentation and records the encryption key of its request without answering (`ENC_KEY`). Via the DC API the
+ * wallet resolves the request the page passed and the shim leaves the page's promise pending.
+ */
 async function runStart(action: StartAction, flow: Flow, index: number, record: StepRecord, save: Save, ctx: Context, state: TestCaseState) {
   const { uri } = await startPresentation(action, flow, record, save, ctx);
   state.rpReached = true;
-  const evidence = await ctx.wallet.start(uri);
-  await save('request.jwt', evidence.requestFetch?.body);
+  let evidence: PresentationEvidence;
+  if (flow === 'dc-api') {
+    let walletEvidence: PresentationEvidence | undefined;
+    const run = await (await ctx.dcApiShim()).run(uri, async (call): Promise<DcApiOutcome> => {
+      walletEvidence = await ctx.wallet.startDcApi(call);
+      return { kind: 'withhold' };
+    });
+    evidence = walletEvidence ?? { invocationUri: uri, findings: [], error: run.error ?? 'the page made no digital credential request' };
+    await recordDcApiRun(run, walletEvidence, record, save);
+  } else {
+    evidence = await ctx.wallet.start(uri);
+    await save('request.jwt', evidence.requestFetch?.body);
+  }
   await save('wallet-evidence.json', JSON.stringify(evidence, null, 2));
   record.wallet = walletRecord(evidence);
   if (evidence.encryptionKey) {

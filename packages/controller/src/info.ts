@@ -18,6 +18,7 @@ const LIBRARIES = [
 export function harnessInfo() {
   const fromForge = createRequire(new URL('../../forge/package.json', import.meta.url));
   const fromWallet = createRequire(new URL('../../wallet/package.json', import.meta.url));
+  const fromShim = createRequire(new URL('../../dc-api-shim/package.json', import.meta.url));
   const version = (req: NodeJS.Require, name: string) => {
     try {
       return (req(`${name}/package.json`) as { version: string }).version;
@@ -27,11 +28,12 @@ export function harnessInfo() {
   };
   return {
     name: 'rp-conformance',
-    phase: 2,
+    phase: 3,
     node: process.version,
     libraries: {
       ...Object.fromEntries(LIBRARIES.map((name) => [name, version(fromForge, name)])),
       '@openid4vc/openid4vp': version(fromWallet, '@openid4vc/openid4vp'),
+      playwright: version(fromShim, 'playwright'),
     },
   };
 }

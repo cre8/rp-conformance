@@ -25,9 +25,10 @@ export function evaluateAccept(
   query: DcqlQuery,
   issuedClaims: Record<string, unknown>,
   responseStatus: number | undefined,
+  delivered = responseStatus !== undefined,
 ): Evaluation {
-  if (responseStatus === undefined) return { verdict: 'FAIL', reason: 'the Authorization Response was not delivered' };
-  if (responseStatus >= 400) return { verdict: 'FAIL', reason: `response_uri answered HTTP ${responseStatus}` };
+  if (!delivered) return { verdict: 'FAIL', reason: 'the Authorization Response was not delivered' };
+  if (responseStatus !== undefined && responseStatus >= 400) return { verdict: 'FAIL', reason: `the Relying Party answered the Authorization Response with HTTP ${responseStatus}` };
   if (result.outcome !== 'success') return { verdict: 'FAIL', reason: `verification result is ${result.outcome}` };
   const requested = query.credentials.flatMap((c) => (c.claims ?? []).map((claim) => claim.path.map(String)));
   const released = Object.fromEntries(
@@ -57,15 +58,19 @@ export function evaluateAccept(
   return { verdict: 'PASS', reason: `accepted; released exactly ${Object.keys(expected).join(', ')}` };
 }
 
-/** `REJ`: the verification result reports failure (or 4xx at `response_uri`), never 5xx, no released attributes. */
-export function evaluateReject(result: RelyingPartyResult, responseStatus: number | undefined): Evaluation {
-  if (responseStatus === undefined) return { verdict: 'INCONCLUSIVE', reason: 'the faulty Authorization Response was not delivered' };
-  if (responseStatus >= 500) return { verdict: 'FAIL', reason: `response_uri answered HTTP ${responseStatus}` };
+/**
+ * `REJ`: the verification result reports failure (or 4xx from the endpoint that received the Authorization Response),
+ * never 5xx, no released attributes. Via the DC API the response is delivered when it reached the page; the HTTP
+ * status is that of the request in which the page forwarded it, when the shim saw one.
+ */
+export function evaluateReject(result: RelyingPartyResult, responseStatus: number | undefined, delivered = responseStatus !== undefined): Evaluation {
+  if (!delivered) return { verdict: 'INCONCLUSIVE', reason: 'the faulty Authorization Response was not delivered' };
+  if (responseStatus !== undefined && responseStatus >= 500) return { verdict: 'FAIL', reason: `the Relying Party answered the Authorization Response with HTTP ${responseStatus}` };
   if (result.releasedAttributes && Object.keys(result.releasedAttributes).length > 0) {
     return { verdict: 'FAIL', reason: 'attributes were released' };
   }
   if (result.outcome === 'failure') return { verdict: 'PASS', reason: 'rejected: verification result reports failure' };
-  if (responseStatus >= 400) return { verdict: 'PASS', reason: `rejected: response_uri answered HTTP ${responseStatus}` };
+  if (responseStatus !== undefined && responseStatus >= 400) return { verdict: 'PASS', reason: `rejected: the Relying Party answered HTTP ${responseStatus}` };
   return { verdict: 'FAIL', reason: `verification result is ${result.outcome}` };
 }
 
@@ -77,11 +82,11 @@ export type CredentialCategory = 'pid' | 'qeaa' | 'pub-eaa' | 'eaa';
  * policy the ICS declares in RP.R.2: `Reject`, or accepted with `status-unknown` in the result's flags.
  */
 export function evaluateNoStatus(args: EvaluationInput): Evaluation {
-  if (args.category === 'pid') return withPrefix('PID without reliable status', evaluateReject(args.result, args.responseStatus));
+  if (args.category === 'pid') return withPrefix('PID without reliable status', evaluateReject(args.result, args.responseStatus, args.delivered));
   const policy = icsAnswer(args.ics, 'RP.R.2') ?? '';
-  if (/^reject/i.test(policy)) return withPrefix(`RP.R.2 ${policy}`, evaluateReject(args.result, args.responseStatus));
+  if (/^reject/i.test(policy)) return withPrefix(`RP.R.2 ${policy}`, evaluateReject(args.result, args.responseStatus, args.delivered));
   if (/^accept/i.test(policy)) {
-    const accepted = evaluateAccept(args.result, args.query, args.issuedClaims, args.responseStatus);
+    const accepted = evaluateAccept(args.result, args.query, args.issuedClaims, args.responseStatus, args.delivered);
     if (accepted.verdict !== 'PASS') return withPrefix(`RP.R.2 ${policy}`, accepted);
     if (!args.result.flags?.includes('status-unknown')) return { verdict: 'FAIL', reason: `RP.R.2 ${policy}: accepted without the flag status-unknown` };
     return { verdict: 'PASS', reason: `RP.R.2 ${policy}: accepted and flagged status-unknown` };
@@ -95,9 +100,9 @@ export function evaluatePolicy(expectation: Expectation, args: EvaluationInput):
   if (!policy) return { verdict: 'INCONCLUSIVE', reason: 'the expected result names no ICS item' };
   const hex = `0x${policy.status.toString(16).padStart(2, '0')}`;
   const meaning = statusMeanings(args.ics).get(policy.status);
-  if (meaning === undefined) return withPrefix(`${policy.item} declares no meaning for ${hex}`, evaluateReject(args.result, args.responseStatus));
-  if (meaning === 'invalid') return withPrefix(`${policy.item} declares ${hex} invalid`, evaluateReject(args.result, args.responseStatus));
-  if (meaning === 'valid') return withPrefix(`${policy.item} declares ${hex} valid`, evaluateAccept(args.result, args.query, args.issuedClaims, args.responseStatus));
+  if (meaning === undefined) return withPrefix(`${policy.item} declares no meaning for ${hex}`, evaluateReject(args.result, args.responseStatus, args.delivered));
+  if (meaning === 'invalid') return withPrefix(`${policy.item} declares ${hex} invalid`, evaluateReject(args.result, args.responseStatus, args.delivered));
+  if (meaning === 'valid') return withPrefix(`${policy.item} declares ${hex} valid`, evaluateAccept(args.result, args.query, args.issuedClaims, args.responseStatus, args.delivered));
   return { verdict: 'REVIEW', reason: `${policy.item} declares ${hex} as "${meaning}"; compare the verification result (${args.result.outcome}) by hand` };
 }
 
@@ -107,7 +112,10 @@ export interface EvaluationInput {
   result: RelyingPartyResult;
   query: DcqlQuery;
   issuedClaims: Record<string, unknown>;
+  /** HTTP status with which the Relying Party answered the Authorization Response, if the harness saw it. */
   responseStatus?: number;
+  /** Whether the Authorization Response reached the Relying Party; default: a status was seen. */
+  delivered?: boolean;
   ics: Ics;
   category: CredentialCategory;
   /** Requests the Test Status Provider logged for the step's status list URI, from the step's start to the verdict. */
@@ -126,9 +134,9 @@ export function evaluate(expectation: Expectation, args: EvaluationInput): Evalu
   const evaluations = expectation.codes.map((code: ExpectationCode): Evaluation => {
     switch (code) {
       case 'ACC':
-        return evaluateAccept(args.result, args.query, args.issuedClaims, args.responseStatus);
+        return evaluateAccept(args.result, args.query, args.issuedClaims, args.responseStatus, args.delivered);
       case 'REJ':
-        return evaluateReject(args.result, args.responseStatus);
+        return evaluateReject(args.result, args.responseStatus, args.delivered);
       case 'NOSTAT':
         return evaluateNoStatus(args);
       case 'POLICY':

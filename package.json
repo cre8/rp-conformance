@@ -11,7 +11,8 @@
     "test": "vitest run",
     "types:check": "tsc --noEmit -p tsconfig.json",
     "rp-conformance": "node packages/controller/bin/rp-conformance.mjs",
-    "fcaf:render": "tsx packages/fcaf-render/src/cli.ts"
+    "fcaf:render": "tsx packages/fcaf-render/src/cli.ts",
+    "playwright:install": "pnpm --filter @rp-conformance/dc-api-shim exec playwright install --only-shell chromium"
   },
   "devDependencies": {
     "@types/node": "^22.19.0",

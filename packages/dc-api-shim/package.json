@@ -1,0 +1,13 @@
+{
+  "name": "@rp-conformance/dc-api-shim",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "playwright": "1.64.1"
+  },
+  "devDependencies": {
+    "@rp-conformance/core": "workspace:*"
+  }
+}

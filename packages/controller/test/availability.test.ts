@@ -45,6 +45,8 @@ describe('a Relying Party that stops answering', () => {
       definitions: [control, twoPresentations('RP_WS_SM_Validity_901_UF'), twoPresentations('RP_WS_SM_Validity_902_UF')],
       reportDir: await mkdtemp(join(tmpdir(), 'rp-conformance-')),
       harnessHost: '127.0.0.1',
+      // One flow, so the Relying Party stops after the control and the first presentation of 901.
+      flows: ['redirect'],
     });
     const verdicts = Object.fromEntries(report.results.map((r) => [r.testCase, r]));
     expect(verdicts[CONTROL].verdict).toBe('PASS');

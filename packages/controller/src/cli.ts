@@ -17,7 +17,7 @@ const usage = `Usage: rp-conformance run --adapter <${Object.keys(ADAPTERS).join
 Options:
   --only <id>            Test case ID or pattern with *, repeatable or comma separated
   --ics <file>           ICS file (YAML); default: the adapter's ics.yaml
-  --flows <list>         Flows to run; default: redirect (the DC API shim is Phase 3)
+  --flows <list>         Flows to run, comma separated: redirect, dc-api; default: both
   --report-dir <dir>     Where reports go; default: reports
   --harness-host <host>  Host name under which the RP reaches the harness services
   --list                 List the test definitions and exit

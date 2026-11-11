@@ -1,4 +1,5 @@
-import { acc, defineTestCase, ics, pid, preconditions, presentationStep, relevancy, step } from '@rp-conformance/core';
+import { acc, comments, defineTestCase, flowsOf, ics, pid, preconditions, presentationStep, relevancy, step } from '@rp-conformance/core';
+import { definitions } from '@rp-conformance/definitions';
 import { describe, expect, it } from 'vitest';
 import { applicability } from '../src/ics';
 import { selectTestCases } from '../src/runner';
@@ -50,6 +51,17 @@ describe('selection', () => {
     expect(() =>
       defineTestCase({ ...make('RP_WS_SM_Validity_003a'), preconditions: [...preconditions.base, preconditions.control(CONTROL_A)] }),
     ).toThrow(/control/);
+  });
+
+  it('runs a test case in the flow its profile names, otherwise in every flow', () => {
+    expect(flowsOf(all[0])).toEqual(['redirect', 'dc-api']);
+    expect(flowsOf({ ...all[0], profile: [ics.supportsDcApi] })).toEqual(['dc-api']);
+    expect(flowsOf({ ...all[0], profile: [ics.requestsMdoc, ics.supportsRedirects] })).toEqual(['redirect']);
+  });
+
+  it('every baseline test case without a flow in its profile says to run once per flow', () => {
+    const everyFlow = definitions.filter((d) => flowsOf(d).length === 2);
+    expect(everyFlow.filter((d) => !d.comments?.includes(comments.flow)).map((d) => d.id)).toEqual([]);
   });
 
   it('marks a test case not applicable when the ICS does not meet its profile', () => {

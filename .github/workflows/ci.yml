@@ -20,9 +20,13 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Chromium (headless shell) and its system libraries for the DC API shim, so the reference run covers the DC API
+      # flow too.
+      - name: Playwright Chromium for the DC API shim
+        run: pnpm playwright:install --with-deps
       - run: pnpm types:check
-      # Unit tests, fault self-validation, the reference run of every executable test case, and the byte-for-byte
-      # rendering check of the 121 test cases and the shared pages.
+      # Unit tests, fault self-validation, the reference run of every executable test case in both flows, and the
+      # byte-for-byte rendering check of the 121 test cases and the shared pages.
       - run: pnpm test
       - name: Rendered FCAF overlay is committed
         run: pnpm fcaf:render --check

@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import {
+  categoryOfQuery,
   FLOWS,
   type Flow,
   faultsOf,
@@ -82,7 +83,13 @@ export interface RunReport {
     flows: Flow[];
     ics: Ics;
     harness: ReturnType<typeof harnessInfo>;
-    environment: { namespace: string; statusProvider: string; trustInfrastructure: string; trustLists: { id: string; url: string }[] };
+    environment: {
+      namespace: string;
+      statusProvider: string;
+      trustInfrastructure: string;
+      trustLists: { id: string; url: string }[];
+      listOfTrustedLists: { url: string; pointers: { id: string; url: string }[] };
+    };
     summary: Partial<Record<Verdict, number>>;
     /** Why the run could not execute its test cases, if it could not. */
     error?: string;
@@ -168,6 +175,10 @@ export async function runConformance(options: RunOptions): Promise<{ report: Run
         statusProvider: harness.status.baseUrl,
         trustInfrastructure: harness.trust.baseUrl,
         trustLists: harness.env.trustLists.map(({ id, url }) => ({ id, url })),
+        listOfTrustedLists: {
+          url: harness.env.listOfTrustedLists.url,
+          pointers: harness.env.listOfTrustedLists.pointers.map(({ id, url }) => ({ id, url })),
+        },
       },
       summary: {},
     },
@@ -500,7 +511,7 @@ async function runPresentation(
     delivered,
     responseStatus: record.rpResponse?.status,
     ics: ctx.ics,
-    category: 'pid',
+    category: categoryOfQuery(action.query),
     statusRequests: record.statusLog.length,
   });
   record.verdict = evaluation.verdict;

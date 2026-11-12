@@ -4,7 +4,7 @@
 import { type CborMap, COSE, COSE_ALG } from '@rp-conformance/forge';
 import { type CheckRecorder, NotApplicable } from './checks';
 import { CWT, decodeCoseToken, type FetchedStatusList, fail, leafJwk, verifyCoseSign1 } from './status-list';
-import type { TrustedEntity, TrustStore } from './trust';
+import type { MatchedIssuer } from './trust';
 import { validatePath } from './x509-path';
 
 export const IDENTIFIER_LIST_TYPE = 'application/identifierlist+cwt';
@@ -12,8 +12,8 @@ export const IDENTIFIER_LIST_TYPE = 'application/identifierlist+cwt';
 export interface IdentifierListInput {
   /** The MSO's `identifier_list` entry. */
   reference: { uri: string; id: Uint8Array } | undefined;
-  entity: TrustedEntity | undefined;
-  trust: TrustStore;
+  /** The trusted issuer the credential matched, with the anchors its identifier lists must be signed under. */
+  issuer: MatchedIssuer | undefined;
   fetchIdentifierList: (uri: string) => Promise<FetchedStatusList>;
   skewSeconds: number;
   now: Date;
@@ -50,9 +50,8 @@ export async function evaluateIdentifierList(recorder: CheckRecorder, input: Ide
 
   await recorder.run('identifier-list-trust', ['identifier-list-format', 'issuer-trust'], async () => {
     if (!token?.chain?.length) fail('the identifier list has no x5chain in its protected header');
-    const anchors = input.entity ? input.trust.revocationAnchors(input.entity) : [];
-    const path = await validatePath(token?.chain ?? [], anchors, now);
-    if (!path.ok) fail(`not under a revocation anchor of ${input.entity?.name}: ${path.reason}`);
+    const path = await validatePath(token?.chain ?? [], input.issuer?.statusAnchors ?? [], now);
+    if (!path.ok) fail(`not under a revocation anchor of ${input.issuer?.name}: ${path.reason}`);
     return path.ok ? `${path.leaf.subject.commonName} under ${path.anchor.subject.commonName}` : undefined;
   });
 

@@ -12,3 +12,4 @@ export * from './queries';
 export * from './registration';
 export * from './status-list';
 export * from './step';
+export * from './trusted-list';

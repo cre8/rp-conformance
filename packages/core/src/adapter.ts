@@ -21,6 +21,21 @@ export const DEFAULT_QUERY_IDS: DefaultQueryId[] = [
   'default_query_pid_mdoc_trusted_authorities',
 ];
 
+/**
+ * The credential categories of the Relying Party SUT, each with its own root of trust in
+ * `default_trust_configuration_rp`: PID (`TL-PID`), QEAA (`TL-QEAA`), PuB-EAA (`TL-PUB`) and non-qualified EAA (the
+ * anchor its rulebook defines).
+ */
+export type CredentialCategory = 'pid' | 'qeaa' | 'pub-eaa' | 'eaa';
+
+/** The category of the credential a default query asks for. */
+export function categoryOfQuery(query: DefaultQueryId): CredentialCategory {
+  if (query.startsWith('default_query_qeaa')) return 'qeaa';
+  if (query.startsWith('default_query_pubeaa')) return 'pub-eaa';
+  if (query.startsWith('default_query_eaa')) return 'eaa';
+  return 'pid';
+}
+
 /** A certificate with its private key, as the harness hands it to the Relying Party under test. */
 export interface KeyedCertificate {
   /** PEM of the certificate. */
@@ -48,12 +63,38 @@ export interface PublishedTrustList {
 }
 
 /**
+ * The test list of trusted lists (ETSI TS 119 612, XML) that points to the test Trusted List `TL-QEAA`. The Relying
+ * Party is configured with the LOTL's location and signing certificates only, the test counterpart of their publication
+ * in the Official Journal, and takes `TL-QEAA` and the certificate that signs it from the LOTL's pointer.
+ */
+export interface PublishedListOfTrustedLists {
+  url: string;
+  /** PEM of the certificates that may sign the LOTL. */
+  signingCertificatesPem: string[];
+  /** The Trusted Lists the LOTL points to, for evidence; the Relying Party reads them from the LOTL. */
+  pointers: { id: string; url: string; schemeTerritory: string }[];
+}
+
+/** A rulebook that defines its own trust anchor, as the rulebook of `default_credential_eaa` defines `CA-EP-A`. */
+export interface RulebookTrust {
+  /** The default credential the rulebook governs. */
+  credential: 'default_credential_eaa';
+  /** PEM of the anchors the rulebook defines, for signing the credential and its status lists. */
+  anchorsPem: string[];
+}
+
+/**
  * Everything the Relying Party under test needs for `default_configuration_rp_1`: the scheme operator
- * certificates and URLs of the test lists, its access certificate and its registration certificate.
+ * certificates and URLs of the test lists, the test LOTL, the rulebook anchors, its access certificate and its
+ * registration certificate.
  */
 export interface TestEnvironment {
   runId: string;
   trustLists: PublishedTrustList[];
+  /** The test LOTL that points to `TL-QEAA`. */
+  listOfTrustedLists: PublishedListOfTrustedLists;
+  /** The anchors the rulebook of `default_credential_eaa` defines. */
+  rulebooks: RulebookTrust[];
   /** The Relying Party's access certificate issued by `AC-A`, with its key. */
   accessCertificate: KeyedCertificate;
   /** The Relying Party's registration certificate issued by `RC-A` (JWT, ETSI TS 119 475). */

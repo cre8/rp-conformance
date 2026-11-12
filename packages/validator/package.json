@@ -8,6 +8,7 @@
     "@owf/crypto": "^0.7.0",
     "@owf/eudi-jades": "^0.6.0",
     "@owf/eudi-lote": "^0.6.0",
+    "@owf/eudi-tl": "^0.6.0",
     "@owf/identity-common": "^0.7.0",
     "@owf/token-status-list": "^0.7.0",
     "@owf/x509": "^0.7.0",
@@ -21,6 +22,7 @@
     "@owf/mdoc": "0.9.3",
     "@rp-conformance/definitions": "workspace:*",
     "@rp-conformance/status-provider": "workspace:*",
-    "@rp-conformance/trust-infrastructure": "workspace:*"
+    "@rp-conformance/trust-infrastructure": "workspace:*",
+    "@xmldom/xmldom": "^0.9.12"
   }
 }

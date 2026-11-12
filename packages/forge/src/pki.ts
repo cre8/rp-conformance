@@ -14,7 +14,7 @@ export interface CertifiedKey {
   chain: Certificate[];
 }
 
-/** The lists of `default_trust_configuration_rp` published as LoTE (`TL-QEAA` is a Trusted List, Phase 4). */
+/** The lists of `default_trust_configuration_rp` published as LoTE (`TL-QEAA` is a Trusted List, see `TrustedListId`). */
 export type LoteListId = 'TL-PID' | 'TL-PUB' | 'TL-WP' | 'TL-AC' | 'TL-RC';
 
 export interface EntitySpec {
@@ -30,16 +30,20 @@ export interface EntitySpec {
    * so the list carries only its PID/Revocation service (TrustMechanisms_006).
    */
   issuanceWithdrawn?: boolean;
-  /** A list that is not a LoTE: `QP-A` is on the Trusted List `TL-QEAA`, which the harness publishes from Phase 4. */
+  /** A list that is not a LoTE: the QTSPs `QP-A`, `QP-N` and `QP-W` are on the Trusted List `TL-QEAA` (ETSI TS 119 612). */
   trustedList?: 'TL-QEAA';
+  /**
+   * The service for the issuance of attestations the entity has in `TL-QEAA`: a granted qualified service (`QP-A`), a
+   * service that is not qualified (`QP-N`), or a qualified service that is withdrawn (`QP-W`).
+   */
+  qeaaService?: 'granted' | 'not-qualified' | 'withdrawn';
+  /** `EP-A`: on no list; the rulebook of the credential defines its anchor `CA-EP-A`. */
+  rulebook?: 'default_credential_eaa';
   /** Short host-like name used in subject alternative names and `iss`. */
   host: string;
 }
 
-/**
- * The entities of `default_trust_configuration_rp` (FCAF defaults, "Relying Party testing"). `QP-A` has its PKI, which
- * TrustMechanisms_002 uses as a PID issuer; `TL-QEAA` itself, `QP-N` and `QP-W` follow in Phase 4.
- */
+/** The entities of `default_trust_configuration_rp` (FCAF defaults, "Relying Party testing"). */
 export const ENTITIES: EntitySpec[] = [
   { id: 'PP-A', list: 'TL-PID', separateRevocationAnchor: true, host: 'pp-a.rp-test' },
   { id: 'PP-B', list: 'TL-PID', host: 'pp-b.rp-test' },
@@ -47,9 +51,11 @@ export const ENTITIES: EntitySpec[] = [
   { id: 'PP-D', list: 'TL-PID', host: 'pp-d.rp-test' },
   { id: 'PP-E', list: 'TL-PID', expiredAnchor: true, host: 'pp-e.rp-test' },
   { id: 'PP-W', list: 'TL-PID', issuanceWithdrawn: true, host: 'pp-w.rp-test' },
-  { id: 'QP-A', trustedList: 'TL-QEAA', host: 'qp-a.rp-test' },
+  { id: 'QP-A', trustedList: 'TL-QEAA', qeaaService: 'granted', host: 'qp-a.rp-test' },
+  { id: 'QP-N', trustedList: 'TL-QEAA', qeaaService: 'not-qualified', host: 'qp-n.rp-test' },
+  { id: 'QP-W', trustedList: 'TL-QEAA', qeaaService: 'withdrawn', host: 'qp-w.rp-test' },
   { id: 'PB-A', list: 'TL-PUB', host: 'pb-a.rp-test' },
-  { id: 'EP-A', host: 'ep-a.rp-test' },
+  { id: 'EP-A', rulebook: 'default_credential_eaa', host: 'ep-a.rp-test' },
   { id: 'WP-A', list: 'TL-WP', host: 'wp-a.rp-test' },
   { id: 'AC-A', list: 'TL-AC', host: 'ac-a.rp-test' },
   { id: 'RC-A', list: 'TL-RC', host: 'rc-a.rp-test' },
@@ -70,11 +76,19 @@ export interface TestEntity {
   signers: { issuance: CertifiedKey; mdoc: CertifiedKey; revocation: CertifiedKey };
 }
 
+/** The lists in ETSI TS 119 612 format: the test list of trusted lists and the Trusted List it points to. */
+export type TrustedListId = 'LOTL' | 'TL-QEAA';
+
 export interface TestPki {
   createdAt: Date;
   entities: Record<string, TestEntity>;
   /** The scheme operator certificate of each list, which the Relying Party is configured with. */
   schemeOperators: Record<LoteListId, CertifiedKey>;
+  /**
+   * The certificates that sign the lists in ETSI TS 119 612 format: the LOTL's, which the Relying Party is configured
+   * with, and that of `TL-QEAA`, which the LOTL publishes in its pointer.
+   */
+  trustedListOperators: Record<TrustedListId, CertifiedKey>;
   /** The Relying Party's access certificate, issued by `AC-A`. */
   relyingPartyAccess: CertifiedKey;
 }
@@ -222,6 +236,43 @@ export async function createSelfSignedSigner(organization: string, commonName: s
   return { certificate, key, chain: [certificate] };
 }
 
+/** `id-tsl-kp-tslSigning` (ETSI TS 119 612 clause 5.7.1): the extended key usage of a Trusted List signer. */
+export const TSL_SIGNING_EXTENDED_KEY_USAGE = '0.4.0.2231.3.0';
+
+/** The scheme territory and scheme operator name of the lists in ETSI TS 119 612 format. */
+export const TRUSTED_LIST_OPERATORS: Record<TrustedListId, { territory: string; name: string }> = {
+  LOTL: { territory: 'EU', name: 'RP conformance test LOTL scheme operator' },
+  'TL-QEAA': { territory: 'DE', name: 'RP conformance test TL-QEAA scheme operator' },
+};
+
+/**
+ * The signing certificate of a list in ETSI TS 119 612 format (clause 5.7.1): self-signed, country and organization
+ * equal to the scheme territory and the scheme operator name, `keyUsage` digitalSignature only, the extended key usage
+ * `id-tsl-kp-tslSigning`, a subject key identifier, and `cA` false.
+ */
+export async function createTrustedListSigner(list: TrustedListId, now: Date): Promise<CertifiedKey> {
+  const { territory, name } = TRUSTED_LIST_OPERATORS[list];
+  const key = await generateEcKeyPair();
+  const certificate = await createCertificate({
+    subject: [
+      ['countryName', territory],
+      ['organizationName', name],
+      ['commonName', `${list} signer`],
+    ],
+    subjectPublicKey: key.publicJwk,
+    serialNumber: randomSerial(),
+    notBefore: new Date(now.getTime() - DAY),
+    notAfter: new Date(now.getTime() + 5 * YEAR),
+    signatureAlgorithm: 'ES256',
+    basicConstraints: { cA: false },
+    keyUsage: ['digitalSignature'],
+    extendedKeyUsage: [TSL_SIGNING_EXTENDED_KEY_USAGE],
+    hasher: keyIdHasher,
+    signer: (tbs) => signEs256(key.privateKey, tbs),
+  });
+  return { certificate, key, chain: [certificate] };
+}
+
 /** Validity of a document signer certificate: at most 457 days (ISO/IEC 18013-5 Annex B, Table B.3). */
 export const documentSignerValidity = (now: Date, anchorNotAfter = new Date(now.getTime() + YEAR)) => ({
   // Starts before the `signed` time of the MSOs the harness issues (two days in the past).
@@ -276,8 +327,12 @@ export async function createTestPki(options: { now?: Date; relyingPartyHost?: st
   for (const list of ['TL-PID', 'TL-PUB', 'TL-WP', 'TL-AC', 'TL-RC'] as LoteListId[]) {
     schemeOperators[list] = await createSelfSignedSigner('RP conformance test scheme operator', `${list} scheme operator`, now);
   }
+  const trustedListOperators = {
+    LOTL: await createTrustedListSigner('LOTL', now),
+    'TL-QEAA': await createTrustedListSigner('TL-QEAA', now),
+  };
   const relyingPartyAccess = await createRelyingPartyAccessCertificate(entities['AC-A'], now, options.relyingPartyHost ?? 'rp.rp-test');
-  return { createdAt: now, entities, schemeOperators, relyingPartyAccess };
+  return { createdAt: now, entities, schemeOperators, trustedListOperators, relyingPartyAccess };
 }
 
 /** The Relying Party's access certificate per ETSI TS 119 411-8, issued under the anchor of `AC-A`. */

@@ -2,11 +2,12 @@
 // served from memory, and one function that builds a presentation step exactly as the controller does (forge, fault
 // layer, Conformance Wallet response) and runs the reference validator over it in `all` mode.
 import { randomUUID } from 'node:crypto';
-import { type DcqlQuery, type DefaultQueryId, type Flow, faultsOf, faultInfo, type PresentationAction } from '@rp-conformance/core';
+import { categoryOfQuery, type DcqlQuery, type DefaultQueryId, type Flow, faultsOf, faultInfo, type PresentationAction } from '@rp-conformance/core';
 import {
   buildAuthorizationResponse,
   buildDcApiResponse,
   buildSealedLote,
+  buildTrustedLists,
   createTestPki,
   defaultEntitiesOf,
   defaultQueries,
@@ -32,6 +33,7 @@ import {
   type FetchedStatusList,
   type MdocValidation,
   type SdJwtVcValidation,
+  TRUST_RULES,
   TrustStore,
   type ValidationMode,
   validateAuthorizationResponse,
@@ -48,6 +50,8 @@ export const RESPONSE_URI = 'https://rp.rp-test/self-validation/response';
 /** The Origin of the Relying Party's page in the DC API flow. */
 export const ORIGIN = 'https://rp.rp-test';
 const BASE = 'https://trust.rp-test/self-validation';
+/** Where the fixture serves the lists in ETSI TS 119 612 format. */
+export const TRUSTED_LIST_LOCATIONS = { LOTL: `${BASE}/LOTL.xml`, 'TL-QEAA': `${BASE}/TL-QEAA.xml` };
 
 export interface Transaction {
   key: { kid: string; privateKey: CryptoKey; publicJwk: JWK };
@@ -84,15 +88,22 @@ export class Fixture {
       return new Response(body ?? 'not found', { status: body ? 200 : 404 });
     }) as typeof fetch;
     fixture.trust = new TrustStore(
-      LISTS.map((id) => ({
-        id,
-        url: `${BASE}/${id}`,
-        loteType: LIST_PROFILES[id].loteType,
-        schemeOperatorCertificatePem: fixture.pki.schemeOperators[id].certificate.pem,
-      })),
+      {
+        lotes: LISTS.map((id) => ({
+          id,
+          url: `${BASE}/${id}`,
+          loteType: LIST_PROFILES[id].loteType,
+          schemeOperatorCertificatePem: fixture.pki.schemeOperators[id].certificate.pem,
+        })),
+        listOfTrustedLists: { url: TRUSTED_LIST_LOCATIONS.LOTL, signingCertificatesPem: [fixture.pki.trustedListOperators.LOTL.certificate.pem] },
+        rulebooks: [{ credential: 'default_credential_eaa', anchorsPem: [fixture.pki.entities['EP-A'].anchors.issuance.certificate.pem] }],
+      },
       fetchList,
     );
     for (const id of LISTS) await fixture.publish(id, undefined, false);
+    const trustedLists = await buildTrustedLists({ pki: fixture.pki, locations: TRUSTED_LIST_LOCATIONS });
+    fixture.lists.set(TRUSTED_LIST_LOCATIONS.LOTL, trustedLists.LOTL);
+    fixture.lists.set(TRUSTED_LIST_LOCATIONS['TL-QEAA'], trustedLists['TL-QEAA']);
     await fixture.reload();
     return fixture;
   }
@@ -173,7 +184,7 @@ export class Fixture {
     };
     const common = {
       trust: this.trust,
-      issuerList: 'TL-PID',
+      trustRule: TRUST_RULES[categoryOfQuery(action.query)],
       nonce: tx.nonce,
       skewSeconds: SKEW,
       requireStatus: true,
@@ -186,7 +197,7 @@ export class Fixture {
       : forged.format === 'mso_mdoc'
         ? await validateMdocPresentation(presented, {
             ...common,
-            expectedDocType: PID_DOCTYPE,
+            expectedDocType: (credentialQuery.meta?.doctype_value as string | undefined) ?? PID_DOCTYPE,
             handover,
             jwkThumbprint: await jwkThumbprint(tx.key.publicJwk as JsonWebKey),
             fetchStatusList: fetchList,
@@ -194,7 +205,7 @@ export class Fixture {
           })
         : await validateSdJwtVcPresentation(presented, {
             ...common,
-            expectedVct: [PID_VCT],
+            expectedVct: (credentialQuery.meta?.vct_values as string[] | undefined) ?? [PID_VCT],
             audience,
             kbMaxAgeSeconds: KB_MAX_AGE,
             fetchStatusList: fetchList,

@@ -14,7 +14,7 @@ import {
 import { StatusProvider } from '@rp-conformance/status-provider';
 import { TrustInfrastructure } from '@rp-conformance/trust-infrastructure';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { type ListSource, SD_JWT_VC_CHECKS, TrustStore, validateSdJwtVcPresentation, verifyLote } from '../src/index';
+import { type ListSource, SD_JWT_VC_CHECKS, TRUST_RULES, TrustStore, validateSdJwtVcPresentation, verifyLote } from '../src/index';
 
 // Harness design section 7, step 1: every artifact a Phase 0 builder produces passes the reference validator.
 
@@ -76,7 +76,7 @@ async function issueValidPid(options: { issuer?: string; statusValue?: number } 
 const validate = (presentation: string, overrides: Partial<Parameters<typeof validateSdJwtVcPresentation>[1]> = {}) =>
   validateSdJwtVcPresentation(presentation, {
     trust,
-    issuerList: 'TL-PID',
+    trustRule: TRUST_RULES.pid,
     expectedVct: [PID_VCT],
     nonce: NONCE,
     audience: AUDIENCE,
@@ -96,7 +96,7 @@ describe('LoTE builder', () => {
     const source = sources.find((s) => s.id === list)!;
     const jws = await (await fetch(source.url)).text();
     const loaded = await verifyLote(jws, source);
-    expect(loaded.loteType).toBe(LIST_PROFILES[list].loteType);
+    expect(loaded.type).toBe(LIST_PROFILES[list].loteType);
     expect(loaded.entities.length).toBeGreaterThan(0);
   });
 

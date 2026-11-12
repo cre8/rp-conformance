@@ -4,7 +4,7 @@ import { inflateSync } from 'node:zlib';
 import { type CborMap, COSE, COSE_ALG, base64url, decodeCbor, readCose, sigStructure, verifyEs256, x5chainOf } from '@rp-conformance/forge';
 import { parseCertificate } from '@owf/x509';
 import { CheckFailure, type CheckRecorder, NotApplicable } from './checks';
-import type { TrustedEntity, TrustStore } from './trust';
+import type { MatchedIssuer } from './trust';
 import { validatePath } from './x509-path';
 
 export interface FetchedStatusList {
@@ -57,9 +57,8 @@ export interface StatusListInput {
   format: 'jwt' | 'cwt';
   /** The credential's reference. */
   reference: { uri: string; idx: number } | undefined;
-  /** The trusted entity whose issuance anchor validated the credential; its revocation anchors sign the status list. */
-  entity: TrustedEntity | undefined;
-  trust: TrustStore;
+  /** The trusted issuer the credential matched, with the anchors its status lists must be signed under. */
+  issuer: MatchedIssuer | undefined;
   fetchStatusList: (uri: string) => Promise<FetchedStatusList>;
   maxStatusListBytes: number;
   validStatuses?: number[];
@@ -115,9 +114,8 @@ export async function evaluateStatusList(recorder: CheckRecorder, input: StatusL
 
   await recorder.run('status-list-trust', ['status-list-format', 'issuer-trust'], async () => {
     if (!token?.chain?.length) fail(`the Status List Token has no ${input.format === 'jwt' ? 'x5c' : 'x5chain in its protected header'}`);
-    const anchors = input.entity ? input.trust.revocationAnchors(input.entity) : [];
-    const path = await validatePath(token?.chain ?? [], anchors, now);
-    if (!path.ok) fail(`not under a revocation anchor of ${input.entity?.name}: ${path.reason}`);
+    const path = await validatePath(token?.chain ?? [], input.issuer?.statusAnchors ?? [], now);
+    if (!path.ok) fail(`not under a revocation anchor of ${input.issuer?.name}: ${path.reason}`);
     return path.ok ? `${path.leaf.subject.commonName} under ${path.anchor.subject.commonName}` : undefined;
   });
 

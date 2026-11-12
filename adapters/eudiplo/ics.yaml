@@ -2,9 +2,9 @@
 # Values as configured by the EUDIPLO adapter.
 RP.G.1: "Yes"   # requests credentials in IETF SD-JWT VC format
 RP.G.2: "Yes"   # requests credentials in ISO/IEC 18013-5 mdoc format
-RP.G.3: "No"
-RP.G.4: "No"
-RP.G.5: "No"
+RP.G.3: "No"    # EUDIPLO loads no ETSI TS 119 612 Trusted List (XML), so it cannot trust QEAAs (finding: ARF OIA_13, OIA_15b)
+RP.G.4: "Yes"   # PuB-EAA: etsi_tl trust list TL-PUB, PubEAA/Issuance services
+RP.G.5: "Yes"   # non-qualified EAA: the rulebook anchor CA-EP-A in a trust list of the tenant
 RP.G.6: API     # GET /api/session/:id
 RP.P.1: "Yes"   # presentations via redirects
 RP.P.2: "Yes"   # W3C Digital Credentials API: dc-api offers, answered on the adapter's page

@@ -58,8 +58,7 @@ CI fails when the committed files differ from the rendered ones, and runs the li
 
 - The FCAF lint (`tools/fcaf_lint.py` from the `site` branch at `e2f076a`, with the patch above) reports 0 blocking findings and 0 warnings for the 121 files, including the advisory checks for ICS vocabulary, reference keys, `default_*` definitions, relative links and identifier markup. CI runs it with `--enforce-all`, so any finding fails the build.
 - The lint over the whole corpus reports the same 3,779 warnings with and without the overlay, so the modified shared pages change nothing for the existing Wallet Solution test cases.
-
-Not done: an MkDocs build of the site. It runs the Python hooks of the FCAF repository and was not executed here, so the rendering of the `include-markdown` pages and the navigation is unchecked.
+- The MkDocs build of the FCAF site (the `site` branch at `e2f076a` with the hooks of the FCAF repository) passes with `--strict`, with the overlay laid over `submitted`; the `include-markdown` pages render all 121 test cases. `scripts/site-build.sh` runs it, and `.github/workflows/pages.yml` publishes the result at [cre8.github.io/rp-conformance](https://cre8.github.io/rp-conformance/), under this project's name and colours instead of the Commission's.
 
 ## Open points before an upstream pull request
 

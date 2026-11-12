@@ -1,0 +1,11 @@
+/* Loaded after the FCAF's media/css/extra.css and fcaf.css: the same theme, with this project's colours in place of
+   the Commission's blue and yellow, which extra.css applies through these variables. */
+:root {
+  --eudi-blue:       #00695c;
+  --eudi-blue-700:   #00594e;
+  --eudi-blue-dark:  #004d40;
+  --eudi-blue-vivid: #00897b;
+  --eudi-link:       #00796b;
+  --eudi-yellow:     #b2dfdb;
+  --eudi-yellow-ink: #004d40;
+}

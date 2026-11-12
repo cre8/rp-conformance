@@ -1,0 +1,84 @@
+# Configuration of the GitHub Pages site. scripts/site-build.sh copies it next to the FCAF configuration as
+# mkdocs.rp.yml. It inherits the FCAF theme, Markdown extensions, hooks and assets, and replaces everything that
+# would present the site as the European Commission's: name, author, URL, repository, logo, colours, navigation and
+# copyright. MkDocs merges mappings key by key and replaces lists as a whole.
+INHERIT: mkdocs.yml
+
+site_name: RP conformance
+site_description: Relying Party test cases for the EUDI Wallet FCAF, and the harness that runs them. Unofficial draft.
+site_author: rp-conformance
+site_url: https://cre8.github.io/rp-conformance/
+repo_url: https://github.com/cre8/rp-conformance
+repo_name: cre8/rp-conformance
+# The pages are rendered from packages/definitions and the FCAF branches, so there is nothing to edit here.
+edit_uri: ""
+copyright: >-
+  rp-conformance, EUPL-1.2. FCAF content © European Union, EUPL-1.2.
+  Not a publication of the European Commission.
+
+theme:
+  # The FCAF uses the EUDI logo and favicon.
+  logo: null
+  favicon: assets/images/favicon.png
+  icon:
+    logo: material/shield-check-outline
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to light mode
+  # As the FCAF, without the edit and view-source actions.
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.path
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - navigation.tracking
+    - toc.integrate
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+
+# As the FCAF, with rp.css (copied by scripts/site-build.sh), which replaces the Commission's colours.
+extra_css:
+  - media/css/extra.css
+  - media/css/fcaf.css
+  - media/css/rp.css
+
+# As the FCAF, without mike: one version, deployed by .github/workflows/pages.yml.
+plugins:
+  - search
+  - tags
+  - privacy
+  - include-markdown
+
+# As the FCAF, without fcaf_edit_urls.py, which points the edit actions at the FCAF branches.
+hooks:
+  - hooks/precond_alpha.py
+  - hooks/fcaf_nav.py
+
+extra:
+  version: null
+
+# As the FCAF's "Functional Conformance" section, with this site's home page; hooks/fcaf_nav.py appends the content
+# navigation (docs/fcaf/.nav.yml) to it.
+nav:
+  - Home: index.md
+  - Functional Conformance:
+      - Roadmap: roadmap.md
+  - Repository: https://github.com/cre8/rp-conformance
+  - Official FCAF: https://conformance.eudi.dev

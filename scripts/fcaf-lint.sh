@@ -8,22 +8,10 @@
 #   scripts/fcaf-lint.sh [work-dir]
 set -euo pipefail
 
-REPO=https://github.com/eu-digital-identity-wallet/eudi-doc-functional-conformance-assessment.git
-SUBMITTED=0ed4ab1184851160cbbc3e76322b516ab3508d56
-SITE=e2f076adf2166a48d5c328d1933c6c552b494315
-
 root=$(cd "$(dirname "$0")/.." && pwd)
+. "$root/scripts/fcaf-upstream.sh"
 work=${1:-$(mktemp -d)}
 mkdir -p "$work"
-
-fetch() { # <dir> <commit>
-  if [ ! -d "$1/.git" ]; then
-    git init -q "$1"
-    git -C "$1" remote add origin "$REPO"
-  fi
-  git -C "$1" fetch -q --depth 1 origin "$2"
-  git -C "$1" -c advice.detachedHead=false checkout -q --force FETCH_HEAD
-}
 
 fetch "$work/submitted" "$SUBMITTED"
 fetch "$work/site" "$SITE"

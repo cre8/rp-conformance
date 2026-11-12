@@ -28,7 +28,7 @@ export interface IssuedSdJwtVc {
   header: Record<string, unknown>;
 }
 
-export interface PidIssueOptions {
+export interface SdJwtVcIssueOptions {
   /** Signing certificate under the issuance anchor of the issuing entity, with its chain (no anchor). */
   signer: CertifiedKey;
   /** `iss` of the credential. */
@@ -40,9 +40,13 @@ export interface PidIssueOptions {
   now?: Date;
   /** Seconds; default 30 days, `default_credential_pid` requires more than 24 hours. */
   validitySeconds?: number;
-  claims?: Record<string, unknown>;
   /** SD-JWT VC media type in `typ`; `dc+sd-jwt` per SD-JWT VC. */
   typ?: string;
+}
+
+export interface PidIssueOptions extends SdJwtVcIssueOptions {
+  /** Claims that replace or extend those of `default_credential_pid`. */
+  claims?: Record<string, unknown>;
 }
 
 /**
@@ -51,11 +55,19 @@ export interface PidIssueOptions {
  * selectively disclosable, with a Token Status List reference.
  */
 export async function issuePidSdJwtVc(options: PidIssueOptions): Promise<IssuedSdJwtVc> {
+  return issueSdJwtVc({ ...options, vct: PID_VCT, claims: { ...DEFAULT_PID_CLAIMS, ...(options.claims ?? {}) } });
+}
+
+/**
+ * Issues an SD-JWT VC of type `vct` with the given attributes, as `issuePidSdJwtVc` issues the PID: ES256 under the
+ * issuer's signing certificate in `x5c`, device-bound, every attribute selectively disclosable, with a status reference.
+ */
+export async function issueSdJwtVc(options: SdJwtVcIssueOptions & { vct: string; claims: Record<string, unknown> }): Promise<IssuedSdJwtVc> {
   const now = Math.floor((options.now ?? new Date()).getTime() / 1000);
-  const claims = { ...DEFAULT_PID_CLAIMS, ...(options.claims ?? {}) };
+  const claims = options.claims;
   const payload = {
     iss: options.issuer,
-    vct: PID_VCT,
+    vct: options.vct,
     iat: now,
     nbf: now,
     exp: now + (options.validitySeconds ?? 30 * 24 * 60 * 60),

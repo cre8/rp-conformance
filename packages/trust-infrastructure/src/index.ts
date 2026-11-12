@@ -10,12 +10,14 @@ export interface TrustInfrastructureOptions extends ServerOptions {
 interface PublishedVersion {
   version: number;
   body: string;
+  contentType: string;
   publishedAt: string;
 }
 
 /**
  * Test Trust Infrastructure: serves the lists of `default_trust_configuration_rp` per namespace
- * (`<base>/<namespace>/<list>`), versioned, and logs every retrieval (harness design section 4.7).
+ * (`<base>/<namespace>/<list>`), versioned, and logs every retrieval (harness design section 4.7): the LoTEs as JWTs,
+ * the LOTL and `TL-QEAA` as XML (`<list>` ends in `.xml`, ETSI TS 119 612 clause 6.1).
  * `<base>/<namespace>/<list>` serves the latest version, `<base>/<namespace>/<list>/v<n>` a given one.
  */
 export class TrustInfrastructure {
@@ -32,7 +34,7 @@ export class TrustInfrastructure {
       const entry = versions && (match?.[3] ? versions.find((v) => v.version === Number(match[3])) : versions[versions.length - 1]);
       this.log.push({ at: new Date().toISOString(), method: req.method ?? 'GET', url: `${this.publicBaseUrl}${path}`, headers: req.headers, status: entry ? 200 : 404, version: entry?.version });
       if (!entry) return sendJson(res, 404, { error: 'not_found' });
-      res.writeHead(200, { 'content-type': 'application/jwt', 'cache-control': 'no-store', 'x-lote-version': String(entry.version) });
+      res.writeHead(200, { 'content-type': entry.contentType, 'cache-control': 'no-store', 'x-lote-version': String(entry.version) });
       res.end(entry.body);
     });
     const server = this.server;
@@ -50,11 +52,11 @@ export class TrustInfrastructure {
   }
 
   /** Publishes a new version of a list and returns its URL and version number. */
-  publish(namespace: string, listId: string, body: string): { url: string; version: number } {
+  publish(namespace: string, listId: string, body: string, contentType = 'application/jwt'): { url: string; version: number } {
     const key = `${namespace}/${listId}`;
     const versions = this.lists.get(key) ?? [];
     const version = versions.length + 1;
-    versions.push({ version, body, publishedAt: new Date().toISOString() });
+    versions.push({ version, body, contentType, publishedAt: new Date().toISOString() });
     this.lists.set(key, versions);
     return { url: this.urlOf(namespace, listId), version };
   }

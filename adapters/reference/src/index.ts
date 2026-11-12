@@ -25,6 +25,8 @@ export class ReferenceAdapter implements RelyingPartyAdapter {
       port: this.options.port ?? 0,
       host: '127.0.0.1',
       trustLists: env.trustLists,
+      listOfTrustedLists: env.listOfTrustedLists,
+      rulebooks: env.rulebooks,
       accessCertificate: env.accessCertificate,
       registrationCertificate: env.registrationCertificate,
       queries: env.queries,

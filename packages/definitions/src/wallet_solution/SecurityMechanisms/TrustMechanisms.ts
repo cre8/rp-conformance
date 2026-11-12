@@ -1,6 +1,8 @@
 // RP_WS_SM_TrustMechanisms: the trust anchor of the credential and its category.
 import {
   acc,
+  attestation,
+  type CredentialCategory,
   comments,
   type CredentialSpec,
   credentials,
@@ -17,8 +19,10 @@ import {
   pidQueryOf,
   positiveControlOf,
   preconditions,
+  presentation,
   presentationStep,
   queries,
+  queryOf,
   rej,
   relevancy,
   scenario,
@@ -56,24 +60,32 @@ const trustMechanisms = (format: FormatWording) => {
   /** A PID that differs only in its issuer or signer. */
   const variant = (difference: string, credential: CredentialSpec, query: DefaultQueryId = pidQueryOf(format.credentialFormat)) =>
     presentationStep.credentialVariant(difference, { credential, query });
-  const issuedBy = (difference: string, options?: { credential: string; query: string }) =>
-    step({ text: scenario.credentialVariant(difference, options), expect: rej() });
+  /** `default_credential_A` of a category in the format of the test case, presented for the category's default query. */
+  const attestationOf = (category: Exclude<CredentialCategory, 'pid'>, issuer?: string) =>
+    presentation({ query: queryOf(category, format.credentialFormat), credential: attestation.of(category, format.credentialFormat, { issuer }) });
+  /** A variant of the category's default credential that differs only in its issuer, which is not trusted for it. */
+  const issuedBy = (
+    difference: string,
+    options: { credential: string; query: string },
+    category: Exclude<CredentialCategory, 'pid'>,
+    issuer: string,
+  ) => step({ text: scenario.credentialVariant(difference, options), run: attestationOf(category, issuer), expect: rej() });
   const rejectedVariant = (difference: string, credential: CredentialSpec, query?: DefaultQueryId) =>
     step({ ...variant(difference, credential, query), expect: rej() });
 
   const categories = (
     [
-      [10, ics.requestsQeaa, queries.qeaa, credentials.qeaa, 'OIA_13, OIA_15b', ['[ETSI TS 119 612]'], 'QEAA'],
-      [12, ics.requestsPubEaa, queries.pubEaa, credentials.pubEaa, 'OIA_14, PuBPNot_06', ['[ETSI TS 119 602]'], 'PuB-EAA'],
-      [14, ics.requestsEaa, queries.eaa, credentials.eaa, 'OIA_15', ['[ETSI TS 119 602]'], 'non-qualified EAA'],
+      [10, ics.requestsQeaa, queries.qeaa, credentials.qeaa, 'OIA_13, OIA_15b', ['[ETSI TS 119 612]'], 'QEAA', 'qeaa'],
+      [12, ics.requestsPubEaa, queries.pubEaa, credentials.pubEaa, 'OIA_14, PuBPNot_06', ['[ETSI TS 119 602]'], 'PuB-EAA', 'pub-eaa'],
+      [14, ics.requestsEaa, queries.eaa, credentials.eaa, 'OIA_15', ['[ETSI TS 119 602]'], 'non-qualified EAA', 'eaa'],
     ] as const
-  ).map(([number, profile, query, credential, arf, lists, name]) =>
+  ).map(([number, profile, query, credential, arf, lists, name, category]) =>
     defineTestCase({
       id: id(number, false),
       ...base([profile]),
       objective: `Verify that the Relying Party accepts a ${name} in ${format.name} format signed under the root of trust defined for ${name}s.`,
       references: referencesOf(format, arf, [...lists]),
-      steps: [step({ text: scenario.valid({ credential, query }), expect: acc({ credential, query }) })],
+      steps: [step({ text: scenario.valid({ credential, query }), run: attestationOf(category), expect: acc({ credential, query }) })],
       comments: [comments.flow],
     }),
   );
@@ -186,8 +198,8 @@ const trustMechanisms = (format: FormatWording) => {
       objective: `Verify that the Relying Party does not accept an attestation in ${format.name} format as QEAA when its issuer has no granted qualified service.`,
       references: referencesOf(format, 'OIA_13, OIA_15b', ['[ETSI TS 119 612]']),
       steps: [
-        issuedBy('it is issued by `QP-N`, whose service is not qualified', { credential: credentials.qeaa, query: queries.qeaa }),
-        issuedBy('it is issued by `QP-W`, whose qualified service is withdrawn', { credential: credentials.qeaa, query: queries.qeaa }),
+        issuedBy('it is issued by `QP-N`, whose service is not qualified', { credential: credentials.qeaa, query: queries.qeaa }, 'qeaa', 'QP-N'),
+        issuedBy('it is issued by `QP-W`, whose qualified service is withdrawn', { credential: credentials.qeaa, query: queries.qeaa }, 'qeaa', 'QP-W'),
       ],
       comments: [comments.flow],
     }),
@@ -196,7 +208,7 @@ const trustMechanisms = (format: FormatWording) => {
       ...base([ics.requestsPubEaa]),
       objective: `Verify that the Relying Party rejects a PuB-EAA in ${format.name} format signed under a PID Provider anchor.`,
       references: referencesOf(format, 'OIA_14, OIA_15'),
-      steps: [issuedBy('it is issued by `PP-A`', { credential: credentials.pubEaa, query: queries.pubEaa })],
+      steps: [issuedBy('it is issued by `PP-A`', { credential: credentials.pubEaa, query: queries.pubEaa }, 'pub-eaa', 'PP-A')],
       comments: [comments.flow],
     }),
     defineTestCase({
@@ -204,7 +216,7 @@ const trustMechanisms = (format: FormatWording) => {
       ...base([ics.requestsEaa]),
       objective: `Verify that the Relying Party rejects a non-qualified EAA in ${format.name} format signed under an anchor that its rulebook does not define.`,
       references: referencesOf(format, 'OIA_15'),
-      steps: [issuedBy('it is issued by `PP-A`', { credential: credentials.eaa, query: queries.eaa })],
+      steps: [issuedBy('it is issued by `PP-A`', { credential: credentials.eaa, query: queries.eaa }, 'eaa', 'PP-A')],
       comments: [comments.flow],
     }),
     defineTestCase({

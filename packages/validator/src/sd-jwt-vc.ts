@@ -4,7 +4,7 @@ import { decodeSdJwtSync, unpackSync } from '@sd-jwt/core';
 import { parseCertificate } from '@owf/x509';
 import { CheckRecorder, type ValidationMode, type ValidationResult } from './checks';
 import { decodeSegment, evaluateStatusList, type FetchedStatusList, fail, isUri, leafJwk } from './status-list';
-import type { TrustedEntity, TrustStore } from './trust';
+import type { MatchedIssuer, TrustRule, TrustStore } from './trust';
 
 export type { FetchedStatusList };
 
@@ -22,8 +22,8 @@ export interface SdJwtVcValidation extends ValidationResult {
 
 export interface SdJwtVcValidationOptions {
   trust: TrustStore;
-  /** The list whose `/Issuance` anchors are trusted for this credential type, for example `TL-PID`. */
-  issuerList: string;
+  /** The root of trust of the credential's category (`TRUST_RULES`), for example a PID/Issuance service of `TL-PID`. */
+  trustRule: TrustRule;
   /** `vct` the Relying Party requested. */
   expectedVct: string[];
   nonce: string;
@@ -54,8 +54,8 @@ const DAY = 24 * 60 * 60;
 /**
  * The reference validator for an SD-JWT VC presentation with KB-JWT (SD-JWT VC, RFC 9901, Token Status List). Every
  * check is evaluated on its own, so a fault can be shown to fail exactly one of them. Trust follows
- * `default_trust_configuration_rp`: the issuer's chain ends in an `/Issuance` anchor of `issuerList`, the Status List
- * Token's chain in a `/Revocation` anchor of the same entity. Status list procedures run only for a credential that
+ * `default_trust_configuration_rp` through `trustRule`: the issuer's chain ends in an anchor of a service that may sign
+ * the credential's category, the Status List Token's chain in an anchor the rule names for that service's status lists. Status list procedures run only for a credential that
  * passed every other check (Token Status List section 8.3) unless `mode` is `all`.
  */
 export async function validateSdJwtVcPresentation(presentation: string, options: SdJwtVcValidationOptions): Promise<SdJwtVcValidation> {
@@ -70,7 +70,7 @@ export async function validateSdJwtVcPresentation(presentation: string, options:
   let kbPayload: Record<string, unknown> = {};
   let kbJwt = '';
   let x5c: string[] = [];
-  let entity: TrustedEntity | undefined;
+  let issuer: MatchedIssuer | undefined;
   let claims: Record<string, unknown> | undefined;
   let reference: { idx: number; uri: string } | undefined;
   let statusListFetched = false;
@@ -96,11 +96,11 @@ export async function validateSdJwtVcPresentation(presentation: string, options:
     });
 
     await recorder.run('issuer-trust', ['format'], async () => {
-      const match = await options.trust.match(options.issuerList, '/Issuance', x5c, now);
+      const match = await options.trust.match(options.trustRule, x5c, now);
       if (!match.ok) fail(match.reason);
       if (match.ok) {
-        entity = match.entity;
-        return `${match.entity.name} under ${match.anchor.subject.commonName}`;
+        issuer = { name: match.entity.name, statusAnchors: options.trustRule.statusAnchors(match.entity, match.service) };
+        return `${match.entity.name} under ${match.anchor.subject.commonName} (${match.list.id})`;
       }
     });
 
@@ -183,8 +183,7 @@ export async function validateSdJwtVcPresentation(presentation: string, options:
     await evaluateStatusList(recorder, {
       format: 'jwt',
       reference,
-      entity,
-      trust: options.trust,
+      issuer,
       fetchStatusList: options.fetchStatusList,
       maxStatusListBytes: options.maxStatusListBytes,
       validStatuses: options.validStatuses,
@@ -196,5 +195,5 @@ export async function validateSdJwtVcPresentation(presentation: string, options:
       },
     });
   });
-  return { ...result, claims: result.failures.includes('disclosures') ? undefined : claims, issuer: entity?.name, statusListFetched };
+  return { ...result, claims: result.failures.includes('disclosures') ? undefined : claims, issuer: issuer?.name, statusListFetched };
 }

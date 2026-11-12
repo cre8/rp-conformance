@@ -6,6 +6,7 @@ import type { CredentialFormat, PresentationAction } from '@rp-conformance/core'
 import { applyCredentialFault, applyStatusListFault, type ServedStatusList, type StatusListFaultContext } from './faults';
 import { applyIdentifierListFault, applyMdocFault, applyStatusListCwtFault } from './faults-cose';
 import { buildIdentifierListCwt, IDENTIFIER_LIST_CWT_TYPE } from './identifier-list';
+import { issueCredentialAMdoc, issueCredentialASdJwtVc } from './attestation';
 import { issuePidMdoc, newMdocIdentifier } from './mdoc';
 import { issuePidSdJwtVc } from './pid';
 import { type CertifiedKey, createDocumentSigner, documentSignerValidity, type TestEntity, type TestPki } from './pki';
@@ -126,9 +127,11 @@ export async function forgePresentation(action: PresentationAction, ctx: StepFor
   }
 
   const short = spec.defaultCredential === 'default_credential_pid_short';
+  // `default_credential_qeaa`, `_pubeaa` and `_eaa` are `default_credential_A`, issued like the PID.
+  const pid = spec.defaultCredential === 'default_credential_pid' || short;
   const [fault] = spec.faults;
   if (spec.format === 'mso_mdoc') {
-    const issued = await issuePidMdoc({
+    const issued = await (pid ? issuePidMdoc : issueCredentialAMdoc)({
       signer,
       holderPublicJwk: ctx.holderPublicJwk,
       status:
@@ -147,7 +150,7 @@ export async function forgePresentation(action: PresentationAction, ctx: StepFor
     return { format: spec.format, credential, claims: issued.claims, signer, statusList, identifierList };
   }
 
-  const issued = await issuePidSdJwtVc({
+  const issued = await (pid ? issuePidSdJwtVc : issueCredentialASdJwtVc)({
     signer,
     issuer: issuer.issuerUri,
     holderPublicJwk: ctx.holderPublicJwk,

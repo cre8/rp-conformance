@@ -1,4 +1,6 @@
 import {
+  type CredentialCategory,
+  categoryOfQuery,
   type DcqlQuery,
   type DefaultQueryId,
   type Flow,
@@ -45,12 +47,23 @@ interface EudiploSession {
 
 const PENDING = new Set(['active', 'fetched']);
 
+/** The ICS item that declares whether the Relying Party requests a category (RP.G.3 to RP.G.5); PIDs always. */
+const CATEGORY_ICS: Record<Exclude<CredentialCategory, 'pid'>, string> = { qeaa: 'RP.G.3', 'pub-eaa': 'RP.G.4', eaa: 'RP.G.5' };
+
+/** The ID of the managed trust list in which the adapter registers the anchor of the rulebook of `default_credential_eaa`. */
+const RULEBOOK_TRUST_LIST = 'rulebook-default-credential-eaa';
+
+const derOf = (pem: string) => pem.replace(/-----(BEGIN|END) CERTIFICATE-----/g, '').replace(/\s+/g, '');
+
 /**
  * Adapter for EUDIPLO (harness design section 4.8). One tenant per namespace: `setUp` creates the tenant, imports the
- * access certificate with its key, and creates a presentation configuration per default query, trusting `TL-PID`
- * through `trusted_authorities` (`etsi_tl`, pinned to the scheme operator certificate) and carrying the registration
- * certificate. Presentations start with `POST /api/verifier/offer`, via redirects (`response_type` `uri`) or the DC API
- * (`dc-api`, answered on the adapter's own page); the result is `GET /api/session/:id`.
+ * access certificate with its key, and creates a presentation configuration per default query, carrying the
+ * registration certificate and the root of trust of the query's category in `trusted_authorities` (`etsi_tl`): `TL-PID`
+ * or `TL-PUB`, each pinned to its scheme operator certificate, or for non-qualified EAAs a trust list the tenant manages
+ * with the anchor the rulebook defines. EUDIPLO reads no ETSI TS 119 612 Trusted List, so the QEAA queries are not
+ * configured (its ICS declares RP.G.3 No). Presentations start with `POST /api/verifier/offer`, via redirects
+ * (`response_type` `uri`) or the DC API (`dc-api`, answered on the adapter's own page); the result is
+ * `GET /api/session/:id`.
  */
 export class EudiploAdapter implements RelyingPartyAdapter {
   readonly name = 'eudiplo';
@@ -65,6 +78,8 @@ export class EudiploAdapter implements RelyingPartyAdapter {
   /** The relying-party page of the DC API flow, by EUDIPLO session. */
   private readonly pages = new Map<string, DcApiPage>();
   private pageServer?: RunningServer;
+  /** `GET /api/version` of the instance under test. */
+  private version?: { version?: string; revision?: string };
 
   constructor(private readonly options: EudiploAdapterOptions = {}) {
     this.baseUrl = (options.baseUrl ?? process.env.EUDIPLO_URL ?? `http://127.0.0.1:${process.env.EUDIPLO_PORT ?? 3000}`).replace(/\/$/, '');
@@ -101,6 +116,7 @@ export class EudiploAdapter implements RelyingPartyAdapter {
       this.options.clientId ?? process.env.EUDIPLO_CLIENT_ID ?? 'rp-conformance',
       this.options.clientSecret ?? process.env.EUDIPLO_CLIENT_SECRET ?? 'rp-conformance-secret',
     );
+    this.version = await this.call<{ version?: string; revision?: string }>('GET', '/api/version', undefined, rootToken).catch(() => ({}));
     // Tenant IDs are lowercase letters, digits, '-' and '_', at most 63 characters.
     this.tenantId = namespace.toLowerCase().replace(/[^a-z0-9_-]/g, '-').slice(0, 63);
     const tenant = await this.call<{ client: { clientId: string; clientSecret: string } }>(
@@ -123,18 +139,28 @@ export class EudiploAdapter implements RelyingPartyAdapter {
       crt: env.accessCertificate.chainPem,
     });
 
-    const pidList = env.trustLists.find((list) => list.id === 'TL-PID');
-    if (!pidList) throw new Error('TL-PID is not published');
-    const operatorDer = pidList.schemeOperatorCertificatePem
-      .replace(/-----(BEGIN|END) CERTIFICATE-----/g, '')
-      .replace(/\s+/g, '');
     this.skewSeconds = Number(env.ics.items['RP.P.4'] ?? 60);
     this.queries = env.queries;
+    const requested = (category: CredentialCategory) => category === 'pid' || String(env.ics.items[CATEGORY_ICS[category]]) === 'Yes';
+    const lote = (id: string) => {
+      const list = env.trustLists.find((l) => l.id === id);
+      if (!list) throw new Error(`${id} is not published`);
+      return [{ url: list.url, verifierX509Der: derOf(list.schemeOperatorCertificatePem) }];
+    };
+    const authorities: Partial<Record<CredentialCategory, unknown[]>> = { pid: lote('TL-PID') };
+    if (requested('pub-eaa')) authorities['pub-eaa'] = lote('TL-PUB');
+    if (requested('eaa')) authorities.eaa = [{ trustListId: await this.createRulebookTrustList(env) }];
+    if (requested('qeaa')) {
+      throw new Error('EUDIPLO loads no ETSI TS 119 612 Trusted List, so it cannot be configured for QEAAs: declare RP.G.3 No');
+    }
 
     for (const [id, query] of Object.entries(env.queries)) {
       // The ICS declares RP.P.3 No: EUDIPLO is configured with trusted_authorities of its own (etsi_tl below), so the
       // aki-restricted variant of default_query_pid (TrustMechanisms_016) is not configured.
       if (query.credentials.some((credential) => credential.trusted_authorities)) continue;
+      const values = authorities[categoryOfQuery(id as DefaultQueryId)];
+      // A category the ICS does not declare is not requested.
+      if (!values) continue;
       await this.call('POST', '/api/verifier/config', {
         id,
         description: `FCAF ${id}`,
@@ -142,7 +168,7 @@ export class EudiploAdapter implements RelyingPartyAdapter {
           // EUDIPLO 9.1.0 rejects require_cryptographic_holder_binding; its DCQL default is true (OpenID4VP 1.0 section 6.1).
           credentials: query.credentials.map(({ require_cryptographic_holder_binding: _required, ...credential }) => ({
             ...credential,
-            trusted_authorities: [{ type: 'etsi_tl', values: [{ url: pidList.url, verifierX509Der: operatorDer }] }],
+            trusted_authorities: [{ type: 'etsi_tl', values }],
           })),
         },
         registration_cert: { jwt: env.registrationCertificate },
@@ -151,6 +177,36 @@ export class EudiploAdapter implements RelyingPartyAdapter {
         statusCheckMode: 'strict',
       });
     }
+  }
+
+  /**
+   * EUDIPLO trusts issuers only through trust lists. For the rulebook of `default_credential_eaa`, which defines its own
+   * anchor `CA-EP-A`, the adapter registers that anchor as an external entity of a trust list the tenant manages (an EAA
+   * Providers list with EAA/Issuance and EAA/Revocation services), signed with a `trustList` key chain of the tenant.
+   */
+  private async createRulebookTrustList(env: TestEnvironment): Promise<string> {
+    const rulebook = env.rulebooks.find((r) => r.credential === 'default_credential_eaa');
+    const anchor = rulebook?.anchorsPem[0];
+    if (!anchor) throw new Error('the rulebook of default_credential_eaa defines no anchor');
+    const { id: keyChainId } = await this.call<{ id: string }>('POST', '/api/key-chain', {
+      description: 'Signs the trust list of the rulebook anchor',
+      usageType: 'trustList',
+      type: 'standalone',
+    });
+    await this.call('POST', '/api/trust-list', {
+      id: RULEBOOK_TRUST_LIST,
+      description: 'Anchor CA-EP-A defined by the rulebook of default_credential_eaa',
+      keyChainId,
+      entities: [
+        {
+          type: 'external',
+          issuerCertPem: anchor,
+          revocationCertPem: anchor,
+          info: { name: 'EP-A', country: 'DE', contactUri: 'trust@ep-a.rp-test', website: 'https://ep-a.rp-test/' },
+        },
+      ],
+    });
+    return RULEBOOK_TRUST_LIST;
   }
 
   /** The Origin of the adapter's relying-party page, which EUDIPLO signs into `expected_origins`. */
@@ -246,6 +302,15 @@ export class EudiploAdapter implements RelyingPartyAdapter {
       return { outcome: 'success', releasedAttributes: this.releasedAttributes(transactionId, values), raw: session };
     }
     return { outcome: 'failure', raw: session };
+  }
+
+  /** The EUDIPLO version and the commit it was built from, as `GET /api/version` reports them. */
+  async describe(): Promise<Record<string, string>> {
+    return {
+      url: this.baseUrl,
+      ...(this.version?.version ? { version: this.version.version } : {}),
+      ...(this.version?.revision ? { revision: this.version.revision } : {}),
+    };
   }
 
   async refreshTrust(): Promise<void> {

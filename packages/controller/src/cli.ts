@@ -5,6 +5,7 @@ import { parseArgs } from 'node:util';
 import { type Flow, isExecutable, type RelyingPartyAdapter } from '@rp-conformance/core';
 import { definitions } from '@rp-conformance/definitions';
 import { loadIcs } from './ics';
+import { loadKnownFindings, runOutcome } from './known-findings';
 import { runConformance } from './runner';
 
 const ADAPTERS: Record<string, { load: () => Promise<{ createAdapter(): RelyingPartyAdapter }>; dir: string }> = {
@@ -20,7 +21,12 @@ Options:
   --flows <list>         Flows to run, comma separated: redirect, dc-api; default: both
   --report-dir <dir>     Where reports go; default: reports
   --harness-host <host>  Host name under which the RP reaches the harness services
+  --known-findings <file>
+                         Known findings of the RP (YAML). A FAIL listed there is reported as known and does not fail
+                         the run; any other FAIL, INCONCLUSIVE, REVIEW or a run error does (exit code 1)
   --list                 List the test definitions and exit
+
+The report goes to <report-dir>/<run>/: report.json, summary.md, junit.xml and the artifacts of every step.
 `;
 
 async function main() {
@@ -33,6 +39,7 @@ async function main() {
       flows: { type: 'string' },
       'report-dir': { type: 'string', default: 'reports' },
       'harness-host': { type: 'string' },
+      'known-findings': { type: 'string' },
       list: { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
     },
@@ -55,6 +62,7 @@ async function main() {
   const adapter = (await entry.load()).createAdapter();
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
   const ics = await loadIcs(values.ics ?? join(root, 'adapters', entry.dir, 'ics.yaml'));
+  const knownFindings = values['known-findings'] ? await loadKnownFindings(resolve(values['known-findings'])) : undefined;
   const { report, reportPath } = await runConformance({
     adapter,
     ics,
@@ -63,11 +71,20 @@ async function main() {
     flows: values.flows?.split(',') as Flow[] | undefined,
     reportDir: resolve(values['report-dir']),
     harnessHost: values['harness-host'] ?? adapter.harnessHost ?? '127.0.0.1',
+    knownFindings,
     log: (line) => process.stdout.write(`${line}\n`),
   });
   const summary = Object.entries(report.run.summary).map(([k, v]) => `${k} ${v}`).join(', ');
   process.stdout.write(`\n${summary || 'no test case ran'}\nreport: ${reportPath}\n`);
-  if (report.results.some((r) => r.verdict === 'FAIL' || r.verdict === 'INCONCLUSIVE')) process.exitCode = 1;
+  if (!knownFindings) {
+    if (report.run.error || report.results.some((r) => r.verdict === 'FAIL' || r.verdict === 'INCONCLUSIVE')) process.exitCode = 1;
+    return;
+  }
+  const outcome = runOutcome(report, knownFindings);
+  for (const line of outcome.known) process.stdout.write(`known finding: ${line}\n`);
+  for (const line of outcome.resolved) process.stdout.write(`known finding no longer fails: ${line}\n`);
+  for (const line of outcome.unexpected) process.stdout.write(`unexpected: ${line}\n`);
+  if (!outcome.ok) process.exitCode = 1;
 }
 
 main().catch((error: unknown) => {

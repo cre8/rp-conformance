@@ -1,8 +1,17 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { type CallbackContext, type Jwk, setGlobalConfig } from '@openid4vc/oauth2';
 import { Openid4vpVerifier } from '@openid4vc/openid4vp';
-import type { DcqlQuery, DefaultQueryId, Flow, KeyedCertificate, RunningServer, ServerOptions } from '@rp-conformance/core';
-import { sendJson, sendText, startServer } from '@rp-conformance/core';
+import type {
+  DcqlQuery,
+  DefaultQueryId,
+  Flow,
+  KeyedCertificate,
+  PublishedListOfTrustedLists,
+  RulebookTrust,
+  RunningServer,
+  ServerOptions,
+} from '@rp-conformance/core';
+import { categoryOfQuery, sendJson, sendText, startServer } from '@rp-conformance/core';
 import { base64url, jwkThumbprint, type Oid4vpHandover, PID_DOCTYPE, PID_VCT, signCompactJws } from '@rp-conformance/forge';
 import type { CheckResult } from '@rp-conformance/core';
 import {
@@ -10,6 +19,7 @@ import {
   type ListSource,
   type MdocValidation,
   type SdJwtVcValidation,
+  TRUST_RULES,
   TrustStore,
   validateAuthorizationResponse,
   validateMdocPresentation,
@@ -21,6 +31,10 @@ export interface ReferenceRpOptions extends ServerOptions {
   /** Base URL under which the Conformance Wallet reaches the Relying Party. */
   publicBaseUrl?: string;
   trustLists: ListSource[];
+  /** The test LOTL that points to `TL-QEAA`. */
+  listOfTrustedLists?: PublishedListOfTrustedLists;
+  /** The anchors the rulebook of `default_credential_eaa` defines. */
+  rulebooks?: RulebookTrust[];
   accessCertificate: KeyedCertificate;
   registrationCertificate: string;
   queries: Record<DefaultQueryId, DcqlQuery>;
@@ -87,8 +101,8 @@ export function x509HashClientId(certificateBase64Der: string): string {
  * A minimal Relying Party built on the reference validator (harness design section 7). It signs its request with
  * its access certificate (`x509_hash`), asks for `direct_post.jwt` via redirects or `dc_api.jwt` via the W3C Digital
  * Credentials API (from a page of its own, `/dc-api/<id>`), verifies the presentation with the reference validator
- * against the trust configuration it loads from the Test Trust Infrastructure, and exposes its verification result
- * through an API.
+ * against the trust configuration it loads from the Test Trust Infrastructure (the LoTEs, the LOTL and `TL-QEAA`) and
+ * the rulebook anchors it is configured with, and exposes its verification result through an API.
  */
 export class ReferenceRelyingParty {
   private server?: RunningServer;
@@ -99,7 +113,11 @@ export class ReferenceRelyingParty {
   private accessKey?: CryptoKey;
 
   constructor(private readonly options: ReferenceRpOptions) {
-    this.trust = new TrustStore(options.trustLists);
+    this.trust = new TrustStore({
+      lotes: options.trustLists,
+      listOfTrustedLists: options.listOfTrustedLists,
+      rulebooks: options.rulebooks,
+    });
     this.clientId = x509HashClientId(options.accessCertificate.certificate);
   }
 
@@ -312,10 +330,12 @@ export class ReferenceRelyingParty {
       }
       const common = {
         trust: this.trust,
-        issuerList: 'TL-PID',
+        // The root of trust of the query's category: TL-PID, TL-QEAA through the LOTL, TL-PUB or the rulebook anchor.
+        trustRule: TRUST_RULES[categoryOfQuery(tx.query)],
         nonce: tx.requestPayload.nonce as string,
         skewSeconds: this.options.skewSeconds,
-        // A PID without reliable revocation status is rejected (catalogue decision 2).
+        // A PID without reliable revocation status is rejected (catalogue decision 2); for the other categories the
+        // reference Relying Party declares RP.R.2 Reject.
         requireStatus: true,
         maxStatusListBytes: this.options.maxStatusListBytes,
         validStatuses: this.options.validStatuses,

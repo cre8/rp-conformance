@@ -1,0 +1,11 @@
+# Known findings of EUDIPLO: FAILs that are reported upstream with evidence. The nightly job runs with
+#   pnpm rp-conformance run --adapter eudiplo --known-findings adapters/eudiplo/known-findings.yaml
+# and reports these FAILs as known findings (report.json, summary.md, junit.xml type "known-finding") without failing.
+# Any other FAIL, an INCONCLUSIVE or REVIEW result, or a harness error fails it. Remove an entry once EUDIPLO fixes it;
+# the run names a known finding whose test case passed.
+
+- testCase: RP_WS_SM_Validity_005b_UF
+  finding: >-
+    EUDIPLO rejects an expired mdoc but fetches its status list first, against Token Status List section 8.3:
+    @owf/mdoc IssuerAuth.verify runs verifyStatus before the validityInfo check
+  reference: cre8/rp-conformance#4

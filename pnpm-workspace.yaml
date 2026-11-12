@@ -7,3 +7,8 @@ packages:
 allowBuilds:
   esbuild: false
   cbor-extract: false
+
+# xmldsigjs asks for xpath ^0.0.34, @owf/eudi-tl for ^0.0.36. Two versions give two copies of xml-core, and the DOM and
+# XPath implementations xadesjs registers would not reach the one xmldsigjs uses for XAdES signing and verification.
+overrides:
+  xpath: 0.0.36

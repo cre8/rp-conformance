@@ -64,11 +64,21 @@ export function mdocValidity(now: Date, short = false) {
  * a COSE_Sign1 `IssuerAuth` that carries the document signer certificate in `x5chain`.
  */
 export async function issuePidMdoc(options: MdocIssueOptions): Promise<IssuedMdoc> {
+  return issueMdoc({ ...options, docType: PID_DOCTYPE, namespace: PID_NAMESPACE, claims: DEFAULT_PID_MDOC_CLAIMS, fullDates: FULL_DATES });
+}
+
+/**
+ * Issues an mdoc of `docType` with the given elements in one namespace, as `issuePidMdoc` issues the PID; the elements
+ * named in `fullDates` are encoded as `full-date` (tag 1004).
+ */
+export async function issueMdoc(
+  options: MdocIssueOptions & { docType: string; namespace: string; claims: Record<string, unknown>; fullDates: ReadonlySet<string> },
+): Promise<IssuedMdoc> {
   const now = options.now ?? new Date();
   const values = Object.fromEntries(
-    Object.entries(DEFAULT_PID_MDOC_CLAIMS).map(([name, value]) => [name, FULL_DATES.has(name) ? new DateOnly(value as string) : value]),
+    Object.entries(options.claims).map(([name, value]) => [name, options.fullDates.has(name) ? new DateOnly(value as string) : value]),
   );
-  const issuer = new Issuer(PID_DOCTYPE, mdocContext).addIssuerNamespace(PID_NAMESPACE, values);
+  const issuer = new Issuer(options.docType, mdocContext).addIssuerNamespace(options.namespace, values);
   const status = options.status && {
     ...(options.status.statusList ? { statusList: options.status.statusList } : {}),
     ...(options.status.identifierList ? { identifierList: options.status.identifierList } : {}),
@@ -84,7 +94,7 @@ export async function issuePidMdoc(options: MdocIssueOptions): Promise<IssuedMdo
   });
   return {
     issuerSigned: issuerSigned.encode(),
-    claims: { [PID_NAMESPACE]: structuredClone(DEFAULT_PID_MDOC_CLAIMS) as Record<string, unknown> },
+    claims: { [options.namespace]: structuredClone(options.claims) },
     identifier: options.status?.identifierList?.id,
   };
 }

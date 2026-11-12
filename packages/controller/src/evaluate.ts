@@ -1,4 +1,4 @@
-import type { DcqlQuery, Expectation, ExpectationCode, Ics, RelyingPartyResult, Verdict } from '@rp-conformance/core';
+import type { CredentialCategory, DcqlQuery, Expectation, ExpectationCode, Ics, RelyingPartyResult, Verdict } from '@rp-conformance/core';
 import { icsAnswer, statusMeanings } from './ics';
 
 export interface Evaluation {
@@ -73,9 +73,6 @@ export function evaluateReject(result: RelyingPartyResult, responseStatus: numbe
   if (responseStatus !== undefined && responseStatus >= 400) return { verdict: 'PASS', reason: `rejected: the Relying Party answered HTTP ${responseStatus}` };
   return { verdict: 'FAIL', reason: `verification result is ${result.outcome}` };
 }
-
-/** The credential categories of `NOSTAT`: a PID is always rejected, the others follow ICS RP.R.2. */
-export type CredentialCategory = 'pid' | 'qeaa' | 'pub-eaa' | 'eaa';
 
 /**
  * `NOSTAT` (catalogue decision 2): no reliable revocation status. A PID is rejected. Another category follows the

@@ -7,7 +7,7 @@ export async function writeSummary(report: RunReport, path: string): Promise<voi
   const lines = [
     `# RP conformance run ${run.id}`,
     '',
-    `Adapter \`${run.adapter}\`, flows ${run.flows.join(', ') || 'none'}, ${run.startedAt} to ${run.finishedAt ?? ''}.`,
+    `Adapter \`${run.adapter}\`${run.rp ? ` (${Object.entries(run.rp).map(([k, v]) => `${k} \`${v}\``).join(', ')})` : ''}, flows ${run.flows.join(', ') || 'none'}, ${run.startedAt} to ${run.finishedAt ?? ''}.`,
     '',
     Object.entries(run.summary).map(([verdict, count]) => `${verdict}: ${count}`).join(', ') || 'No test case ran.',
     ...(run.error ? ['', `Run error: ${run.error}`] : []),
@@ -16,8 +16,12 @@ export async function writeSummary(report: RunReport, path: string): Promise<voi
     '| --- | --- | --- | --- |',
     ...report.results.map((r) => {
       const failed = r.steps.filter((s) => s.verdict !== 'PASS').map((s) => `step ${s.step}: ${s.reason}`);
-      const reason = (r.reason ?? failed.join('; ')).replace(/\|/g, '\\|').replace(/\n/g, ' ');
-      return `| ${r.testCase} | ${r.flow} | ${r.verdict} | ${reason} |`;
+      const reason = [r.knownFinding && `Known finding: ${r.knownFinding}.`, r.reason ?? failed.join('; ')]
+        .filter(Boolean)
+        .join(' ')
+        .replace(/\|/g, '\\|')
+        .replace(/\n/g, ' ');
+      return `| ${r.testCase} | ${r.flow} | ${r.verdict}${r.knownFinding ? ' (known)' : ''} | ${reason} |`;
     }),
     '',
   ];

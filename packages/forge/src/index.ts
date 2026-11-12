@@ -1,3 +1,4 @@
+export * from './attestation';
 export * from './cbor';
 export * from './crypto';
 export * from './faults';
@@ -12,3 +13,4 @@ export * from './queries';
 export * from './registration';
 export * from './status-list';
 export * from './step';
+export * from './trusted-list';

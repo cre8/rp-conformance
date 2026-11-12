@@ -1,4 +1,4 @@
-import type { DefaultQueryId } from './adapter';
+import type { CredentialCategory, DefaultQueryId } from './adapter';
 import { type FaultId, faultInfo } from './faults';
 
 /** Presentation flows of the Relying Party SUT. */
@@ -54,10 +54,35 @@ export type Relevancy = (typeof relevancy)[keyof typeof relevancy];
 /** Credential formats of the Relying Party SUT (OpenID4VP format identifiers). */
 export type CredentialFormat = 'dc+sd-jwt' | 'mso_mdoc';
 
+/**
+ * The FCAF default credentials the Test Issuers issue: the PID, the PID valid for less than 24 hours without status,
+ * and `default_credential_A` issued as a QEAA, a PuB-EAA or a non-qualified EAA.
+ */
+export type DefaultCredential =
+  | 'default_credential_pid'
+  | 'default_credential_pid_short'
+  | 'default_credential_qeaa'
+  | 'default_credential_pubeaa'
+  | 'default_credential_eaa';
+
+/** The default credential of each category, and the entity of `default_trust_configuration_rp` that issues it. */
+export const DEFAULT_CREDENTIALS: Record<CredentialCategory, { credential: DefaultCredential; issuer: string }> = {
+  pid: { credential: 'default_credential_pid', issuer: 'PP-A' },
+  qeaa: { credential: 'default_credential_qeaa', issuer: 'QP-A' },
+  'pub-eaa': { credential: 'default_credential_pubeaa', issuer: 'PB-A' },
+  eaa: { credential: 'default_credential_eaa', issuer: 'EP-A' },
+};
+
+/** The category of a default credential. */
+export function categoryOfCredential(credential: DefaultCredential): CredentialCategory {
+  const entry = Object.entries(DEFAULT_CREDENTIALS).find(([, value]) => value.credential === credential);
+  return (entry?.[0] as CredentialCategory | undefined) ?? 'pid';
+}
+
 /** A credential the Test Issuers issue for a step, valid unless a fault is applied. */
 export interface CredentialSpec {
-  /** The FCAF default credential: `default_credential_pid`, or `default_credential_pid_short` (under 24 hours, no status). */
-  defaultCredential: 'default_credential_pid' | 'default_credential_pid_short';
+  /** The FCAF default credential; `default_credential_pid_short` is valid for less than 24 hours and has no status. */
+  defaultCredential: DefaultCredential;
   format: CredentialFormat;
   /** Entity of `default_trust_configuration_rp` that issues the credential. */
   issuer: string;
@@ -312,6 +337,18 @@ export function pidQueryOf(format: CredentialFormat, options: { trustedAuthoriti
   return (options.trustedAuthorities ? `${base}_trusted_authorities` : base) as DefaultQueryId;
 }
 
+const QUERY_BASE: Record<CredentialCategory, string> = {
+  pid: 'default_query_pid',
+  qeaa: 'default_query_qeaa',
+  'pub-eaa': 'default_query_pubeaa',
+  eaa: 'default_query_eaa',
+};
+
+/** The default query for the credential of a category in `format`: `default_query_qeaa` or `default_query_qeaa_mdoc`, … */
+export function queryOf(category: CredentialCategory, format: CredentialFormat): DefaultQueryId {
+  return `${QUERY_BASE[category]}${format === 'mso_mdoc' ? '_mdoc' : ''}` as DefaultQueryId;
+}
+
 export interface PidOptions {
   issuer?: string;
   signedUnder?: 'issuance' | 'revocation';
@@ -349,6 +386,23 @@ export const pid = {
   /** `default_credential_pid_short` in mdoc format. */
   shortMdoc(): CredentialSpec {
     return pid.shortOf('mso_mdoc');
+  },
+};
+
+export interface AttestationOptions {
+  /** Default: the entity that issues the category's default credential (`QP-A`, `PB-A`, `EP-A`). */
+  issuer?: string;
+  faults?: FaultId[];
+}
+
+/**
+ * Builders for `default_credential_A` issued as a QEAA, a PuB-EAA or a non-qualified EAA: device-bound and with
+ * revocation information as for `default_credential_pid`.
+ */
+export const attestation = {
+  of(category: Exclude<CredentialCategory, 'pid'>, format: CredentialFormat, options: AttestationOptions = {}): CredentialSpec {
+    const { credential, issuer } = DEFAULT_CREDENTIALS[category];
+    return { defaultCredential: credential, format, issuer: options.issuer ?? issuer, faults: options.faults ?? [] };
   },
 };
 

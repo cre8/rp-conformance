@@ -1,6 +1,9 @@
 import type { Ics, PublishedTrustList, TestEnvironment } from '@rp-conformance/core';
 import {
   buildSealedLote,
+  buildTrustedLists,
+  TRUSTED_LIST_MEDIA_TYPE,
+  type TrustedListId,
   createTestPki,
   defaultEntitiesOf,
   defaultQueries,
@@ -38,9 +41,12 @@ export interface Harness {
   stop(): Promise<void>;
 }
 
+/** Where the lists in ETSI TS 119 612 format are published: paths ending in `.xml` (clause 6.1). */
+const TRUSTED_LIST_PATHS: Record<TrustedListId, string> = { LOTL: 'LOTL.xml', 'TL-QEAA': 'TL-QEAA.xml' };
+
 /**
  * Starts the harness services of a run: the test PKI of `default_trust_configuration_rp`, the Test Status Provider,
- * and the Test Trust Infrastructure with every LoTE published in the run's namespace.
+ * and the Test Trust Infrastructure with every LoTE, the test LOTL and `TL-QEAA` published in the run's namespace.
  */
 export async function startHarness(options: HarnessOptions): Promise<Harness> {
   const pki = await createTestPki();
@@ -67,11 +73,26 @@ export async function startHarness(options: HarnessOptions): Promise<Harness> {
       schemeOperatorCertificatePem: pki.schemeOperators[list].certificate.pem,
     });
   }
+  const locations = {
+    LOTL: trust.urlOf(options.namespace, TRUSTED_LIST_PATHS.LOTL),
+    'TL-QEAA': trust.urlOf(options.namespace, TRUSTED_LIST_PATHS['TL-QEAA']),
+  };
+  const trustedLists = await buildTrustedLists({ pki, locations });
+  for (const list of ['LOTL', 'TL-QEAA'] as TrustedListId[]) {
+    trust.publish(options.namespace, TRUSTED_LIST_PATHS[list], trustedLists[list], TRUSTED_LIST_MEDIA_TYPE);
+  }
   const access = pki.relyingPartyAccess;
   const queries = defaultQueries(pki);
   const env: TestEnvironment = {
     runId: options.runId,
     trustLists,
+    listOfTrustedLists: {
+      url: locations.LOTL,
+      signingCertificatesPem: [pki.trustedListOperators.LOTL.certificate.pem],
+      pointers: [{ id: 'TL-QEAA', url: locations['TL-QEAA'], schemeTerritory: 'DE' }],
+    },
+    // EP-A is on no list: the rulebook of default_credential_eaa defines CA-EP-A for its attestations and status lists.
+    rulebooks: [{ credential: 'default_credential_eaa', anchorsPem: [pki.entities['EP-A'].anchors.issuance.certificate.pem] }],
     accessCertificate: {
       certificatePem: access.certificate.pem,
       certificate: Buffer.from(access.certificate.der).toString('base64'),
@@ -79,7 +100,13 @@ export async function startHarness(options: HarnessOptions): Promise<Harness> {
       privateJwk: access.key.privateJwk,
       privateKeyPem: access.key.privateKeyPem,
     },
-    registrationCertificate: await issueRegistrationCertificate(pki, [queries.default_query_pid, queries.default_query_pid_mdoc]),
+    // Every default query the Relying Party uses; the restricted variants ask for the same credentials and claims.
+    registrationCertificate: await issueRegistrationCertificate(
+      pki,
+      Object.entries(queries)
+        .filter(([id]) => !id.endsWith('_trusted_authorities'))
+        .map(([, query]) => query),
+    ),
     queries,
     ics: options.ics,
   };

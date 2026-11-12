@@ -11,6 +11,7 @@
     "@owf/eudi-jades": "^0.6.0",
     "@owf/eudi-lote": "^0.6.0",
     "@owf/eudi-registration-certificate": "^0.6.0",
+    "@owf/eudi-tl": "^0.6.0",
     "@owf/identity-common": "^0.7.0",
     "@owf/mdoc": "0.9.3",
     "@owf/token-status-list": "^0.7.0",
@@ -18,7 +19,10 @@
     "@rp-conformance/core": "workspace:*",
     "@sd-jwt/core": "^0.24.3",
     "@sd-jwt/sd-jwt-vc": "^0.24.3",
+    "@xmldom/xmldom": "^0.9.12",
     "cborg": "6.1.4",
-    "jose": "^6.2.15"
+    "jose": "^6.2.15",
+    "xadesjs": "^2.6.8",
+    "xpath": "^0.0.36"
   }
 }

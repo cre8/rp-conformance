@@ -25,7 +25,7 @@ import { parseCertificate } from '@owf/x509';
 import { CheckRecorder, type ValidationMode, type ValidationResult } from './checks';
 import { evaluateIdentifierList } from './identifier-list';
 import { attempt, base64Of, evaluateStatusList, type FetchedStatusList, fail, isUri } from './status-list';
-import type { TrustedEntity, TrustStore } from './trust';
+import type { MatchedIssuer, TrustRule, TrustStore } from './trust';
 
 /** The checks of an mdoc presentation that references a Status List Token in CWT format. */
 export const MDOC_STATUS_LIST_CHECKS: CheckId[] = [...MDOC_CREDENTIAL_CHECKS, ...STATUS_LIST_CHECKS];
@@ -42,8 +42,8 @@ export interface MdocValidation extends ValidationResult {
 
 export interface MdocValidationOptions {
   trust: TrustStore;
-  /** The list whose `/Issuance` anchors are trusted for this credential type, for example `TL-PID`. */
-  issuerList: string;
+  /** The root of trust of the credential's category (`TRUST_RULES`), for example a PID/Issuance service of `TL-PID`. */
+  trustRule: TrustRule;
   /** The doctype the Relying Party requested (`meta.doctype_value`). */
   expectedDocType: string;
   /**
@@ -107,9 +107,9 @@ const asMap = (value: unknown, what: string): CborMap => {
 
 /**
  * Validates an mdoc presentation: a base64url DeviceResponse with one document (`vp_token` entry, OpenID4VP B.2.4).
- * Trust follows `default_trust_configuration_rp` as for SD-JWT VC: the document signer chains to an `/Issuance` anchor
- * of `issuerList` and carries the extended key usage of ISO/IEC 18013-5 Annex B; the status list or identifier list
- * chains to a `/Revocation` anchor of the same entity. Status procedures run only for an otherwise valid credential
+ * Trust follows `default_trust_configuration_rp` as for SD-JWT VC (`trustRule`): the document signer chains to an
+ * anchor of a service that may sign the credential's category and carries the extended key usage of ISO/IEC 18013-5
+ * Annex B; the status list or identifier list chains to an anchor the rule names for that service's status lists. Status procedures run only for an otherwise valid credential
  * unless `mode` is `all`.
  */
 export async function validateMdocPresentation(presentation: string, options: MdocValidationOptions): Promise<MdocValidation> {
@@ -121,7 +121,7 @@ export async function validateMdocPresentation(presentation: string, options: Md
   let issuerAuth: ReturnType<typeof readCose> | undefined;
   let mso: CborMap = new Map();
   let x5chain: Uint8Array[] = [];
-  let entity: TrustedEntity | undefined;
+  let issuer: MatchedIssuer | undefined;
   let claims: Record<string, Record<string, unknown>> | undefined;
   let statusListReference: { uri: string; idx: number } | undefined;
   let identifierListReference: { uri: string; id: Uint8Array } | undefined;
@@ -161,13 +161,13 @@ export async function validateMdocPresentation(presentation: string, options: Md
     });
 
     await recorder.run('issuer-trust', ['format'], async () => {
-      const match = await options.trust.match(options.issuerList, '/Issuance', base64Of(x5chain), now);
+      const match = await options.trust.match(options.trustRule, base64Of(x5chain), now);
       if (!match.ok) fail(match.reason);
       if (match.ok) {
         // ISO/IEC 18013-5 Annex B, Table B.3: a document signer certificate carries this extended key usage.
         if (!match.leaf.extendedKeyUsage?.includes(MDOC_DS_EXTENDED_KEY_USAGE)) fail('the signing certificate is not a document signer (no extended key usage 1.0.18013.5.1.2)');
-        entity = match.entity;
-        return `${match.entity.name} under ${match.anchor.subject.commonName}`;
+        issuer = { name: match.entity.name, statusAnchors: options.trustRule.statusAnchors(match.entity, match.service) };
+        return `${match.entity.name} under ${match.anchor.subject.commonName} (${match.list.id})`;
       }
     });
 
@@ -284,8 +284,7 @@ export async function validateMdocPresentation(presentation: string, options: Md
       await evaluateStatusList(recorder, {
         format: 'cwt',
         reference: statusListReference,
-        entity,
-        trust: options.trust,
+        issuer,
         fetchStatusList: options.fetchStatusList,
         maxStatusListBytes: options.maxStatusListBytes,
         validStatuses: options.validStatuses,
@@ -299,8 +298,7 @@ export async function validateMdocPresentation(presentation: string, options: Md
     if (hasIdentifierList) {
       await evaluateIdentifierList(recorder, {
         reference: identifierListReference,
-        entity,
-        trust: options.trust,
+        issuer,
         fetchIdentifierList: options.fetchIdentifierList,
         skewSeconds: options.skewSeconds,
         now,
@@ -313,7 +311,7 @@ export async function validateMdocPresentation(presentation: string, options: Md
   return {
     ...result,
     claims: result.failures.includes('disclosures') ? undefined : claims,
-    issuer: entity?.name,
+    issuer: issuer?.name,
     statusListFetched,
     identifierListFetched,
   };

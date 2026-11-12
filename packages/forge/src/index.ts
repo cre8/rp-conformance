@@ -1,3 +1,4 @@
+export * from './attestation';
 export * from './cbor';
 export * from './crypto';
 export * from './faults';

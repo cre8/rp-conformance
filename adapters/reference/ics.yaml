@@ -1,9 +1,9 @@
 # Implementation Conformance Statement of the reference Relying Party (see fcaf-overlay/docs/fcaf/ics-rp.md).
 RP.G.1: "Yes"   # requests credentials in IETF SD-JWT VC format
 RP.G.2: "Yes"   # requests credentials in ISO/IEC 18013-5 mdoc format
-RP.G.3: "No"
-RP.G.4: "No"
-RP.G.5: "No"
+RP.G.3: "Yes"   # QEAA: granted EAA/Q services of the Trusted Lists the test LOTL points to
+RP.G.4: "Yes"   # PuB-EAA: PubEAA/Issuance services of TL-PUB
+RP.G.5: "Yes"   # non-qualified EAA: the anchor the rulebook of default_credential_eaa defines
 RP.G.6: API
 RP.P.1: "Yes"   # presentations via redirects
 RP.P.2: "Yes"   # W3C Digital Credentials API: its own page, openid4vp-v1-signed, dc_api.jwt

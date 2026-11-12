@@ -23,8 +23,13 @@ export async function issueRegistrationCertificate(pki: TestPki, queries: DcqlQu
     .privacyPolicy('https://rp.rp-test/privacy')
     .supportUri('https://rp.rp-test/support')
     .issuedAt(now);
+  // Queries that ask for the same credential and claims (the QEAA, PuB-EAA and EAA queries) give one entry.
+  const listed = new Set<string>();
   for (const query of queries) {
     for (const credentialQuery of query.credentials) {
+      const key = JSON.stringify([credentialQuery.format, credentialQuery.meta ?? {}, (credentialQuery.claims ?? []).map((c) => c.path)]);
+      if (listed.has(key)) continue;
+      listed.add(key);
       const entry = credential().format(credentialQuery.format).meta(credentialQuery.meta ?? {});
       for (const claim of credentialQuery.claims ?? []) entry.addPathClaim(...claim.path);
       builder.addCredential(entry.build());

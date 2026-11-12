@@ -13,6 +13,11 @@ on:
         description: EUDIPLO image under test
         default: ghcr.io/eudiplo/eudiplo:main
         type: string
+  # A pull request that changes this job runs it once, so the change is tested before it is merged. It also registers
+  # the workflow, which GitHub otherwise lets no one start by hand before it is on the default branch.
+  pull_request:
+    paths:
+      - .github/workflows/nightly-eudiplo.yml
 
 permissions:
   contents: read

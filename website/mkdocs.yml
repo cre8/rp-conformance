@@ -7,7 +7,7 @@ INHERIT: mkdocs.yml
 site_name: RP conformance
 site_description: Relying Party test cases for the EUDI Wallet FCAF, and the harness that runs them. Unofficial draft.
 site_author: rp-conformance
-site_url: https://cre8.github.io/rp-conformance/
+site_url: https://rp-conformance.eudi-wallet.dev/
 repo_url: https://github.com/cre8/rp-conformance
 repo_name: cre8/rp-conformance
 # The pages are rendered from packages/definitions and the FCAF branches, so there is nothing to edit here.

@@ -2,7 +2,7 @@
 
 Functional conformance tests for **Relying Parties** of the EUDI Wallet ecosystem: services that request and verify PIDs and attestations from Wallet Units.
 
-Site: [cre8.github.io/rp-conformance](https://cre8.github.io/rp-conformance/), the FCAF with the Relying Party test cases, as an unofficial preview (`scripts/site-build.sh`, deployed from `main` by `.github/workflows/pages.yml`).
+Site: [rp-conformance.eudi-wallet.dev](https://rp-conformance.eudi-wallet.dev/), the FCAF with the Relying Party test cases, as an unofficial preview (`scripts/site-build.sh`, deployed from `main` by `.github/workflows/pages.yml`).
 
 The EU [Functional Conformance Assessment Framework](https://conformance.eudi.dev) (FCAF) tests only the Wallet Solution, and the OIDF verifier suite mostly covers happy flows. This project defines and, later, executes the tests a Relying Party must pass, with the focus on what it must reject: expired credentials, revoked or suspended credentials, unusable status lists, wrong trust anchors, stale trust lists, faulty response encryption.
 

@@ -97,4 +97,4 @@ scripts/fcaf-lint.sh
 
 ## Licence
 
-Not chosen yet. The files under `fcaf-overlay/docs/fcaf/` that modify existing FCAF pages (`defaults.md`, `references.md`, `.nav.yml`, `suts/index.md`) and their unmodified originals in `packages/fcaf-render/upstream/` contain FCAF content, which is licensed under EUPL-1.2.
+[EUPL-1.2](LICENSE), the licence of FCAF. The files under `fcaf-overlay/docs/fcaf/` that modify existing FCAF pages (`defaults.md`, `references.md`, `.nav.yml`, `suts/index.md`) and their unmodified originals in `packages/fcaf-render/upstream/` contain FCAF content, © European Union, under the same licence.

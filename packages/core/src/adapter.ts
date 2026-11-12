@@ -156,6 +156,8 @@ export interface RelyingPartyAdapter {
   readResult(transactionId: string, timeoutMs: number): Promise<RelyingPartyResult>;
   /** Optional: make the Relying Party fetch its trust lists now instead of waiting `T_refresh`. */
   refreshTrust?(namespace: string): Promise<void>;
+  /** Optional: what the report records about the Relying Party under test after `setUp`, for example its version. */
+  describe?(): Promise<Record<string, string>>;
   /** Optional: release resources the adapter started. */
   tearDown?(): Promise<void>;
 }

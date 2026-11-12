@@ -78,6 +78,8 @@ export class EudiploAdapter implements RelyingPartyAdapter {
   /** The relying-party page of the DC API flow, by EUDIPLO session. */
   private readonly pages = new Map<string, DcApiPage>();
   private pageServer?: RunningServer;
+  /** `GET /api/version` of the instance under test. */
+  private version?: { version?: string; revision?: string };
 
   constructor(private readonly options: EudiploAdapterOptions = {}) {
     this.baseUrl = (options.baseUrl ?? process.env.EUDIPLO_URL ?? `http://127.0.0.1:${process.env.EUDIPLO_PORT ?? 3000}`).replace(/\/$/, '');
@@ -114,6 +116,7 @@ export class EudiploAdapter implements RelyingPartyAdapter {
       this.options.clientId ?? process.env.EUDIPLO_CLIENT_ID ?? 'rp-conformance',
       this.options.clientSecret ?? process.env.EUDIPLO_CLIENT_SECRET ?? 'rp-conformance-secret',
     );
+    this.version = await this.call<{ version?: string; revision?: string }>('GET', '/api/version', undefined, rootToken).catch(() => ({}));
     // Tenant IDs are lowercase letters, digits, '-' and '_', at most 63 characters.
     this.tenantId = namespace.toLowerCase().replace(/[^a-z0-9_-]/g, '-').slice(0, 63);
     const tenant = await this.call<{ client: { clientId: string; clientSecret: string } }>(
@@ -299,6 +302,15 @@ export class EudiploAdapter implements RelyingPartyAdapter {
       return { outcome: 'success', releasedAttributes: this.releasedAttributes(transactionId, values), raw: session };
     }
     return { outcome: 'failure', raw: session };
+  }
+
+  /** The EUDIPLO version and the commit it was built from, as `GET /api/version` reports them. */
+  async describe(): Promise<Record<string, string>> {
+    return {
+      url: this.baseUrl,
+      ...(this.version?.version ? { version: this.version.version } : {}),
+      ...(this.version?.revision ? { revision: this.version.revision } : {}),
+    };
   }
 
   async refreshTrust(): Promise<void> {

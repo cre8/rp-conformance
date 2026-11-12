@@ -27,6 +27,8 @@ import { evaluate, worst } from './evaluate';
 import { type Harness, startHarness } from './harness';
 import { applicability, icsAnswer } from './ics';
 import { harnessInfo } from './info';
+import { writeJUnit } from './junit';
+import { describeFinding, type KnownFinding, knownFindingOf } from './known-findings';
 import { writeSummary } from './summary';
 
 /** The flows the harness implements: redirects, and the W3C Digital Credentials API through the DC API shim. */
@@ -69,6 +71,9 @@ export interface TestCaseRecord {
   flow: Flow;
   verdict: Verdict;
   reason?: string;
+  /** For a FAIL that is a known finding of the Relying Party under test: the finding and where it is tracked. */
+  knownFinding?: string;
+  durationMs?: number;
   /** The positive control this verdict depends on; `null` for a positive control. */
   control: { id: string; verdict: Verdict } | null;
   steps: StepRecord[];
@@ -80,6 +85,8 @@ export interface RunReport {
     startedAt: string;
     finishedAt?: string;
     adapter: string;
+    /** What the adapter reports about the Relying Party under test, for example its version and commit. */
+    rp?: Record<string, string>;
     flows: Flow[];
     ics: Ics;
     harness: ReturnType<typeof harnessInfo>;
@@ -114,6 +121,8 @@ export interface RunOptions {
    * before the retrieval is checked again after the next step; default 10 s, or `T_refresh` without a hook.
    */
   trustRefreshWaitMs?: number;
+  /** Known findings of the Relying Party under test; a FAIL that matches one is marked in the report. */
+  knownFindings?: KnownFinding[];
   log?: (line: string) => void;
 }
 
@@ -200,7 +209,8 @@ export async function runConformance(options: RunOptions): Promise<{ report: Run
       log(report.run.error);
       return await writeReport(report, runDir);
     }
-    log(`adapter ${options.adapter.name} set up`);
+    report.run.rp = await options.adapter.describe?.().catch(() => undefined);
+    log(`adapter ${options.adapter.name} set up${report.run.rp ? ` (${Object.entries(report.run.rp).map(([k, v]) => `${k} ${v}`).join(', ')})` : ''}`);
     const wallet = await ConformanceWallet.create({
       accessCertificateAnchors: [harness.pki.entities['AC-A'].anchors.issuance.certificate],
       allowInsecureUrls: true,
@@ -208,9 +218,13 @@ export async function runConformance(options: RunOptions): Promise<{ report: Run
     for (const definition of selected) {
       // Every test case once per flow, except the SessionEncryption variants, whose profile names their flow.
       for (const flow of flowsOf(definition).filter((f) => requestedFlows.includes(f))) {
+        const started = Date.now();
         const record = await runTestCase(definition, flow, flows.includes(flow), { ...options, harness, wallet, runDir, report, dcApiShim });
+        record.durationMs = Date.now() - started;
+        const finding = record.verdict === 'FAIL' ? knownFindingOf(options.knownFindings ?? [], record.testCase, flow) : undefined;
+        if (finding) record.knownFinding = describeFinding(finding);
         report.results.push(record);
-        log(`${record.verdict.padEnd(14)} ${record.testCase} [${record.flow}]${record.reason ? ` ${record.reason}` : ''}`);
+        log(`${record.verdict.padEnd(14)} ${record.testCase} [${record.flow}]${record.knownFinding ? ' (known finding)' : ''}${record.reason ? ` ${record.reason}` : ''}`);
         for (const step of record.steps.filter((s) => s.verdict !== 'PASS')) log(`    step ${step.step} ${step.verdict}: ${step.reason}`);
       }
     }
@@ -230,6 +244,7 @@ async function writeReport(report: RunReport, runDir: string): Promise<{ report:
   const reportPath = join(runDir, 'report.json');
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
   await writeSummary(report, join(runDir, 'summary.md'));
+  await writeJUnit(report, join(runDir, 'junit.xml'));
   return { report, reportPath };
 }
 

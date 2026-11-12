@@ -20,6 +20,7 @@
     "rp-conformance": "./bin/rp-conformance.mjs"
   },
   "devDependencies": {
-    "@rp-conformance/core": "workspace:*"
+    "@rp-conformance/core": "workspace:*",
+    "@xmldom/xmldom": "^0.9.12"
   }
 }

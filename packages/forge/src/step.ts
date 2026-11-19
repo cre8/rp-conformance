@@ -61,8 +61,8 @@ export interface ForgedCredential {
   statusList?: ForgedStatusList;
   identifierList?: ForgedIdentifierList;
   /**
-   * The docType the Conformance Wallet gives the document of an mdoc, when it differs from the MSO's: the issued type,
-   * for `mdoc.mso-doctype-other`.
+   * The docType the Conformance Wallet gives the document of an mdoc, when the MSO does not give it: the issued type,
+   * for `mdoc.mso-doctype-other` and `mdoc.mso-not-tag24`.
    */
   documentDocType?: string;
 }
@@ -162,7 +162,8 @@ export async function forgePresentation(action: PresentationAction, ctx: StepFor
     const credential = fault
       ? await applyMdocFault(fault, bound, { signer, now, skewSeconds: ctx.skewSeconds, statusListEntries: statusList?.entries, issuer })
       : bound;
-    const documentDocType = fault === 'mdoc.mso-doctype-other' ? (pid ? PID_DOCTYPE : CREDENTIAL_A_DOCTYPE) : undefined;
+    // The document keeps the issued docType where the MSO does not name it (`mso-doctype-other`) or is not readable as one (`mso-not-tag24`).
+    const documentDocType = fault === 'mdoc.mso-doctype-other' || fault === 'mdoc.mso-not-tag24' ? (pid ? PID_DOCTYPE : CREDENTIAL_A_DOCTYPE) : undefined;
     return { format: spec.format, credential, claims: issued.claims, signer, statusList, identifierList, ...(documentDocType ? { documentDocType } : {}) };
   }
 

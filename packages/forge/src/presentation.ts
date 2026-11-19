@@ -5,8 +5,8 @@
 import { createHmac, generateKeyPairSync, type KeyObject, randomBytes, sign as nodeSign } from 'node:crypto';
 import { type FaultId, faultInfo } from '@rp-conformance/core';
 import { type CborMap, COSE_ALG, coseValue, decodeCbor, encodeCbor, readCose } from './cbor';
-import { base64url, type EcKeyPair, generateEcKeyPair, publicJwkToPem, sha256 } from './crypto';
-import { flipBitInBytes } from './faults-cose';
+import { base64url, type EcKeyPair, generateEcKeyPair, publicJwkToPem, sha256, signCompactJws } from './crypto';
+import { flipBitInBytes, OTHER_DOCTYPE } from './faults-cose';
 import { decodeJws, flipBitInSegment, resignJws } from './jose';
 import { encodeDeviceResponse, jwkThumbprint, type Oid4vpHandover, PID_NAMESPACE, presentMdoc } from './mdoc';
 import { presentSdJwtVc } from './pid';
@@ -132,6 +132,18 @@ async function presentSdJwtVcWithFault(
       if (!binding.audience.startsWith('x509_hash:')) throw new Error(`the Client Identifier ${binding.audience} has no x509_hash: prefix to remove`);
       return resign(({ payload }) => void (payload.aud = binding.audience.slice('x509_hash:'.length)));
     }
+    case 'presentation.kb-aud-missing':
+      return resign(({ payload }) => void delete payload.aud);
+    case 'presentation.kb-aud-array':
+      return resign(({ payload }) => void (payload.aud = [binding.audience]));
+    case 'presentation.kb-nonce-missing':
+      return resign(({ payload }) => void delete payload.nonce);
+    case 'presentation.kb-iat-nan': {
+      // JSON has no NaN (RFC 8259 section 6): the payload is written by hand and the holder key signs those bytes.
+      const { header, payload } = decodeJws(kbJwt);
+      const json = JSON.stringify({ ...payload, iat: 0 }).replace('"iat":0', '"iat":NaN');
+      return sdJwt + (await signCompactJws(header, json, keys.holder.privateKey));
+    }
     case 'presentation.kb-aud-client-id': {
       if (!binding.clientId) throw new Error('the request has no client_id');
       return resign(({ payload }) => void (payload.aud = binding.clientId));
@@ -189,6 +201,7 @@ async function presentMdocWithFault(
   let holderPrivateKey = keys.holder.privateKey;
   let deviceNameSpaces: Map<string, Map<string, unknown>> | undefined;
   let deviceSigner: Parameters<typeof presentMdoc>[1]['deviceSigner'];
+  let deviceAuthentication: Parameters<typeof presentMdoc>[1]['deviceAuthentication'];
   const redirect = () => {
     if (handover.flow !== 'redirect') throw new Error(`fault ${fault} applies to the redirect flow`);
     return handover;
@@ -197,6 +210,7 @@ async function presentMdocWithFault(
     case undefined:
     case 'presentation.device-signature-bitflip':
     case 'presentation.no-device-auth':
+    case 'presentation.device-signature-missing':
       break;
     case 'presentation.transcript-nonce':
       nonce = base64url.encode(randomBytes(16));
@@ -204,6 +218,12 @@ async function presentMdocWithFault(
     case 'presentation.transcript-client-id':
       handover = { ...redirect(), clientId: otherClientId() };
       break;
+    case 'presentation.transcript-client-id-no-prefix': {
+      const { clientId } = redirect();
+      if (!clientId.startsWith('x509_hash:')) throw new Error(`the Client Identifier ${clientId} has no x509_hash: prefix to remove`);
+      handover = { ...redirect(), clientId: clientId.slice('x509_hash:'.length) };
+      break;
+    }
     case 'presentation.transcript-response-uri': {
       const uri = new URL(redirect().responseUri);
       uri.pathname = uri.pathname.replace(/\/?$/, '/other');
@@ -213,9 +233,22 @@ async function presentMdocWithFault(
     case 'presentation.transcript-jwk-thumbprint':
       thumbprint = await jwkThumbprint((await generateEcKeyPair()).publicJwk);
       break;
+    case 'presentation.transcript-jwk-thumbprint-null':
+      thumbprint = null;
+      break;
     case 'presentation.transcript-origin':
       if (handover.flow !== 'dc-api') throw new Error(`fault ${fault} applies to the dc-api flow`);
       handover = { flow: 'dc-api', origin: OTHER_ORIGIN };
+      break;
+    case 'presentation.transcript-origin-prefixed':
+      if (handover.flow !== 'dc-api') throw new Error(`fault ${fault} applies to the dc-api flow`);
+      handover = { flow: 'dc-api', origin: `origin:${handover.origin}` };
+      break;
+    case 'presentation.device-signature-doctype-other':
+      deviceAuthentication = { docType: OTHER_DOCTYPE };
+      break;
+    case 'presentation.device-signature-not-detached':
+      deviceAuthentication = { attachPayload: true };
       break;
     case 'presentation.device-signature-other-key':
       holderPrivateKey = (await generateEcKeyPair()).privateKey;
@@ -241,12 +274,15 @@ async function presentMdocWithFault(
     deviceNameSpaces,
     deviceSigner,
     docType,
+    deviceAuthentication,
   });
-  if (fault === 'presentation.device-signature-bitflip' || fault === 'presentation.no-device-auth') {
+  if (fault === 'presentation.device-signature-bitflip' || fault === 'presentation.no-device-auth' || fault === 'presentation.device-signature-missing') {
     const response = decodeCbor<CborMap>(deviceResponse);
     const deviceSigned = ((response.get('documents') as CborMap[])[0]?.get('deviceSigned') ?? new Map()) as CborMap;
     if (fault === 'presentation.no-device-auth') {
       deviceSigned.delete('deviceAuth');
+    } else if (fault === 'presentation.device-signature-missing') {
+      deviceSigned.set('deviceAuth', new Map());
     } else {
       const deviceAuth = deviceSigned.get('deviceAuth') as CborMap;
       const signature = readCose(deviceAuth.get('deviceSignature'));

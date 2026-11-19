@@ -36,6 +36,8 @@ EUDI_generic | EUDI_required
 2. Perform a presentation for `default_query_pid` via redirects in which the Conformance Wallet presents `default_credential_pid` in an Authorization Response that is valid except that the `OpenID4VPHandover` in the SessionTranscript its device signature covers is computed with the Client Identifier of another Relying Party instead of the `client_id` of the request.
 3. Perform a presentation for `default_query_pid` via redirects in which the Conformance Wallet presents `default_credential_pid` in an Authorization Response that is valid except that the `OpenID4VPHandover` in the SessionTranscript its device signature covers is computed with a `response_uri` other than that of the request.
 4. Perform a presentation for `default_query_pid` via redirects in which the Conformance Wallet presents `default_credential_pid` in an Authorization Response that is valid except that the SessionTranscript its device signature covers is computed with the JWK thumbprint of a newly generated key instead of that of the encryption key of the request.
+5. Perform a presentation for `default_query_pid` via redirects in which the Conformance Wallet presents `default_credential_pid` in an Authorization Response that is valid except that the `OpenID4VPHandover` in the SessionTranscript its device signature covers is computed with the Client Identifier of the request without its prefix `x509_hash:`.
+6. Perform a presentation for `default_query_pid` via redirects in which the Conformance Wallet presents `default_credential_pid` in an Authorization Response that is valid except that the SessionTranscript its device signature covers is computed with `null` as the JWK thumbprint, although the response is encrypted to the encryption key of the request.
 
 ## Expected results
 
@@ -43,6 +45,8 @@ EUDI_generic | EUDI_required
 2. The Relying Party rejects the presentation: its verification result reports a failure and releases no attribute value from the presentation, and the endpoint receiving the Authorization Response does not answer with HTTP status 5xx.
 3. The Relying Party rejects the presentation: its verification result reports a failure and releases no attribute value from the presentation, and the endpoint receiving the Authorization Response does not answer with HTTP status 5xx.
 4. The Relying Party rejects the presentation: its verification result reports a failure and releases no attribute value from the presentation, and the endpoint receiving the Authorization Response does not answer with HTTP status 5xx.
+5. The Relying Party rejects the presentation: its verification result reports a failure and releases no attribute value from the presentation, and the endpoint receiving the Authorization Response does not answer with HTTP status 5xx.
+6. The Relying Party rejects the presentation: its verification result reports a failure and releases no attribute value from the presentation, and the endpoint receiving the Authorization Response does not answer with HTTP status 5xx.
 
 ## Comments
 

@@ -11,9 +11,12 @@ const TAGS = [0, 1, 17, 18, 24, 1004];
 
 export type CborMap = Map<unknown, unknown>;
 
-/** Decodes CBOR with maps as `Map` and the mdoc and COSE tags as `Tagged`; other tags fail. */
-export function decodeCbor<T = unknown>(bytes: Uint8Array): T {
-  return decode(bytes, { useMaps: true, tags: Tagged.preserve(...TAGS) }) as T;
+/**
+ * Decodes CBOR with maps as `Map` and the mdoc and COSE tags as `Tagged`; other tags fail. A map that repeats a key
+ * decodes with the last value, unless `rejectDuplicateKeys` is set, which fails it.
+ */
+export function decodeCbor<T = unknown>(bytes: Uint8Array, options: { rejectDuplicateKeys?: boolean } = {}): T {
+  return decode(bytes, { useMaps: true, tags: Tagged.preserve(...TAGS), rejectDuplicateMapKeys: options.rejectDuplicateKeys === true }) as T;
 }
 
 /** Encodes CBOR (maps in the deterministic order of RFC 8949 section 4.2.1, as `cborg` sorts them). */

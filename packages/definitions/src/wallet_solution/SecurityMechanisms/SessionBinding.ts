@@ -59,7 +59,7 @@ export const definitions = [
     format: sdJwtVc,
     objective: 'Verify that the Relying Party rejects a presentation in SD-JWT VC format whose KB-JWT carries a `nonce` other than that of its request.',
     references: ['[OpenID4VP] section 14.1.2, B.3.6', ...KB_JWT],
-    steps: [rejected('presentation.kb-nonce-other')],
+    steps: [rejected('presentation.kb-nonce-other'), rejected('presentation.kb-nonce-missing')],
     comments: [oidf('invalid-kb-jwt-nonce')],
   }),
   sessionBinding({
@@ -69,7 +69,12 @@ export const definitions = [
     objective:
       'Verify that the Relying Party rejects a presentation in SD-JWT VC format via redirects whose KB-JWT is not addressed to its full Client Identifier.',
     references: ['[OpenID4VP] section 5.9.3, 14.1.2, 14.8, B.3.6', ...KB_JWT],
-    steps: [rejected('presentation.kb-aud-other-client', 'redirect'), rejected('presentation.kb-aud-no-prefix', 'redirect')],
+    steps: [
+      rejected('presentation.kb-aud-other-client', 'redirect'),
+      rejected('presentation.kb-aud-no-prefix', 'redirect'),
+      rejected('presentation.kb-aud-missing', 'redirect'),
+      rejected('presentation.kb-aud-array', 'redirect'),
+    ],
     comments: ['The OIDF verifier test module `oid4vp-1final-verifier-invalid-kb-jwt-aud` covers the first step.'],
   }),
   sessionBinding({
@@ -121,6 +126,8 @@ export const definitions = [
       rejected('presentation.transcript-client-id', 'redirect'),
       rejected('presentation.transcript-response-uri', 'redirect'),
       rejected('presentation.transcript-jwk-thumbprint', 'redirect'),
+      rejected('presentation.transcript-client-id-no-prefix', 'redirect'),
+      rejected('presentation.transcript-jwk-thumbprint-null', 'redirect'),
     ],
     comments: ['The OIDF verifier test module `oid4vp-1final-verifier-invalid-session-transcript` covers one of these steps.'],
   }),
@@ -135,6 +142,7 @@ export const definitions = [
       rejected('presentation.transcript-origin', 'dc-api'),
       rejected('presentation.transcript-nonce', 'dc-api'),
       rejected('presentation.transcript-jwk-thumbprint', 'dc-api'),
+      rejected('presentation.transcript-origin-prefixed', 'dc-api'),
     ],
   }),
 ];

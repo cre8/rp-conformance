@@ -114,7 +114,7 @@ export const definitions = [
     format: mdoc,
     objective: 'Verify that the Relying Party rejects a presentation in mdoc format whose device signature is invalid.',
     references: DEVICE_AUTH,
-    steps: [rejected('presentation.device-signature-bitflip')],
+    steps: [rejected('presentation.device-signature-bitflip'), rejected('presentation.device-signature-doctype-other')],
   }),
   deviceBinding({
     number: 9,
@@ -129,7 +129,7 @@ export const definitions = [
     format: mdoc,
     objective: 'Verify that the Relying Party rejects a presentation in mdoc format without device authentication.',
     references: DEVICE_AUTH,
-    steps: [rejected('presentation.no-device-auth')],
+    steps: [rejected('presentation.no-device-auth'), rejected('presentation.device-signature-missing')],
   }),
   deviceBinding({
     number: 11,

@@ -121,7 +121,7 @@ export const definitions = [
     format: sdJwtVc,
     objective: 'Verify that the Relying Party rejects a credential in SD-JWT VC format whose issuer signature is invalid.',
     references: SD_JWT,
-    steps: [rejected('credential.signature-bitflip')],
+    steps: [rejected('credential.signature-bitflip'), rejected('credential.signature-der')],
     comments: [oidf('invalid-credential-signature')],
   }),
   issuerIntegrity({
@@ -198,7 +198,7 @@ export const definitions = [
     format: sdJwtVc,
     objective: 'Verify that the Relying Party rejects a credential in SD-JWT VC format with a disclosure that has the wrong number of elements for where it is referenced.',
     references: ['[RFC9901] section 4.2.1, 4.2.2, 7.1'],
-    steps: [rejected('credential.disclosure-two-elements'), rejected('credential.disclosure-array-three-elements')],
+    steps: [rejected('credential.disclosure-two-elements'), rejected('credential.disclosure-array-three-elements'), rejected('credential.disclosure-four-elements')],
   }),
   issuerIntegrity({
     number: 12,
@@ -243,14 +243,14 @@ export const definitions = [
     format: mdoc,
     objective: 'Verify that the Relying Party rejects a credential in mdoc format whose issuer signature is invalid.',
     references: MSO,
-    steps: [rejected('mdoc.signature-bitflip')],
+    steps: [rejected('mdoc.signature-bitflip'), rejected('mdoc.signature-der')],
   }),
   issuerIntegrity({
     number: 21,
     format: mdoc,
     objective: 'Verify that the Relying Party rejects a credential in mdoc format with a data element whose digest does not match the MSO.',
     references: MSO,
-    steps: [rejected('mdoc.element-value-changed')],
+    steps: [rejected('mdoc.element-value-changed'), rejected('mdoc.digest-reencoded-item'), rejected('mdoc.digest-truncated')],
   }),
   issuerIntegrity({
     number: 22,

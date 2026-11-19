@@ -31,10 +31,12 @@ EUDI_generic | EUDI_required
 ## Test Scenario
 
 1. Perform a presentation for `default_query_pid` in which the Conformance Wallet presents `default_credential_pid` in an Authorization Response that is valid except that the `deviceSigned` structure of its document has no `deviceAuth`.
+2. Perform a presentation for `default_query_pid` in which the Conformance Wallet presents `default_credential_pid` in an Authorization Response that is valid except that the `deviceAuth` of its document is present and empty, without a `deviceSignature`.
 
 ## Expected results
 
 1. The Relying Party rejects the presentation: its verification result reports a failure and releases no attribute value from the presentation, and the endpoint receiving the Authorization Response does not answer with HTTP status 5xx.
+2. The Relying Party rejects the presentation: its verification result reports a failure and releases no attribute value from the presentation, and the endpoint receiving the Authorization Response does not answer with HTTP status 5xx.
 
 ## Comments
 

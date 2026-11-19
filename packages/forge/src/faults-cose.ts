@@ -17,10 +17,11 @@ import {
   macStructure,
   readCose,
   sigStructure,
+  Tagged,
   tdate,
   x5chainValue,
 } from './cbor';
-import { randomSerial, sha256, signEs256 } from './crypto';
+import { derEcdsaSignature, randomSerial, sha256, signEs256 } from './crypto';
 import { decompressionBomb, otherSigner, type ServedStatusList, type StatusListFaultContext } from './faults';
 import type { CertifiedKey, TestEntity } from './pki';
 import { createHash } from 'node:crypto';
@@ -67,13 +68,31 @@ export interface MdocFaultContext {
 /** The docType of the faults that present an mdoc of another type: an mDL (ISO/IEC 18013-5). */
 export const OTHER_DOCTYPE = 'org.iso.18013.5.1.mDL';
 
-/** The `IssuerSignedItem` of `element`, decoded, with the namespace array and its index. */
+/** The `IssuerSignedItem` of `element`, decoded, with its namespace, the namespace array and its index. */
 function issuerSignedItem(issuerSigned: CborMap, element: string) {
-  for (const items of (issuerSigned.get('nameSpaces') as Map<string, unknown[]>).values()) {
+  for (const [namespace, items] of issuerSigned.get('nameSpaces') as Map<string, unknown[]>) {
     const index = items.findIndex((item) => decodeEmbedded<CborMap>(item).get('elementIdentifier') === element);
-    if (index >= 0) return { items, index, item: decodeEmbedded<CborMap>(items[index]) };
+    if (index >= 0) return { namespace, items, index, item: decodeEmbedded<CborMap>(items[index]) };
   }
   throw new Error(`the mdoc has no IssuerSignedItem for ${element}`);
+}
+
+/**
+ * The CBOR encoding of `map` in which the unsigned integer that follows the text key `key` is written in the next
+ * larger form (RFC 8949 section 3.1 prefers the shortest form but does not require it), so the content is the same and
+ * the bytes are not.
+ */
+function withWiderUnsigned(map: CborMap, key: string): Uint8Array {
+  const bytes = encodeCbor(map);
+  const at = Buffer.from(bytes).indexOf(Buffer.from(encodeCbor(key)));
+  if (at < 0) throw new Error(`the item has no key ${key}`);
+  const head = at + encodeCbor(key).length;
+  const info = (bytes[head] as number) & 0x1f;
+  if (bytes[head] >> 5 !== 0 || info > 26) throw new Error(`the value of ${key} is not an unsigned integer of at most 32 bits`);
+  const size = info < 24 ? 0 : 1 << (info - 24);
+  const value = bytes.slice(head + 1, head + 1 + size);
+  const wider = info < 24 ? [0x18, info] : [0x19 + (info - 24), ...new Array<number>(size).fill(0), ...value];
+  return Uint8Array.from([...bytes.slice(0, head), ...wider, ...bytes.slice(head + 1 + size)]);
 }
 
 const statusListEntryOf = (mso: CborMap): CborMap => {
@@ -115,6 +134,34 @@ export async function applyMdocFault(fault: FaultId, issuerSignedBytes: Uint8Arr
     case 'mdoc.signature-bitflip':
       issuerSigned.set('issuerAuth', coseValue({ ...issuerAuth, signature: flipBitInBytes(issuerAuth.signature) }));
       return encodeCbor(issuerSigned);
+    case 'mdoc.signature-der':
+      issuerSigned.set('issuerAuth', coseValue({ ...issuerAuth, signature: derEcdsaSignature(issuerAuth.signature) }));
+      return encodeCbor(issuerSigned);
+    case 'mdoc.issuer-auth-duplicate-label': {
+      // RFC 9052 section 3: a label that appears several times makes the message malformed. The map holds the entries
+      // of the valid protected header (`alg`) and `alg` again, and the signature covers these bytes.
+      const alg = encodeCbor(new Map([[COSE.alg, COSE_ALG.ES256]])).slice(1);
+      const protectedBytes = Uint8Array.from([0xa0 + issuerAuth.protectedHeader.size + 1, ...issuerAuth.protectedBytes.slice(1), ...alg]);
+      const payload = issuerAuth.payload as Uint8Array;
+      const signature = await signEs256(ctx.signer.key.privateKey, sigStructure(protectedBytes, payload));
+      issuerSigned.set('issuerAuth', coseValue({ tag: issuerAuth.tag, protectedBytes, unprotectedHeader: issuerAuth.unprotectedHeader, payload, signature }));
+      return encodeCbor(issuerSigned);
+    }
+    case 'mdoc.mso-not-tag24':
+      issuerSigned.set('issuerAuth', await resign(issuerAuth, encodeCbor(mso), ctx.signer.key.privateKey));
+      return encodeCbor(issuerSigned);
+    case 'mdoc.digest-reencoded-item': {
+      const { items, index, item } = issuerSignedItem(issuerSigned, 'family_name');
+      items[index] = new Tagged(24, withWiderUnsigned(item, 'digestID'));
+      return encodeCbor(issuerSigned);
+    }
+    case 'mdoc.digest-truncated': {
+      const { namespace, item } = issuerSignedItem(issuerSigned, 'family_name');
+      const digests = (mso.get('valueDigests') as CborMap).get(namespace) as CborMap;
+      digests.set(item.get('digestID'), (digests.get(item.get('digestID')) as Uint8Array).slice(0, 20));
+      issuerSigned.set('issuerAuth', await resign(issuerAuth, encodeCbor(embedded(mso)), ctx.signer.key.privateKey));
+      return encodeCbor(issuerSigned);
+    }
     case 'mdoc.element-value-changed':
     case 'mdoc.digest-id-unknown': {
       const { items, index, item } = issuerSignedItem(issuerSigned, 'family_name');

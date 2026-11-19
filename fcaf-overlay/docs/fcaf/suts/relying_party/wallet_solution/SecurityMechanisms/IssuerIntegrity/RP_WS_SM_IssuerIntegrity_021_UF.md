@@ -30,10 +30,14 @@ EUDI_generic | EUDI_required
 ## Test Scenario
 
 1. Perform a presentation for `default_query_pid` in which the Conformance Wallet presents, in an otherwise valid Authorization Response, a variant of `default_credential_pid` that differs from it only in that the `elementValue` of its `IssuerSignedItem` for `family_name` is changed to `Musterfrau`, so its digest no longer matches the MSO.
+2. Perform a presentation for `default_query_pid` in which the Conformance Wallet presents, in an otherwise valid Authorization Response, a variant of `default_credential_pid` that differs from it only in that its `IssuerSignedItem` for `family_name` is encoded again with the same content, the `digestID` written in more bytes than its shortest form, so that its bytes are not those the MSO digests.
+3. Perform a presentation for `default_query_pid` in which the Conformance Wallet presents, in an otherwise valid Authorization Response, a variant of `default_credential_pid` that differs from it only in that the value digest of its `IssuerSignedItem` for `family_name` in the MSO is cut to its first 20 bytes.
 
 ## Expected results
 
 1. The Relying Party rejects the presentation: its verification result reports a failure and releases no attribute value from the presentation, and the endpoint receiving the Authorization Response does not answer with HTTP status 5xx.
+2. The Relying Party rejects the presentation: its verification result reports a failure and releases no attribute value from the presentation, and the endpoint receiving the Authorization Response does not answer with HTTP status 5xx.
+3. The Relying Party rejects the presentation: its verification result reports a failure and releases no attribute value from the presentation, and the endpoint receiving the Authorization Response does not answer with HTTP status 5xx.
 
 ## Comments
 

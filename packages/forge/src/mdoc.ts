@@ -130,6 +130,12 @@ export interface MdocPresentOptions {
   deviceSigner?: { alg: number; sign: (data: Uint8Array) => Promise<Uint8Array> | Uint8Array };
   /** The docType of the document, when it is not that of the MSO (`mdoc.mso-doctype-other`). */
   docType?: string;
+  /**
+   * What the device signature covers instead of the valid `DeviceAuthentication`: another docType than the document's
+   * (`presentation.device-signature-doctype-other`), or the payload carried in the COSE_Sign1 where it is detached
+   * (`presentation.device-signature-not-detached`).
+   */
+  deviceAuthentication?: { docType?: string; attachPayload?: boolean };
 }
 
 /** The SessionTranscript of OpenID4VP 1.0 Appendix B.2.6.1 or B.2.6.2, computed with @owf/mdoc, as a CBOR value. */
@@ -152,8 +158,8 @@ export async function oid4vpSessionTranscript(options: Pick<MdocPresentOptions, 
 export async function presentMdoc(issuerSignedBytes: Uint8Array, options: MdocPresentOptions): Promise<Uint8Array> {
   const issuerSigned = decodeCbor<CborMap>(issuerSignedBytes);
   const issuerAuth = readCose(issuerSigned.get('issuerAuth'));
-  const mso = decodeEmbedded<CborMap>(decodeCbor(issuerAuth.payload ?? new Uint8Array()));
-  const docType = options.docType ?? String(mso.get('docType'));
+  // The MSO is read only for the docType, which the caller gives where the MSO cannot (`mdoc.mso-not-tag24`).
+  const docType = options.docType ?? String(decodeEmbedded<CborMap>(decodeCbor(issuerAuth.payload ?? new Uint8Array())).get('docType'));
   const namespaces = new Map<string, Tagged[]>();
   for (const [namespace, items] of (issuerSigned.get('nameSpaces') as Map<string, Tagged[]>) ?? new Map()) {
     const requested = options.elements[namespace] ?? [];
@@ -161,12 +167,13 @@ export async function presentMdoc(issuerSignedBytes: Uint8Array, options: MdocPr
     if (disclosed.length) namespaces.set(namespace, disclosed);
   }
   const deviceNameSpaces = embedded(options.deviceNameSpaces ?? new Map());
-  const deviceAuthentication = encodeCbor(embedded(['DeviceAuthentication', await oid4vpSessionTranscript(options), docType, deviceNameSpaces]));
+  const signedDocType = options.deviceAuthentication?.docType ?? docType;
+  const deviceAuthentication = encodeCbor(embedded(['DeviceAuthentication', await oid4vpSessionTranscript(options), signedDocType, deviceNameSpaces]));
   const deviceSignature = options.deviceSigner
     ? await signCoseSign1With(options.deviceSigner, deviceAuthentication)
     : await signCoseSign1({
         protectedHeader: new Map([[COSE.alg, COSE_ALG.ES256]]),
-        payload: null,
+        payload: options.deviceAuthentication?.attachPayload ? deviceAuthentication : null,
         detached: deviceAuthentication,
         privateKey: options.holderPrivateKey,
       });

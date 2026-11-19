@@ -10,9 +10,23 @@ import {
   statusListToken,
   type TrustListAction,
 } from '@rp-conformance/core';
-import { createPublicKey, verify } from 'node:crypto';
+import { createPublicKey, verify, X509Certificate } from 'node:crypto';
 import { defaultEntitiesOf, trustedListEntitiesOf } from '@rp-conformance/forge';
-import { base64url, type CborMap, decodeCbor, decodeEmbedded, embedded, encodeCbor, jwkThumbprint as jwkThumbprintOf, readCose, sigStructure } from '@rp-conformance/forge';
+import {
+  base64url,
+  type CborMap,
+  COSE,
+  decodeCbor,
+  decodeEmbedded,
+  embedded,
+  encodeCbor,
+  jwkThumbprint as jwkThumbprintOf,
+  readCose,
+  sha256,
+  sigStructure,
+  Tagged,
+  x5chainOf,
+} from '@rp-conformance/forge';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { MDOC_IDENTIFIER_LIST_CHECKS, MDOC_STATUS_LIST_CHECKS, openid4vpSessionTranscript, SD_JWT_VC_CHECKS, TRUST_RULES } from '../src/index';
 import { AUDIENCE, Fixture, RESPONSE_URI } from './fixture';
@@ -61,6 +75,10 @@ const BINDING_REASONS: Partial<Record<FaultId, RegExp>> = {
   'presentation.kb-aud-no-prefix': /KB-JWT aud (?!x509_hash:)/,
   'presentation.kb-aud-client-id': /KB-JWT aud x509_hash:/,
   'presentation.kb-aud-other-origin': /KB-JWT aud origin:https:\/\/other\.example/,
+  'presentation.kb-aud-missing': /KB-JWT aud undefined/,
+  // A string and the array that holds it read the same in the reason: the aud the validator names is the one it expects.
+  'presentation.kb-aud-array': /KB-JWT aud (\S+) is not \1$/,
+  'presentation.kb-nonce-missing': /KB-JWT nonce does not match/,
   'presentation.kb-iat-past': /older than T_kb/,
   'presentation.kb-iat-future': /in the future/,
   'presentation.kb-signature-bitflip': /KB-JWT signature does not verify/,
@@ -76,7 +94,13 @@ const BINDING_REASONS: Partial<Record<FaultId, RegExp>> = {
   'presentation.transcript-nonce': /SessionTranscript of this request/,
   'presentation.transcript-client-id': /SessionTranscript of this request/,
   'presentation.transcript-response-uri': /SessionTranscript of this request/,
+  'presentation.transcript-client-id-no-prefix': /SessionTranscript of this request/,
   'presentation.transcript-jwk-thumbprint': /SessionTranscript of this request/,
+  'presentation.transcript-jwk-thumbprint-null': /SessionTranscript of this request/,
+  'presentation.transcript-origin-prefixed': /SessionTranscript of this request/,
+  'presentation.device-signature-doctype-other': /SessionTranscript of this request/,
+  'presentation.device-signature-missing': /no deviceSignature/,
+  'presentation.device-signature-not-detached': /not detached/,
   'presentation.transcript-origin': /SessionTranscript of this request/,
   'presentation.device-signature-bitflip': /SessionTranscript of this request/,
   'presentation.device-signature-other-key': /SessionTranscript of this request/,
@@ -104,6 +128,8 @@ const ISSUER_REASONS: Partial<Record<FaultId, RegExp>> = {
   'credential.disclosure-name-ellipsis': /reserved claim name \.\.\./,
   'credential.disclosure-name-present': /family_name is already present/,
   'credential.disclosure-two-elements': /object property has two elements/,
+  'credential.disclosure-four-elements': /two or three elements/,
+  'credential.signature-der': /issuer signature does not verify/,
   'credential.disclosure-array-three-elements': /array element has three elements/,
   'credential.sd-alg-md5': /_sd_alg md5/,
   'credential.sd-alg-sha1': /_sd_alg sha-1/,
@@ -120,6 +146,9 @@ const ISSUER_REASONS: Partial<Record<FaultId, RegExp>> = {
   'mdoc.digest-id-unknown': /no digest with ID/,
   'mdoc.mso-doctype-other': /MSO docType differs/,
   'mdoc.digest-sha1': /digestAlgorithm SHA-1/,
+  'mdoc.digest-reencoded-item': /digest of family_name does not match/,
+  'mdoc.digest-truncated': /digest of family_name does not match/,
+  'mdoc.signature-der': /IssuerAuth signature does not verify/,
   'mdoc.doctype-other': /docType org\.iso\.18013\.5\.1\.mDL was not requested/,
   'mdoc.embedded-root': /no trust anchor named .*CA-X/,
   'mdoc.ds-no-eku': /not a document signer/,
@@ -132,6 +161,14 @@ const ISSUER_REASONS: Partial<Record<FaultId, RegExp>> = {
   'mdoc.key-p192': /key P-192/,
   'mdoc.key-rsa1024': /key RSA 1024 bit/,
   'mdoc.critical-extension': /unknown critical extension/,
+};
+
+/** The reason for the faults of encoding (Encoding_002, _003) and of the status endpoint (Supportive_004), which fail the checks that read the artifact. */
+const OTHER_REASONS: Partial<Record<FaultId, RegExp>> = {
+  'presentation.kb-iat-nan': /KB-JWT payload cannot be decoded/,
+  'mdoc.issuer-auth-duplicate-label': /protected header.*repeat map key/,
+  'mdoc.mso-not-tag24': /not MobileSecurityObjectBytes/,
+  'status-list.html-error-page': /HTTP 503/,
 };
 
 const reasonOf = (result: Awaited<ReturnType<Fixture['validate']>>, check: string) => result.credential?.checks.find((c) => c.check === check)?.detail;
@@ -196,6 +233,7 @@ describe('fault self-validation', () => {
     expect(result.failures).toEqual(target ? [target] : []);
     if (BINDING_REASONS[fault] && target) expect(reasonOf(result, target)).toMatch(BINDING_REASONS[fault]);
     if (ISSUER_REASONS[fault] && target) expect(reasonOf(result, target)).toMatch(ISSUER_REASONS[fault]);
+    if (OTHER_REASONS[fault] && target) expect(reasonOf(result, target)).toMatch(OTHER_REASONS[fault]);
   });
 
   // A new version of TL-PID or TL-QEAA that adds an entity (PP-C, or a granted service of QP-N), with the fault: the
@@ -290,6 +328,118 @@ describe('fault self-validation', () => {
     });
     const deviceAuthentication = encodeCbor(embedded(['DeviceAuthentication', transcript, document.get('docType'), deviceSigned.get('nameSpaces')]));
     expect(verifiesWithSecp256k1(jwk, sigStructure(signature.protectedBytes, deviceAuthentication), signature.signature)).toBe(true);
+  });
+
+  // The partial-match faults change one property of an artifact that is otherwise valid: the signature that is in
+  // another form, the structure that is malformed in one place. These tests show the rest of it is not what fails.
+  const sdJwtParts = async (fault: FaultId) => {
+    const result = await fixture.validate(actionWith(fault));
+    const parts = result.presentation.split('~');
+    return { parts, issuerJwt: parts[0].split('.'), kbJwt: (parts.at(-1) ?? '').split('.') };
+  };
+  const mdocParts = async (fault: FaultId) => {
+    const result = await fixture.validate(actionWith(fault, 'mso_mdoc'));
+    const document = (decodeCbor<CborMap>(base64url.decode(result.presentation)).get('documents') as CborMap[])[0];
+    const issuerSigned = document.get('issuerSigned') as CborMap;
+    const issuerAuth = readCose(issuerSigned.get('issuerAuth'));
+    const signerKey = new X509Certificate(Buffer.from((x5chainOf(issuerAuth.unprotectedHeader.get(COSE.x5chain)) as Uint8Array[])[0])).publicKey;
+    return { result, document, issuerSigned, issuerAuth, signerKey };
+  };
+  const p1363 = (key: ReturnType<typeof createPublicKey>, data: Uint8Array | string, signature: Uint8Array, dsaEncoding: 'der' | 'ieee-p1363' = 'ieee-p1363') =>
+    verify('sha256', typeof data === 'string' ? Buffer.from(data) : data, { key, dsaEncoding }, signature);
+
+  it('credential.signature-der is the valid issuer signature, in DER form', async () => {
+    const { issuerJwt } = await sdJwtParts('credential.signature-der');
+    const signature = base64url.decode(issuerJwt[2]);
+    expect(signature.length).not.toBe(64);
+    const key = new X509Certificate(Buffer.from(base64url.decodeJson<{ x5c: string[] }>(issuerJwt[0]).x5c[0], 'base64')).publicKey;
+    expect(p1363(key, `${issuerJwt[0]}.${issuerJwt[1]}`, signature, 'der')).toBe(true);
+  });
+
+  it('mdoc.signature-der is the valid IssuerAuth signature, in DER form', async () => {
+    const { issuerAuth, signerKey } = await mdocParts('mdoc.signature-der');
+    expect(issuerAuth.signature.length).not.toBe(64);
+    expect(p1363(signerKey, sigStructure(issuerAuth.protectedBytes, issuerAuth.payload as Uint8Array), issuerAuth.signature, 'der')).toBe(true);
+  });
+
+  it('mdoc.issuer-auth-duplicate-label signs a protected header that repeats alg, and nothing else is wrong with the signature', async () => {
+    const { issuerAuth, signerKey } = await mdocParts('mdoc.issuer-auth-duplicate-label');
+    expect(Buffer.from(issuerAuth.protectedBytes).toString('hex')).toBe('a201260126');
+    expect(p1363(signerKey, sigStructure(issuerAuth.protectedBytes, issuerAuth.payload as Uint8Array), issuerAuth.signature)).toBe(true);
+  });
+
+  it('mdoc.mso-not-tag24 signs the bare MSO, which is otherwise the valid MSO', async () => {
+    const { issuerAuth, signerKey, issuerSigned } = await mdocParts('mdoc.mso-not-tag24');
+    const payload = decodeCbor<unknown>(issuerAuth.payload as Uint8Array);
+    expect(payload).toBeInstanceOf(Map);
+    expect((payload as CborMap).get('docType')).toBe('eu.europa.ec.eudi.pid.1');
+    expect(p1363(signerKey, sigStructure(issuerAuth.protectedBytes, issuerAuth.payload as Uint8Array), issuerAuth.signature)).toBe(true);
+    expect(issuerSigned.get('nameSpaces')).toBeInstanceOf(Map);
+  });
+
+  it('mdoc.digest-reencoded-item is an item with the content the MSO digests, written in other bytes', async () => {
+    const { issuerSigned, issuerAuth } = await mdocParts('mdoc.digest-reencoded-item');
+    const mso = decodeEmbedded<CborMap>(decodeCbor(issuerAuth.payload as Uint8Array));
+    const [namespace, items] = [...(issuerSigned.get('nameSpaces') as Map<string, Tagged[]>)][0];
+    const item = items.find((i) => decodeEmbedded<CborMap>(i).get('elementIdentifier') === 'family_name') as Tagged;
+    const digestId = decodeEmbedded<CborMap>(item).get('digestID');
+    const digest = ((mso.get('valueDigests') as CborMap).get(namespace) as CborMap).get(digestId) as Uint8Array;
+    // The MSO has a digest for this item, so the digest of the item as presented is the only thing that differs.
+    expect(digest).toBeInstanceOf(Uint8Array);
+    expect(Buffer.from(sha256(encodeCbor(item))).equals(Buffer.from(digest))).toBe(false);
+    // The digestID is in a wider form than the shortest one: its first byte is 0x18 to 0x1b, not the value itself.
+    const bytes = item.value as Uint8Array;
+    const at = Buffer.from(bytes).indexOf(Buffer.from(encodeCbor('digestID')));
+    expect(bytes[at + encodeCbor('digestID').length]).toBeGreaterThanOrEqual(0x18);
+  });
+
+  it('mdoc.digest-truncated is the first 20 bytes of the valid digest', async () => {
+    const { issuerSigned, issuerAuth } = await mdocParts('mdoc.digest-truncated');
+    const mso = decodeEmbedded<CborMap>(decodeCbor(issuerAuth.payload as Uint8Array));
+    const [namespace, items] = [...(issuerSigned.get('nameSpaces') as Map<string, Tagged[]>)][0];
+    const item = items.find((i) => decodeEmbedded<CborMap>(i).get('elementIdentifier') === 'family_name') as Tagged;
+    const digest = ((mso.get('valueDigests') as CborMap).get(namespace) as CborMap).get(decodeEmbedded<CborMap>(item).get('digestID')) as Uint8Array;
+    expect(digest).toHaveLength(20);
+    expect(Buffer.from(sha256(encodeCbor(item))).subarray(0, 20).equals(Buffer.from(digest))).toBe(true);
+  });
+
+  it('presentation.kb-iat-nan is a KB-JWT that the holder key signs over a payload with NaN as iat', async () => {
+    const { parts, kbJwt } = await sdJwtParts('presentation.kb-iat-nan');
+    expect(Buffer.from(kbJwt[1], 'base64url').toString()).toMatch(/"iat":NaN[,}]/);
+    const cnf = base64url.decodeJson<{ cnf: { jwk: JsonWebKey } }>(parts[0].split('.')[1]).cnf.jwk;
+    expect(p1363(createPublicKey({ key: cnf as never, format: 'jwk' }), `${kbJwt[0]}.${kbJwt[1]}`, base64url.decode(kbJwt[2]))).toBe(true);
+  });
+
+  /** The device key of the MSO and what the device signature of the presented document covers. */
+  const deviceSignatureOf = async (fault: FaultId) => {
+    const { result, document, issuerAuth } = await mdocParts(fault);
+    const deviceKey = (decodeEmbedded<CborMap>(decodeCbor(issuerAuth.payload as Uint8Array)).get('deviceKeyInfo') as CborMap).get('deviceKey') as CborMap;
+    const key = createPublicKey({
+      key: { kty: 'EC', crv: 'P-256', x: base64url.encode(deviceKey.get(-2) as Uint8Array), y: base64url.encode(deviceKey.get(-3) as Uint8Array) },
+      format: 'jwk',
+    });
+    const deviceSigned = document.get('deviceSigned') as CborMap;
+    const signature = readCose((deviceSigned.get('deviceAuth') as CborMap).get('deviceSignature'));
+    const transcript = openid4vpSessionTranscript({
+      handover: { flow: 'redirect', clientId: AUDIENCE, responseUri: RESPONSE_URI },
+      nonce: result.transaction.nonce,
+      jwkThumbprint: await jwkThumbprintOf(result.transaction.key.publicJwk as JsonWebKey),
+    });
+    const authentication = (docType: unknown) => encodeCbor(embedded(['DeviceAuthentication', transcript, docType, deviceSigned.get('nameSpaces')]));
+    return { document, key, signature, authentication };
+  };
+
+  it('presentation.device-signature-doctype-other is a valid device signature over a DeviceAuthentication of the mDL docType', async () => {
+    const { document, key, signature, authentication } = await deviceSignatureOf('presentation.device-signature-doctype-other');
+    expect(document.get('docType')).toBe('eu.europa.ec.eudi.pid.1');
+    expect(p1363(key, sigStructure(signature.protectedBytes, authentication('org.iso.18013.5.1.mDL')), signature.signature)).toBe(true);
+    expect(p1363(key, sigStructure(signature.protectedBytes, authentication(document.get('docType'))), signature.signature)).toBe(false);
+  });
+
+  it('presentation.device-signature-not-detached is a valid device signature that carries the DeviceAuthenticationBytes it covers', async () => {
+    const { document, key, signature, authentication } = await deviceSignatureOf('presentation.device-signature-not-detached');
+    expect(Buffer.from(signature.payload as Uint8Array).equals(Buffer.from(authentication(document.get('docType'))))).toBe(true);
+    expect(p1363(key, sigStructure(signature.protectedBytes, signature.payload as Uint8Array), signature.signature)).toBe(true);
   });
 
   it.each(['redirect', 'dc-api'] as const)('an mdoc presentation replayed from another transaction fails exactly key-binding (%s)', async (flow) => {

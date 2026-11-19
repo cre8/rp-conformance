@@ -39,6 +39,23 @@ export async function verifyEs256(publicJwk: JsonWebKey, data: Uint8Array | stri
 const toBufferSource = (data: Uint8Array | string): Uint8Array<ArrayBuffer> =>
   typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data);
 
+/**
+ * The DER encoding of an ECDSA signature (RFC 3279 section 2.2.3: a `SEQUENCE` of the integers r and s) for the
+ * IEEE P1363 form `r || s` that JWS and COSE use, for the faults that present the valid signature in the other form.
+ */
+export function derEcdsaSignature(signature: Uint8Array): Uint8Array {
+  const half = signature.length / 2;
+  const integer = (bytes: Uint8Array) => {
+    let start = 0;
+    while (start < bytes.length - 1 && bytes[start] === 0) start++;
+    const value = bytes.slice(start);
+    const padded = value[0] & 0x80 ? Uint8Array.from([0, ...value]) : value;
+    return Uint8Array.from([0x02, padded.length, ...padded]);
+  };
+  const body = Uint8Array.from([...integer(signature.slice(0, half)), ...integer(signature.slice(half))]);
+  return Uint8Array.from([0x30, body.length, ...body]);
+}
+
 export const base64url = {
   encode: (data: Uint8Array | string) => Buffer.from(data).toString('base64url'),
   decode: (data: string) => new Uint8Array(Buffer.from(data, 'base64url')),

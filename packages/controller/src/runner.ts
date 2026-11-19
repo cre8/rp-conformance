@@ -464,9 +464,9 @@ async function runPresentation(
   const mdoc = forged.format === 'mso_mdoc';
   if (forged.statusList) {
     const { served, validToken } = forged.statusList;
-    ctx.harness.status.register(forged.statusList.uri, served.body, { contentType: served.contentType });
+    ctx.harness.status.register(forged.statusList.uri, served.body, { contentType: served.contentType, ...(served.status ? { status: served.status } : {}) });
     const extension = mdoc ? 'cwt' : 'jwt';
-    await save(/json|cbor/.test(served.contentType) ? `status-list.${mdoc ? 'cbor' : 'json'}` : `status-list.${extension}`, served.body);
+    await save(/json|cbor/.test(served.contentType) ? `status-list.${mdoc ? 'cbor' : 'json'}` : /html/.test(served.contentType) ? 'status-list.html' : `status-list.${extension}`, served.body);
     if (!sameBody(served.body, validToken)) await save(`status-list.valid.${extension}`, validToken);
   }
   if (forged.identifierList) {

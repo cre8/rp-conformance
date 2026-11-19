@@ -280,7 +280,7 @@ export class Fixture {
     const presented = (response.payload?.vp_token as Record<string, string[]> | undefined)?.[credentialQuery.id]?.[0];
     const fetchList = async (uri: string): Promise<FetchedStatusList> => {
       const served = this.statusLists.get(uri);
-      return served ? { status: 200, body: served.body, contentType: served.contentType } : { status: 404, body: '' };
+      return served ? { status: served.status ?? 200, body: served.body, contentType: served.contentType } : { status: 404, body: '' };
     };
     const common = {
       trust: this.trust,

@@ -4,7 +4,7 @@ The Relying Party suite tests a **Relying Party** as System Under Test: the serv
 
 ## Test cases
 
-The test cases are rendered from the executable definitions into an FCAF overlay: [Relying Party (SUT)](../fcaf/suts/relying_party/index.md), with the [Relying Party ICS](../fcaf/ics-rp.md) and the [defaults for Relying Party testing](../fcaf/defaults.md#relying-party-testing). A test case runs once per presentation flow the Relying Party declares.
+The test cases are rendered from the executable definitions into an FCAF overlay: [Relying Party (SUT)](../pcaf/suts/relying_party/index.md), with the [Relying Party ICS](../pcaf/ics-rp.md) and the [defaults for Relying Party testing](../pcaf/defaults.md#relying-party-testing). A test case runs once per presentation flow the Relying Party declares.
 
 ## Documents
 

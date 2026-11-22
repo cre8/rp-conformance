@@ -44,7 +44,7 @@ Passing the PCAF test cases is not a certification or a declaration of complianc
 The PCAF consists of:
 
 - the [methodology](index.md): Systems Under Test, test classes, layers and the test case format, as in the FCAF;
-- [guidance on using the framework](using-fcaf.md): system under test, ICS, preparation, execution and outcomes;
+- [guidance on using the framework](using-pcaf.md): system under test, ICS, preparation, execution and outcomes;
 - the [defaults](defaults.md): test roles, trust configurations, credentials and configurations shared by the test cases;
 - the test cases of each [System Under Test](suts/index.md), each traced to the requirements it tests;
 - an Implementation Conformance Statement (ICS) for [Relying Parties](ics-rp.md) and for [PID and Attestation Providers](ics-issuer.md).

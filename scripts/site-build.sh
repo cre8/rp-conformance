@@ -8,9 +8,9 @@
 #  3. adds website/: the configuration, which inherits the FCAF one and replaces the European Commission's name,
 #     logo, navigation and copyright, the stylesheet that replaces its colours, the home page, the overview page of
 #     each suite and the "unofficial" banner,
-#  4. lays the site-only layer over the content (scripts/site-layer.py): removes the Wallet Solution pages and puts
+#  4. lays the site-only layer over the content (scripts/site-layer.py): removes the Wallet Solution pages, puts
 #     the general pages (introduction, methodology, using the framework, ...) rewritten for these SUTs in their
-#     place; the overlays themselves stay a diff against the FCAF,
+#     place, serves everything below /pcaf/ and redirects the old /fcaf/ URLs; the overlays stay a diff against the FCAF,
 #  5. adds the project documents of both suites (scripts/site-project-pages.py): the test catalogue, the harness
 #     design, and the EUDIPLO adapter's README, ICS, known findings and upstream finding texts,
 #  6. runs MkDocs (website/requirements.txt) into <work-dir>/public, or serves the site with SITE_SERVE=1.

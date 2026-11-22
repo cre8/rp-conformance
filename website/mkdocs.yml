@@ -75,57 +75,57 @@ hooks:
 extra:
   version: null
 
-# The framework pages are the site-only layer (website/fcaf, scripts/site-layer.py); the SUT pages come from the
+# The framework pages are the site-only layer (website/pcaf, scripts/site-layer.py); the SUT pages come from the
 # overlays. The Wallet Solution pages of the FCAF are not part of the site.
 nav:
   - Home: index.md
   - Framework:
-      - Introduction: fcaf/introduction.md
-      - Terminology: fcaf/terminology.md
-      - Methodology: fcaf/index.md
-      - Using the framework: fcaf/using-fcaf.md
-      - Defaults: fcaf/defaults.md
-      - ICS (Relying Party): fcaf/ics-rp.md
-      - ICS (PID and Attestation Provider): fcaf/ics-issuer.md
-      - References: fcaf/references.md
+      - Introduction: pcaf/introduction.md
+      - Terminology: pcaf/terminology.md
+      - Methodology: pcaf/index.md
+      - Using the framework: pcaf/using-pcaf.md
+      - Defaults: pcaf/defaults.md
+      - ICS (Relying Party): pcaf/ics-rp.md
+      - ICS (PID and Attestation Provider): pcaf/ics-issuer.md
+      - References: pcaf/references.md
   - Test cases:
-      - Overview: fcaf/suts/index.md
+      - Overview: pcaf/suts/index.md
       - Relying Party (SUT):
-          - Overview: fcaf/suts/relying_party/index.md
+          - Overview: pcaf/suts/relying_party/index.md
           - (rp_ws) Wallet Solution:
-              - Overview: fcaf/suts/relying_party/wallet_solution/rp_ws.md
-              - Baseline tests: fcaf/suts/relying_party/wallet_solution/baseline-tests.md
-              - Test cases: fcaf/suts/relying_party/wallet_solution/test-cases.md
+              - Overview: pcaf/suts/relying_party/wallet_solution/rp_ws.md
+              - Baseline tests: pcaf/suts/relying_party/wallet_solution/baseline-tests.md
+              - Test cases: pcaf/suts/relying_party/wallet_solution/test-cases.md
           - (rp_pp) PID Provider:
-              - Overview: fcaf/suts/relying_party/pid_provider/rp_pp.md
-              - Baseline tests: fcaf/suts/relying_party/pid_provider/baseline-tests.md
-              - Test cases: fcaf/suts/relying_party/pid_provider/test-cases.md
+              - Overview: pcaf/suts/relying_party/pid_provider/rp_pp.md
+              - Baseline tests: pcaf/suts/relying_party/pid_provider/baseline-tests.md
+              - Test cases: pcaf/suts/relying_party/pid_provider/test-cases.md
           - (rp_inf) Trust Infrastructure:
-              - Overview: fcaf/suts/relying_party/infrastructure/rp_inf.md
-              - Baseline tests: fcaf/suts/relying_party/infrastructure/baseline-tests.md
-              - Test cases: fcaf/suts/relying_party/infrastructure/test-cases.md
+              - Overview: pcaf/suts/relying_party/infrastructure/rp_inf.md
+              - Baseline tests: pcaf/suts/relying_party/infrastructure/baseline-tests.md
+              - Test cases: pcaf/suts/relying_party/infrastructure/test-cases.md
       - PID Provider (SUT):
-          - Overview: fcaf/suts/pid_provider/index.md
+          - Overview: pcaf/suts/pid_provider/index.md
           - (pp_ws) Wallet Solution:
-              - Overview: fcaf/suts/pid_provider/wallet_solution/pp_ws.md
-              - Test cases: fcaf/suts/pid_provider/wallet_solution/test-cases.md
+              - Overview: pcaf/suts/pid_provider/wallet_solution/pp_ws.md
+              - Test cases: pcaf/suts/pid_provider/wallet_solution/test-cases.md
           - (pp_rp) Relying Party:
-              - Overview: fcaf/suts/pid_provider/relying_party/pp_rp.md
-              - Test cases: fcaf/suts/pid_provider/relying_party/test-cases.md
+              - Overview: pcaf/suts/pid_provider/relying_party/pp_rp.md
+              - Test cases: pcaf/suts/pid_provider/relying_party/test-cases.md
           - (pp_inf) Trust Infrastructure:
-              - Overview: fcaf/suts/pid_provider/infrastructure/pp_inf.md
-              - Test cases: fcaf/suts/pid_provider/infrastructure/test-cases.md
+              - Overview: pcaf/suts/pid_provider/infrastructure/pp_inf.md
+              - Test cases: pcaf/suts/pid_provider/infrastructure/test-cases.md
       - Attestation Provider (SUT):
-          - Overview: fcaf/suts/attestation_provider/index.md
+          - Overview: pcaf/suts/attestation_provider/index.md
           - (ap_ws) Wallet Solution:
-              - Overview: fcaf/suts/attestation_provider/wallet_solution/ap_ws.md
-              - Test cases: fcaf/suts/attestation_provider/wallet_solution/test-cases.md
+              - Overview: pcaf/suts/attestation_provider/wallet_solution/ap_ws.md
+              - Test cases: pcaf/suts/attestation_provider/wallet_solution/test-cases.md
           - (ap_rp) Relying Party:
-              - Overview: fcaf/suts/attestation_provider/relying_party/ap_rp.md
-              - Test cases: fcaf/suts/attestation_provider/relying_party/test-cases.md
+              - Overview: pcaf/suts/attestation_provider/relying_party/ap_rp.md
+              - Test cases: pcaf/suts/attestation_provider/relying_party/test-cases.md
           - (ap_inf) Trust Infrastructure:
-              - Overview: fcaf/suts/attestation_provider/infrastructure/ap_inf.md
-              - Test cases: fcaf/suts/attestation_provider/infrastructure/test-cases.md
+              - Overview: pcaf/suts/attestation_provider/infrastructure/ap_inf.md
+              - Test cases: pcaf/suts/attestation_provider/infrastructure/test-cases.md
   # The project documents of both suites, copied by scripts/site-project-pages.py: the same pages for each.
   - Test suites:
       - Relying Party suite:

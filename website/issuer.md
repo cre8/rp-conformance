@@ -4,7 +4,7 @@ The issuer suite tests a **PID Provider** or an **Attestation Provider** (QEAA, 
 
 ## Test cases
 
-The test cases are rendered from the executable definitions into a second FCAF overlay, next to the Relying Party one: [PID Provider (SUT)](../fcaf/suts/pid_provider/index.md) and [Attestation Provider (SUT)](../fcaf/suts/attestation_provider/index.md), with the [Provider ICS](../fcaf/ics-issuer.md) and the [defaults for PID Provider testing](../fcaf/defaults.md#pid-provider-testing). A test case runs once per variant the Provider declares (credential format, grant and, for an Attestation Provider, its category); its page shows the variants together.
+The test cases are rendered from the executable definitions into a second FCAF overlay, next to the Relying Party one: [PID Provider (SUT)](../pcaf/suts/pid_provider/index.md) and [Attestation Provider (SUT)](../pcaf/suts/attestation_provider/index.md), with the [Provider ICS](../pcaf/ics-issuer.md) and the [defaults for PID Provider testing](../pcaf/defaults.md#pid-provider-testing). A test case runs once per variant the Provider declares (credential format, grant and, for an Attestation Provider, its category); its page shows the variants together.
 
 ## Documents
 

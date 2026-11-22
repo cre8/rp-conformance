@@ -26,23 +26,23 @@ It does the same, as a separate draft, for PID and Attestation Providers, for wh
 
 | Page | Content |
 | --- | --- |
-| [Using the framework](fcaf/using-fcaf.md) | How a Relying Party or a Provider is tested: the SUT, the test environment, the ICS, preparation, execution and outcomes |
-| [Relying Party (SUT)](fcaf/suts/relying_party/index.md) | Overview, test classes, the decisions applied |
-| [(rp_ws) Wallet Solution](fcaf/suts/relying_party/wallet_solution/rp_ws.md) | Test cases on what the Relying Party receives from a Wallet Unit: validity, revocation, trust, session encryption |
-| [(rp_pp) PID Provider](fcaf/suts/relying_party/pid_provider/rp_pp.md) | Test cases on the Status List Tokens and identifier lists of a PID Provider |
-| [Defaults: Relying Party testing](fcaf/defaults.md#relying-party-testing) | Test roles, verification result, default configuration, credentials and queries |
-| [ICS (Relying Party)](fcaf/ics-rp.md) | Capabilities, policies, time values and surrogate technology items a Relying Party declares |
-| [PID Provider (SUT)](fcaf/suts/pid_provider/index.md) | Overview, test classes, variants, the decisions applied |
-| [(pp_ws) Wallet Solution](fcaf/suts/pid_provider/wallet_solution/pp_ws.md) | Test cases on what the PID Provider receives from and issues to a Wallet Unit: metadata, offer, credential endpoint, client and key attestation, proofs, validity, revocation, the PID data model |
-| [(pp_rp) Relying Party](fcaf/suts/pid_provider/relying_party/pp_rp.md) | Test cases on the status lists a PID Provider publishes for Relying Parties |
-| [Attestation Provider (SUT)](fcaf/suts/attestation_provider/index.md) | Overview, test classes, the category variants `Q`, `PB` and `E`, the decisions applied |
-| [(ap_ws) Wallet Solution](fcaf/suts/attestation_provider/wallet_solution/ap_ws.md) | Test cases on what a QEAA, PuB-EAA or non-qualified EAA Provider receives from and issues to a Wallet Unit, including configurations that are not device-bound, revocation chaining by policy and the rulebook of the attestation |
-| [Defaults: PID Provider testing](fcaf/defaults.md#pid-provider-testing) | Test roles, trust configuration, Wallet Units and subjects, `default_configuration_PP_1`, expected result codes |
-| [ICS (PID and Attestation Provider)](fcaf/ics-issuer.md) | The Provider ICS items and the profiles they select |
+| [Using the framework](pcaf/using-pcaf.md) | How a Relying Party or a Provider is tested: the SUT, the test environment, the ICS, preparation, execution and outcomes |
+| [Relying Party (SUT)](pcaf/suts/relying_party/index.md) | Overview, test classes, the decisions applied |
+| [(rp_ws) Wallet Solution](pcaf/suts/relying_party/wallet_solution/rp_ws.md) | Test cases on what the Relying Party receives from a Wallet Unit: validity, revocation, trust, session encryption |
+| [(rp_pp) PID Provider](pcaf/suts/relying_party/pid_provider/rp_pp.md) | Test cases on the Status List Tokens and identifier lists of a PID Provider |
+| [Defaults: Relying Party testing](pcaf/defaults.md#relying-party-testing) | Test roles, verification result, default configuration, credentials and queries |
+| [ICS (Relying Party)](pcaf/ics-rp.md) | Capabilities, policies, time values and surrogate technology items a Relying Party declares |
+| [PID Provider (SUT)](pcaf/suts/pid_provider/index.md) | Overview, test classes, variants, the decisions applied |
+| [(pp_ws) Wallet Solution](pcaf/suts/pid_provider/wallet_solution/pp_ws.md) | Test cases on what the PID Provider receives from and issues to a Wallet Unit: metadata, offer, credential endpoint, client and key attestation, proofs, validity, revocation, the PID data model |
+| [(pp_rp) Relying Party](pcaf/suts/pid_provider/relying_party/pp_rp.md) | Test cases on the status lists a PID Provider publishes for Relying Parties |
+| [Attestation Provider (SUT)](pcaf/suts/attestation_provider/index.md) | Overview, test classes, the category variants `Q`, `PB` and `E`, the decisions applied |
+| [(ap_ws) Wallet Solution](pcaf/suts/attestation_provider/wallet_solution/ap_ws.md) | Test cases on what a QEAA, PuB-EAA or non-qualified EAA Provider receives from and issues to a Wallet Unit, including configurations that are not device-bound, revocation chaining by policy and the rulebook of the attestation |
+| [Defaults: PID Provider testing](pcaf/defaults.md#pid-provider-testing) | Test roles, trust configuration, Wallet Units and subjects, `default_configuration_PP_1`, expected result codes |
+| [ICS (PID and Attestation Provider)](pcaf/ics-issuer.md) | The Provider ICS items and the profiles they select |
 | [Relying Party suite](rp/index.md) | The Relying Party suite, its catalogue and harness design, and EUDIPLO as reference verifier with its ICS and known findings |
 | [Issuer suite](issuer/index.md) | The issuer suite, its catalogue and harness design, and EUDIPLO as reference issuer with its ICS and known findings |
 
-The [framework pages](fcaf/introduction.md) (introduction, methodology, using the framework, defaults) are those of the FCAF, rewritten for these SUTs. The FCAF's Wallet Solution pages are not part of this site.
+The [framework pages](pcaf/introduction.md) (introduction, methodology, using the framework, defaults) are those of the FCAF, rewritten for these SUTs. The FCAF's Wallet Solution pages are not part of this site.
 
 ## The harness
 

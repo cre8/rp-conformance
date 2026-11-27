@@ -16,7 +16,7 @@ It is not for testing a wallet: the FCAF does that.
 
 The FCAF names a System Under Test (SUT), splits it into test classes by interface, and specifies each test case step by step, with an Implementation Conformance Statement (ICS) in which the SUT declares what it supports. Today it has test cases for one SUT only: the Wallet Solution. Its `WS_RP` class covers the wallet's side of a presentation, and there the Relying Party is the test tool, not the thing being tested. The FCAF methodology names Relying Parties as a future SUT and reserves the classes `RP_WS`, `RP_PP`, `RP_AP` and `RP_Inf`, but none of them has test cases yet.
 
-The OIDF verifier suite tests a Relying Party, but mostly on the happy flow: 16 of the 222 test objectives here correspond to one of its modules. The rest have no public test today: validity periods, status list tokens, trust anchor categories, trust lists, response encryption, session binding after the redirect and more.
+The OIDF verifier suite tests a Relying Party, but mostly on the happy flow: 16 of the 236 test objectives here correspond to one of its modules. The rest have no public test today: validity periods, status list tokens, trust anchor categories, trust lists, response encryption, session binding after the redirect and more.
 
 A wallet that is certified gains little if the Relying Party accepts a revoked PID or trusts the wrong anchor. The PCAF fills the reserved classes with test cases in the FCAF format, so they can be contributed upstream, and comes with a harness that runs them. The focus is on what a Relying Party must reject: expired credentials, revoked or suspended credentials, unusable status lists, wrong trust anchors, stale trust lists, faulty response encryption.
 

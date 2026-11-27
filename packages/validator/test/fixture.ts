@@ -321,9 +321,10 @@ export class Fixture {
           skewSeconds: SKEW,
           requireStatus: true,
           maxStatusListBytes: MAX_STATUS_LIST_BYTES,
-          // The policies of the reference Relying Party (ICS RP.R.7, RP.R.8, RP.P.12).
+          // The policies of the reference Relying Party (ICS RP.R.7, RP.R.8, RP.P.12, RP.P.13).
           statusListFreshness: STATUS_LIST_FRESHNESS,
           rejectPastExpiryDate: true,
+          requireIssuerInCertificate: true,
           trustedAuthorities: credentialQuery.trusted_authorities,
           requestedClaims: credentialQuery.claims ?? [],
           mode,
@@ -334,6 +335,7 @@ export class Fixture {
                 ...common,
                 expectedDocType: (credentialQuery.meta?.doctype_value as string | undefined) ?? PID_DOCTYPE,
                 handover,
+                clientId: AUDIENCE,
                 jwkThumbprint: await jwkThumbprint(tx.key.publicJwk as JsonWebKey),
                 fetchStatusList: fetchList,
                 fetchIdentifierList: fetchList,

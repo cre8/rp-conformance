@@ -17,6 +17,8 @@ RP.P.9: "Yes"   # front end /done/<id> redeems the response code once, for the u
 RP.P.10: "Yes"  # attribute-based binding of combined presentations: family name, given name, birth date
 RP.P.11: 1048576  # maximum Authorization Response size, bytes
 RP.P.12: Reject  # PID whose administrative expiry date has passed
+RP.P.13: "Yes"  # rejects an SD-JWT VC whose signing certificate does not name its iss (URI SAN, or its URL host as DNS SAN where it has no URI SAN; no iss, no check)
+RP.P.14: "Yes"  # rejects an mdoc whose IssuerAuth declares ES384 over a P-256 document signer key (it accepts only ES256 with P-256)
 RP.R.1: "Yes"   # checks the revocation status of PIDs
 RP.R.2: Reject
 RP.R.3: None

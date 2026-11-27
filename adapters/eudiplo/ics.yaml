@@ -18,6 +18,8 @@ RP.P.9: "No"    # EUDIPLO is a back end: the relying service compares the respon
 RP.P.10: "No"   # no attribute-based binding of combined presentations
 RP.P.11: 10485760  # body parser limit 10mb (main.helpers.ts configureBodyParsers)
 RP.P.12: Accept  # does not evaluate the PID expiry date
+RP.P.13: "No"   # does not compare the iss of an SD-JWT VC with the SANs of its signing certificate (IssuerIntegrity_038-040 accepted, run of 2026-11-27)
+RP.P.14: "Yes"  # rejects an mdoc whose IssuerAuth declares ES384 over a P-256 document signer key (IssuerIntegrity_041 rejected, run of 2026-11-27)
 RP.R.1: "Yes"   # statusCheckMode strict
 RP.R.2: Reject
 RP.R.3: None

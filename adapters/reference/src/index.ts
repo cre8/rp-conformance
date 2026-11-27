@@ -47,6 +47,7 @@ export class ReferenceAdapter implements RelyingPartyAdapter {
         refuseFutureIat: env.ics.items['RP.R.8'] === 'Yes',
       },
       rejectPastExpiryDate: /^reject/i.test(String(env.ics.items['RP.P.12'] ?? '')),
+      requireIssuerInCertificate: env.ics.items['RP.P.13'] === 'Yes',
       transactionLifetimeMs: durationMs(String(env.ics.items['RP.P.7'] ?? '')),
     }).start();
     const failed = (await this.rp.refreshTrust()).filter((list) => list.error);

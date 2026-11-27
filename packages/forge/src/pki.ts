@@ -282,7 +282,7 @@ export async function createCertificateForKey(
   commonName: string,
   subjectPublicKeyDer: Uint8Array,
   validity: { notBefore: Date; notAfter: Date },
-  options: { documentSigner?: boolean } = {},
+  options: { documentSigner?: boolean; dnsNames?: string[]; uris?: string[] } = {},
 ): Promise<Certificate> {
   const uri = `https://${organization.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.rp-test`;
   return createCertificate({
@@ -294,6 +294,7 @@ export async function createCertificateForKey(
     notAfter: validity.notAfter,
     signatureAlgorithm: 'ES256',
     keyUsage: ['digitalSignature'],
+    ...(options.dnsNames || options.uris ? { subjectAlternativeNames: { dnsNames: options.dnsNames, uris: options.uris } } : {}),
     ...(options.documentSigner ? { crlDistributionPoints: [`${uri}/crl`], extensions: annexBExtensions(uri, true) } : {}),
     hasher: keyIdHasher,
     signer: (tbs) => signEs256(issuer.key.privateKey, tbs),

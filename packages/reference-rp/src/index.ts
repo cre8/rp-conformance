@@ -63,6 +63,8 @@ export interface ReferenceRpOptions extends ServerOptions {
   statusListFreshness?: StatusListFreshness;
   /** Reject a PID whose administrative expiry date has passed (ICS RP.P.12). */
   rejectPastExpiryDate?: boolean;
+  /** Require the signing certificate of an SD-JWT VC to name its `iss` (ICS RP.P.13). */
+  requireIssuerInCertificate?: boolean;
   /** The transaction lifetime `T_tx` (ICS RP.P.7), milliseconds; default 300 s. */
   transactionLifetimeMs?: number;
 }
@@ -470,6 +472,7 @@ export class ReferenceRelyingParty {
         maxStatusListBytes: this.options.maxStatusListBytes,
         statusListFreshness: this.options.statusListFreshness,
         rejectPastExpiryDate: this.options.rejectPastExpiryDate,
+        requireIssuerInCertificate: this.options.requireIssuerInCertificate,
         validStatuses: this.options.validStatuses,
         trustedAuthorities: credentialQuery.trusted_authorities,
         requestedClaims: credentialQuery.claims ?? [],
@@ -481,6 +484,7 @@ export class ReferenceRelyingParty {
                 ...common,
                 expectedDocType: (credentialQuery.meta?.doctype_value as string | undefined) ?? PID_DOCTYPE,
                 handover: binding.handover,
+                clientId: this.clientId,
                 // OpenID4VP Appendix B.2.6: the thumbprint of the key the response was encrypted to.
                 jwkThumbprint: await jwkThumbprint(tx.encryptionJwk as JsonWebKey),
                 fetchStatusList: (uri) => this.fetchStatusList(uri, 'application/statuslist+cwt'),

@@ -38,7 +38,13 @@ export const SIGNER_FAULTS = new Set([
   'critical-extension',
   'ds-no-eku',
   'signed-after-ds-expiry',
+  'signer-names-other-issuer',
+  'signer-names-other-host',
+  'signer-uri-beats-host',
 ]);
+
+/** The issuer another issuer's signing certificate names in the faults of SD-JWT VC section 2.5 (issue 10). */
+export const OTHER_ISSUER_URI = 'https://other-issuer.rp-test';
 
 export const isSignerFault = (fault: FaultId | undefined) => Boolean(fault && SIGNER_FAULTS.has(nameOf(fault)));
 
@@ -95,6 +101,24 @@ export async function faultySigner(fault: FaultId, issuer: TestEntity, format: C
       );
       return leafUnder(notCa, 'under a certificate without cA');
     }
+    case 'signer-names-other-issuer':
+    case 'signer-names-other-host':
+    case 'signer-uri-beats-host': {
+      // Another issuer's certificate under the same anchor (SD-JWT VC section 2.5: the issuer is the subject of the
+      // end-entity certificate). It names another URI, only another host, or another URI and the host of `iss`.
+      if (mdoc) throw new Error(`fault ${fault} applies to SD-JWT VC`);
+      const otherHost = new URL(OTHER_ISSUER_URI).host;
+      const names = {
+        'signer-names-other-issuer': { uris: [OTHER_ISSUER_URI] },
+        'signer-names-other-host': { dnsNames: [otherHost] },
+        'signer-uri-beats-host': { uris: [OTHER_ISSUER_URI], dnsNames: [new URL(issuer.issuerUri).host] },
+      }[nameOf(fault) as 'signer-names-other-issuer' | 'signer-names-other-host' | 'signer-uri-beats-host'];
+      return createEndEntity(issuer.anchors.issuance, id, `${id} signer of another issuer`, {
+        notBefore: new Date(now.getTime() - 10 * DAY_MS),
+        notAfter: new Date(now.getTime() + YEAR_MS),
+        ...names,
+      });
+    }
     case 'critical-extension':
       return leafUnder(issuer.anchors.issuance, 'critical extension', undefined, [PRIVATE_CRITICAL_EXTENSION]);
     case 'ds-no-eku':
@@ -140,7 +164,8 @@ export async function foreignSigner(kind: 'secp256k1' | 'p192' | 'rsa1024', issu
     new Uint8Array(publicKey.export({ type: 'spki', format: 'der' })),
     // Valid from before the `signed` time of the MSOs the harness issues (two days in the past).
     { notBefore: new Date(now.getTime() - 10 * DAY_MS), notAfter: new Date(now.getTime() + YEAR_MS) },
-    { documentSigner: format === 'mso_mdoc' },
+    // An SD-JWT VC signer names the issuer, as the issuer's own does, so the key is the only difference.
+    format === 'mso_mdoc' ? { documentSigner: true } : { dnsNames: [issuer.spec.host], uris: [issuer.issuerUri] },
   );
   const rsa = kind === 'rsa1024';
   return {

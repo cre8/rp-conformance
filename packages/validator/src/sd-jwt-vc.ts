@@ -2,7 +2,7 @@ import { type CheckId, CREDENTIAL_CHECKS, STATUS_LIST_CHECKS } from '@rp-conform
 import { base64url, PID_VCT, sha256, verifyEs256 } from '@rp-conformance/forge';
 import { describeKey, processDisclosures } from './disclosures';
 import { checkClaims, type RequestedClaim } from './claims';
-import { parseCertificate } from '@owf/x509';
+import { type Certificate, parseCertificate } from '@owf/x509';
 import { CheckRecorder, NotApplicable, type ValidationMode, type ValidationResult } from './checks';
 import { decodeSegment, evaluateStatusList, type FetchedStatusList, fail, isUri, leafJwk, type StatusListFreshness } from './status-list';
 import type { MatchedIssuer, TrustRule, TrustStore } from './trust';
@@ -57,9 +57,27 @@ export interface SdJwtVcValidationOptions {
   statusListFreshness?: StatusListFreshness;
   /** Reject a PID whose administrative expiry date has passed (ICS RP.P.12 Reject). */
   rejectPastExpiryDate?: boolean;
+  /** Require the signing certificate to name the credential's `iss` (ICS RP.P.13 Yes, SD-JWT VC section 2.5). */
+  requireIssuerInCertificate?: boolean;
 }
 
 const DAY = 24 * 60 * 60;
+
+/**
+ * SD-JWT VC section 2.5 under ICS RP.P.13: the signing certificate names `iss`, by a URI subject alternative name equal
+ * to it, or, when it names no URI, by a DNS name equal to its host as `URL.host` gives it. Without `iss` the issuer is
+ * the subject of the certificate and there is nothing to compare (section 2.2.2.2).
+ */
+function checkIssuerInCertificate(leaf: Certificate, iss: unknown): void {
+  if (iss === undefined) return;
+  const { uris, dnsNames } = leaf.subjectAlternativeNames;
+  if (uris.length > 0) {
+    if (!uris.includes(iss as string)) fail(`the signing certificate names the URI ${uris.join(', ')}, not iss ${String(iss)}`);
+    return;
+  }
+  const host = typeof iss === 'string' && URL.canParse(iss) ? new URL(iss).host : undefined;
+  if (!host || !dnsNames.includes(host)) fail(`the signing certificate names neither iss ${String(iss)} nor its host (DNS names: ${dnsNames.join(', ') || 'none'})`);
+}
 
 /**
  * The reference validator for an SD-JWT VC presentation with KB-JWT (SD-JWT VC, RFC 9901, Token Status List). Every
@@ -112,6 +130,7 @@ export async function validateSdJwtVcPresentation(presentation: string, options:
       if (match.ok) {
         issuer = { name: match.entity.name, statusAnchors: options.trustRule.statusAnchors(match.entity, match.service) };
         trustListStale = match.stale;
+        if (options.requireIssuerInCertificate) checkIssuerInCertificate(match.leaf, payload.iss);
         return `${match.entity.name} under ${match.anchor.subject.commonName} (${match.list.id}${match.stale ? ', stale within the grace period' : ''})`;
       }
     });
@@ -132,6 +151,8 @@ export async function validateSdJwtVcPresentation(presentation: string, options:
     // The algorithm and the key are those of the ECCG agreed cryptographic mechanisms that the profile uses: ES256 with
     // a P-256 key (OIA_03, HAIP section 7).
     await recorder.run('issuer-signature', ['format'], async () => {
+      // RFC 7515 section 4.1.11: the validator understands no extension, so a JWS that marks one critical is invalid.
+      if (header.crit !== undefined) fail(`the issuer-signed JWT header marks ${JSON.stringify(header.crit)} critical, which the validator does not understand`);
       const key = describeKey(x5c[0]);
       if (key !== 'P-256') fail(`the signing certificate holds a key ${key}, not on P-256`);
       if (header.alg !== 'ES256') fail(`alg ${String(header.alg)} is not supported`);
@@ -166,6 +187,8 @@ export async function validateSdJwtVcPresentation(presentation: string, options:
         if (duplicate !== undefined) fail(`the KB-JWT ${part} carries the member ${duplicate} twice`);
       }
       if (kbHeader.typ !== 'kb+jwt') fail(`KB-JWT typ is ${String(kbHeader.typ)}`);
+      // RFC 7515 section 4.1.11, as for the issuer-signed JWT.
+      if (kbHeader.crit !== undefined) fail(`the KB-JWT header marks ${JSON.stringify(kbHeader.crit)} critical, which the validator does not understand`);
       if (kbHeader.alg !== 'ES256') fail(`KB-JWT alg ${String(kbHeader.alg)} is not supported`);
       const jwk = (payload.cnf as { jwk?: JsonWebKey } | undefined)?.jwk;
       if (!jwk) fail('the credential has no cnf.jwk, so it is bound to no key');
@@ -180,6 +203,8 @@ export async function validateSdJwtVcPresentation(presentation: string, options:
 
     await recorder.run('kb-freshness', ['format', 'key-binding'], () => {
       if (typeof kbPayload.iat !== 'number') fail('KB-JWT has no iat');
+      // RFC 7519 section 4.1.4: an `exp` is a NumericDate, a JSON number.
+      if (kbPayload.exp !== undefined && typeof kbPayload.exp !== 'number') fail(`KB-JWT exp ${JSON.stringify(kbPayload.exp)} is not a NumericDate`);
       const iat = kbPayload.iat as number;
       if (nowSeconds - iat > options.kbMaxAgeSeconds + skew) fail(`KB-JWT iat ${iat} is older than T_kb ${options.kbMaxAgeSeconds} s`);
       if (iat > nowSeconds + skew) fail(`KB-JWT iat ${iat} lies in the future`);

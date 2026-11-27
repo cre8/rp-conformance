@@ -1,7 +1,8 @@
 // RP_WS_SM_IssuerIntegrity: the authenticity of the presented credential. The Relying Party verifies the issuer's
 // signature with an agreed algorithm and key, the type of the credential, its disclosures (SD-JWT VC) or value digests
 // (mdoc), and the certificate path of the signer. `RP_WS_SM_IssuerIntegrity_035_UF` (signing certificate revoked by a
-// CRL) is not written: the check is optional (catalogue ICS-16), and the harness serves no CRLs.
+// CRL) is not written: the check is optional (catalogue ICS-16), and the harness serves no CRLs. `_016_UF` to `_018_UF`,
+// `_029_UF` and `_038_UF` to `_042_UF` come from the negative vectors of issue 10.
 import {
   acc,
   comments,
@@ -12,6 +13,7 @@ import {
   formats,
   PID,
   pid,
+  policyCheck,
   positiveControlOf,
   preconditions,
   presentation,
@@ -116,6 +118,141 @@ const pathCases = (format: FormatWording) => {
     ], { references: [...pathReferences(format), '[RFC5280] section 4.2'] }),
   ];
 };
+
+/** ICS RP.P.13: the Relying Party rejects a signing certificate that does not name `iss`. */
+const namesIssuer = (fault: FaultId): StepDefinition =>
+  step({
+    ...presentationStep.credentialFault(fault),
+    expect: policyCheck(
+      'RP.P.13',
+      'rejects a credential in SD-JWT VC format whose signing certificate does not name its `iss` by a `uniformResourceIdentifier` SAN equal to `iss` or, when the certificate has no URI SAN, by a `dNSName` SAN equal to the host of `iss`, in ASCII and lower case and with the port only when it is not the default port of the scheme, as a URL parser gives it',
+    ),
+  });
+
+/** The test cases of the negative vectors of issue 10 that had no row. */
+function issue10Cases() {
+  const namesIssuerReferences = ['[SD-JWT VC] section 2.5, 6.2', '[RFC5280] section 4.2.1.6'];
+  const namesIssuerComment =
+    "[SD-JWT VC] section 2.5 makes the Issuer the subject of the end-entity certificate and requires the SD-JWT VC to be rejected when the key cannot be validated as the Issuer's, but no sentence of [SD-JWT VC] says how `iss` is compared with that certificate. Whether the Relying Party checks it is declared in ICS RP.P.13. A certificate names `iss` by a URI subject alternative name equal to it, or, when it names no URI, by a DNS name equal to the host of `iss`, in ASCII and lower case and with the port only when it is not the default port of the scheme, as a URL parser gives it.";
+  return [
+    issuerIntegrity({
+      number: 16,
+      format: sdJwtVc,
+      objective: 'Verify that the Relying Party rejects a credential in SD-JWT VC format whose Issuer-signed JWT marks as critical a header parameter that the Relying Party does not understand.',
+      references: ['[RFC7515] section 4.1.11', ...SD_JWT],
+      steps: [rejected('credential.crit-unknown')],
+      comments: ['`IssuerIntegrity_037_UF` covers an unknown critical extension of the signing certificate; this test case covers the `crit` header parameter of the JWS.'],
+    }),
+    issuerIntegrity({
+      number: 17,
+      format: sdJwtVc,
+      objective:
+        'Record whether the Relying Party accepts a credential in SD-JWT VC format whose `exp` claim is in a disclosure instead of the Issuer-signed JWT.',
+      references: ['[SD-JWT VC] section 2.2.2.2', '[RFC9901] section 9.7'],
+      relevancy: relevancy.genericOptional,
+      steps: [
+        step({
+          ...presentationStep.credentialFault('credential.exp-disclosed'),
+          expect: { codes: ['INFO'], text: 'Whether the Relying Party accepts or rejects the presentation is recorded; HTTP 5xx fails.' },
+        }),
+      ],
+      comments: [
+        'Informational (catalogue section 8.4): [SD-JWT VC] section 2.2.2.2 forbids the Issuer to put `exp` in a disclosure, and no sentence of [SD-JWT VC] or [RFC9901] requires the Relying Party to refuse the credential. [RFC9901] section 9.7 requires that Verifiers "ensure that all claims they deem necessary for checking the validity of an SD-JWT in the given context are present (or disclosed, respectively)".',
+      ],
+    }),
+    issuerIntegrity({
+      number: 18,
+      format: sdJwtVc,
+      objective:
+        'Record whether the Relying Party accepts a credential in SD-JWT VC format whose `iss` claim is in a disclosure instead of the Issuer-signed JWT.',
+      references: ['[SD-JWT VC] section 2.2.2.2', '[RFC9901] section 9.7'],
+      relevancy: relevancy.genericOptional,
+      steps: [
+        step({
+          ...presentationStep.credentialFault('credential.iss-disclosed'),
+          expect: { codes: ['INFO'], text: 'Whether the Relying Party accepts or rejects the presentation is recorded; HTTP 5xx fails.' },
+        }),
+      ],
+      comments: [
+        'Informational (catalogue section 8.4): [SD-JWT VC] section 2.2.2.2 forbids the Issuer to put `iss` in a disclosure, and no sentence of [SD-JWT VC] or [RFC9901] requires the Relying Party to refuse the credential. [RFC9901] section 9.7 requires that Verifiers "ensure that all claims they deem necessary for checking the validity of an SD-JWT in the given context are present (or disclosed, respectively)".',
+      ],
+    }),
+    issuerIntegrity({
+      number: 29,
+      format: mdoc,
+      objective: 'Record whether the Relying Party accepts a credential in mdoc format whose IssuerAuth lists in `crit` a header parameter that the Relying Party does not understand.',
+      references: ['[RFC9052] section 3.1', '[ISO/IEC 18013-5] section 9.1.2 (not verified)'],
+      relevancy: relevancy.genericOptional,
+      steps: [
+        step({
+          ...presentationStep.credentialFault('mdoc.issuer-auth-crit-unknown'),
+          expect: { codes: ['INFO'], text: 'Whether the Relying Party accepts or rejects the presentation is recorded; HTTP 5xx fails.' },
+        }),
+      ],
+      comments: [
+        'Informational (catalogue section 8.4): [RFC9052] section 3.1 says that `crit` lists the header parameters an application processing the message "is required to understand", but no sentence of [RFC9052] says what a recipient does with a listed parameter it does not understand; the one fatal error it names, a listed label whose header parameter is not in the protected bucket, does not arise here. [ISO/IEC 18013-5] was not verified.',
+      ],
+    }),
+    issuerIntegrity({
+      number: 38,
+      format: sdJwtVc,
+      relevancy: relevancy.genericOptional,
+      objective:
+        "Verify that the Relying Party handles a credential in SD-JWT VC format whose signing certificate, issued under the right anchor, names another issuer's URI instead of the credential's `iss`, as it declares.",
+      references: namesIssuerReferences,
+      steps: [namesIssuer('credential.signer-names-other-issuer')],
+      comments: [namesIssuerComment],
+    }),
+    issuerIntegrity({
+      number: 39,
+      format: sdJwtVc,
+      relevancy: relevancy.genericOptional,
+      objective:
+        "Verify that the Relying Party handles a credential in SD-JWT VC format whose signing certificate, issued under the right anchor, names only the DNS name of another host instead of the credential's `iss` or its host, as it declares.",
+      references: namesIssuerReferences,
+      steps: [namesIssuer('credential.signer-names-other-host')],
+      comments: [namesIssuerComment],
+    }),
+    issuerIntegrity({
+      number: 40,
+      format: sdJwtVc,
+      relevancy: relevancy.genericOptional,
+      objective:
+        "Verify that the Relying Party handles a credential in SD-JWT VC format whose signing certificate, issued under the right anchor, names another issuer's URI and the host of the credential's `iss`, as it declares: the URI decides, not the host.",
+      references: namesIssuerReferences,
+      steps: [namesIssuer('credential.signer-uri-beats-host')],
+      comments: [namesIssuerComment],
+    }),
+    issuerIntegrity({
+      number: 41,
+      format: mdoc,
+      relevancy: relevancy.genericOptional,
+      objective:
+        "Verify that the Relying Party handles a credential in mdoc format whose IssuerAuth declares `ES384` (-35) and is signed with SHA-384 by the document signer's P-256 key, as it declares.",
+      references: ['[RFC9053] section 2.1', '[RFC9864] section 2.1, 4.2.2, 4.4, 7', '[ISO/IEC 18013-5] section 9.1.2 (not verified)'],
+      steps: [
+        step({
+          ...presentationStep.credentialFault('mdoc.issuer-auth-es384-p256'),
+          expect: policyCheck('RP.P.14', 'rejects a credential in mdoc format whose IssuerAuth declares `ES384` (-35) over a P-256 document signer key'),
+        }),
+      ],
+      comments: [
+        '[RFC9053] section 2.1 only suggests that SHA-384 be used with P-384, and [RFC9864] section 2.1 calls `ES384` polymorphic, since it does not name a curve; section 4.2.2 deprecates it, which section 4.4 defines as a SHOULD for new deployments. [RFC9864] section 7 says "A cryptographic key MUST be used with only a single algorithm unless the use of the same key with different algorithms is proven secure.", and the document signer key also signs `ES256` in `RP_WS_IA_MainInteraction_001b`. To hold a key to one algorithm, section 7 recommends the algorithm parameter of a JSON Web Key or a COSE Key "unless there exists some other mechanism for ensuring that the key is used as intended", and names no other mechanism for a signing key; this key comes in an X.509 certificate in `x5chain`, which is neither, so section 7 does not tell the Relying Party which one algorithm the key has. This test case reads the MUST as one the Relying Party can apply only through such a mechanism. [ISO/IEC 18013-5] was not verified, so ICS RP.P.14 declares whether the Relying Party refuses `ES384` over a P-256 key. `IssuerIntegrity_042_UF` presents a signature made the same way under the fully specified `ESP384`.',
+      ],
+    }),
+    issuerIntegrity({
+      number: 42,
+      format: mdoc,
+      objective:
+        "Verify that the Relying Party rejects a credential in mdoc format whose IssuerAuth declares `ESP384` (-51), which is ECDSA on P-384 with SHA-384, and is signed by the document signer's P-256 key.",
+      references: ['[RFC9864] section 2.1', '[RFC9360] section 5', '[ISO/IEC 18013-5] section 9.1.2 (not verified)'],
+      steps: [rejected('mdoc.issuer-auth-esp384-p256')],
+      comments: [
+        '[RFC9864] section 2.1 defines `ESP384` as ECDSA using the P-384 curve and SHA-384, and [RFC9360] section 5 requires the key in a certificate to be checked against the algorithm to be used, so the P-256 key of the document signer does not fit it.',
+      ],
+    }),
+  ];
+}
 
 export const definitions = [
   issuerIntegrity({
@@ -314,4 +451,5 @@ export const definitions = [
   }),
   ...pathCases(sdJwtVc),
   ...pathCases(mdoc),
+  ...issue10Cases(),
 ];

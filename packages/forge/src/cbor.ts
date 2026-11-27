@@ -48,9 +48,9 @@ export function dateOf(value: unknown): Date | undefined {
 }
 
 /** COSE header labels (RFC 9052, RFC 9360, RFC 9596). */
-export const COSE = { alg: 1, kid: 4, typ: 16, x5chain: 33 } as const;
-/** COSE algorithms: ES256, ES256K (RFC 8812), HMAC 256/256. */
-export const COSE_ALG = { ES256: -7, ES256K: -47, HMAC256: 5 } as const;
+export const COSE = { alg: 1, crit: 2, kid: 4, typ: 16, x5chain: 33 } as const;
+/** COSE algorithms: ES256, ES384, ES256K (RFC 8812), ESP384 (RFC 9864), HMAC 256/256. */
+export const COSE_ALG = { ES256: -7, ES384: -35, ES256K: -47, ESP384: -51, HMAC256: 5 } as const;
 
 /** A COSE_Sign1 or COSE_Mac0 with its protected header decoded. */
 export interface CoseStructure {

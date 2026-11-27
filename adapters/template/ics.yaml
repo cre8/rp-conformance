@@ -24,6 +24,8 @@ RP.P.9: "No"    # redeems the response code at its own front end (needs the adap
 RP.P.10: "No"   # binds the credentials of a combined presentation by their identifying attributes
 RP.P.11: 1048576  # largest Authorization Response it accepts, bytes
 RP.P.12: Reject  # a PID whose administrative expiry date has passed: Reject or Accept
+RP.P.13: "Yes"  # rejects an SD-JWT VC whose signing certificate does not name its iss
+RP.P.14: "Yes"  # rejects an mdoc whose IssuerAuth declares ES384 over a P-256 document signer key
 
 # Revocation
 RP.R.1: "Yes"   # checks the revocation status of PIDs

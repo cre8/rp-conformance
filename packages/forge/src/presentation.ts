@@ -168,6 +168,13 @@ async function presentSdJwtVcWithFault(
       return resign(({ payload }) => void (payload.aud = [binding.audience]));
     case 'presentation.kb-nonce-missing':
       return resign(({ payload }) => void delete payload.nonce);
+    case 'presentation.kb-crit-unknown':
+      return resign(({ header }) => {
+        header.rp_conformance_ext = 1;
+        header.crit = ['rp_conformance_ext'];
+      });
+    case 'presentation.kb-exp-string':
+      return resign(({ payload }) => void (payload.exp = String(nowSeconds + 3600)));
     case 'presentation.kb-aud-client-id': {
       if (!binding.clientId) throw new Error('the request has no client_id');
       return resign(({ payload }) => void (payload.aud = binding.clientId));
@@ -271,6 +278,14 @@ async function presentMdocWithFault(
     case 'presentation.transcript-origin-prefixed':
       if (handover.flow !== 'dc-api') throw new Error(`fault ${fault} applies to the dc-api flow`);
       handover = { flow: 'dc-api', origin: `origin:${handover.origin}` };
+      break;
+    case 'presentation.transcript-dcapi-handover':
+      handover = { flow: 'dc-api', origin: new URL(redirect().responseUri).origin };
+      break;
+    case 'presentation.transcript-redirect-handover':
+      if (handover.flow !== 'dc-api') throw new Error(`fault ${fault} applies to the dc-api flow`);
+      if (!binding.clientId) throw new Error('the request has no client_id');
+      handover = { flow: 'redirect', clientId: binding.clientId, responseUri: handover.origin };
       break;
     case 'presentation.device-signature-doctype-other':
       deviceAuthentication = { docType: OTHER_DOCTYPE };

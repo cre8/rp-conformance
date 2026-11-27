@@ -308,7 +308,8 @@ export function evaluateStatusRequest(args: EvaluationInput): Evaluation {
  * old gives no reliable status, `NOSTAT`; `None` or a longer age accepts); `RP.R.8`, whether a token issued in the future
  * is refused (`Yes`: `NOSTAT`, `No`: accepted); `RP.P.12`, a PID whose administrative expiry date has passed (`Reject`
  * or `Accept`); `RP.T.4`, a trust list whose new version failed its seal (`Keep` the last valid version: accepted,
- * `Discard`: rejected).
+ * `Discard`: rejected); `RP.P.13` and `RP.P.14`, whether the Relying Party applies a check (`Yes`: rejected, `No`:
+ * accepted).
  */
 export function evaluateDeclaredPolicy(policy: Exclude<PolicyReference, { item: 'RP.R.3' }>, args: EvaluationInput): Evaluation {
   const declared = String(icsAnswer(args.ics, policy.item) ?? '').trim();
@@ -336,6 +337,13 @@ export function evaluateDeclaredPolicy(policy: Exclude<PolicyReference, { item: 
       // 2026-11-20).
       if (/^keep/i.test(declared)) return accept(declared);
       if (/^discard/i.test(declared)) return withPrefix(`${policy.item} ${declared}`, evaluateReject(args.result, args.responseStatus, args.delivered));
+      return undeclared();
+    case 'RP.P.13':
+    case 'RP.P.14':
+      // Issue 10: the Relying Party applies the check (Yes, rejected) or not (No, accepted); the traces in
+      // rp-test-catalogue.md section 8.4 find no requirement for it.
+      if (/^yes$/i.test(declared)) return withPrefix(`${policy.item} Yes`, evaluateReject(args.result, args.responseStatus, args.delivered));
+      if (/^no$/i.test(declared)) return accept('No');
       return undeclared();
   }
 }

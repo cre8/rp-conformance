@@ -67,6 +67,9 @@ export interface MdocFaultContext {
   issuer?: TestEntity;
 }
 
+/** A header label of the private-use range of the COSE Header Parameters registry (below -65536), for `mdoc.issuer-auth-crit-unknown`. */
+const PRIVATE_COSE_LABEL = -65537;
+
 /** The docType of the faults that present an mdoc of another type: an mDL (ISO/IEC 18013-5). */
 export const OTHER_DOCTYPE = 'org.iso.18013.5.1.mDL';
 
@@ -119,6 +122,8 @@ const MDOC_CHANGES: Partial<Record<FaultId, (mso: CborMap, ctx: MdocFaultContext
   },
   'mdoc.no-status': (m) => void m.delete('status'),
   'mdoc.no-device-key': (m) => void m.delete('deviceKeyInfo'),
+  // RFC 9053 section 7.1: the curve P-256 (1) belongs to the key type EC2 (2); the key type becomes OKP (1).
+  'mdoc.device-key-okp-p256': (m) => void ((m.get('deviceKeyInfo') as CborMap).get('deviceKey') as CborMap).set(1, 1),
   'mdoc.mso-doctype-other': (m) => void m.set('docType', OTHER_DOCTYPE),
   'mdoc.doctype-other': (m) => void m.set('docType', OTHER_DOCTYPE),
   'mdoc.signed-after-ds-expiry': (m, c) => void validityInfoOf(m).set('signed', tdate(new Date(c.signer.certificate.notAfter.getTime() + HOUR * 1000))),
@@ -149,6 +154,26 @@ export async function applyMdocFault(fault: FaultId, issuerSignedBytes: Uint8Arr
       const payload = issuerAuth.payload as Uint8Array;
       const signature = await signEs256(ctx.signer.key.privateKey, sigStructure(protectedBytes, payload));
       issuerSigned.set('issuerAuth', coseValue({ tag: issuerAuth.tag, protectedBytes, unprotectedHeader: issuerAuth.unprotectedHeader, payload, signature }));
+      return encodeCbor(issuerSigned);
+    }
+    case 'mdoc.issuer-auth-crit-unknown': {
+      // RFC 9052 section 3.1: `crit` (2) lists a private label the protected header carries and no verifier understands.
+      const header = new Map(issuerAuth.protectedHeader);
+      header.set(PRIVATE_COSE_LABEL, 1);
+      header.set(COSE.crit, [PRIVATE_COSE_LABEL]);
+      issuerSigned.set('issuerAuth', await resign(issuerAuth, issuerAuth.payload as Uint8Array, ctx.signer.key.privateKey, header));
+      return encodeCbor(issuerSigned);
+    }
+    case 'mdoc.issuer-auth-es384-p256':
+    case 'mdoc.issuer-auth-esp384-p256': {
+      // ECDSA with SHA-384 by the document signer's P-256 key, so r and s are 32 octets each, under an alg that names
+      // SHA-384: ES384 (-35, polymorphic) or ESP384 (-51, which RFC 9864 fixes to P-384).
+      const header = new Map(issuerAuth.protectedHeader);
+      header.set(COSE.alg, fault === 'mdoc.issuer-auth-es384-p256' ? COSE_ALG.ES384 : COSE_ALG.ESP384);
+      const protectedBytes = encodeCbor(header);
+      const payload = issuerAuth.payload as Uint8Array;
+      const signed = await globalThis.crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-384' }, ctx.signer.key.privateKey, Uint8Array.from(sigStructure(protectedBytes, payload)));
+      issuerSigned.set('issuerAuth', coseValue({ tag: issuerAuth.tag, protectedBytes, unprotectedHeader: issuerAuth.unprotectedHeader, payload, signature: new Uint8Array(signed) }));
       return encodeCbor(issuerSigned);
     }
     case 'mdoc.mso-not-tag24':

@@ -158,4 +158,19 @@ export const definitions = [
     steps: [step({ ...presentationStep.credentialFault('credential.minimal-cnf-jwk'), expect: acc({ credential: PID }) })],
     comments: [oidf('minimal-cnf-jwk')],
   }),
+  // Issue 10: a critical header parameter of the KB-JWT, and a device key whose key type does not fit its curve.
+  deviceBinding({
+    number: 15,
+    format: sdJwtVc,
+    objective: 'Verify that the Relying Party rejects a presentation in SD-JWT VC format whose KB-JWT marks as critical a header parameter that the Relying Party does not understand.',
+    references: ['[RFC7515] section 4.1.11', ...KB_JWT],
+    steps: [rejected('presentation.kb-crit-unknown')],
+  }),
+  deviceBinding({
+    number: 16,
+    format: mdoc,
+    objective: 'Verify that the Relying Party rejects a credential in mdoc format whose device key in the MSO has a key type that does not fit its curve.',
+    references: ['[RFC9053] section 7.1', '[ISO/IEC 18013-5] section 9.1.3'],
+    steps: [step({ ...presentationStep.credentialFault('mdoc.device-key-okp-p256'), expect: rej() })],
+  }),
 ];

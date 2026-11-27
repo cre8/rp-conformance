@@ -717,6 +717,66 @@ export const FAULTS = {
   'request.wallet-nonce-missing': request('wallet-nonce', 'the request object its `request_uri` returns to a POST does not carry the `wallet_nonce`', 'redirect'),
   'response.state-other': response('response-payload', 'its decrypted payload carries a newly generated random `state` instead of the `state` of the request', 'redirect'),
   'response.state-missing': response('response-payload', 'its decrypted payload carries no `state`', 'redirect'),
+  // Issue 10: the negative vectors without a counterpart row, one fault for each new row of IssuerIntegrity,
+  // SessionBinding and DeviceBinding.
+  'credential.crit-unknown': credential(
+    'issuer-signature',
+    'the header of its Issuer-signed JWT carries the header parameter `rp_conformance_ext` with the value `1`, which no specification defines, and lists it in `crit`',
+  ),
+  'credential.exp-disclosed': credential(
+    'disclosures',
+    'its `exp` claim is not in the payload of its Issuer-signed JWT but in a disclosure referenced from the `_sd` array of the payload',
+  ),
+  'credential.iss-disclosed': credential(
+    'disclosures',
+    'its `iss` claim is not in the payload of its Issuer-signed JWT but in a disclosure referenced from the `_sd` array of the payload',
+  ),
+  'credential.signer-names-other-issuer': credential(
+    'issuer-trust',
+    'it is signed by another certificate issued under the issuance CA `CA-PP-A` of `PP-A`, whose only subject alternative name is the URI `https://other-issuer.rp-test`, so it does not name the `iss` of the credential',
+  ),
+  'credential.signer-names-other-host': credential(
+    'issuer-trust',
+    'it is signed by another certificate issued under the issuance CA `CA-PP-A` of `PP-A`, whose only subject alternative name is the DNS name `other-issuer.rp-test`, which is neither the `iss` of the credential nor its host',
+  ),
+  'credential.signer-uri-beats-host': credential(
+    'issuer-trust',
+    'it is signed by another certificate issued under the issuance CA `CA-PP-A` of `PP-A`, whose subject alternative names are the URI `https://other-issuer.rp-test` and the DNS name of the host of the `iss` of the credential',
+  ),
+  'presentation.kb-crit-unknown': kbJwt(
+    'key-binding',
+    'the header of its KB-JWT carries the header parameter `rp_conformance_ext` with the value `1`, which no specification defines, and lists it in `crit`',
+  ),
+  'presentation.kb-exp-string': kbJwt(
+    'kb-freshness',
+    'its KB-JWT carries an `exp` claim whose value is a string, the decimal digits of the current time plus one hour, instead of a number',
+  ),
+  'presentation.transcript-dcapi-handover': deviceAuth(
+    'key-binding',
+    'the SessionTranscript its device signature covers carries an `OpenID4VPDCAPIHandover`, computed with the Origin of the `response_uri` of the request, instead of the `OpenID4VPHandover` of a request made by redirect',
+    'redirect',
+  ),
+  'presentation.transcript-redirect-handover': deviceAuth(
+    'key-binding',
+    'the SessionTranscript its device signature covers carries an `OpenID4VPHandover`, computed with the `client_id` of the request and the Origin of the page as `response_uri`, instead of the `OpenID4VPDCAPIHandover` of a request made through the W3C Digital Credentials API',
+    'dc-api',
+  ),
+  'mdoc.device-key-okp-p256': mdoc(
+    'key-binding',
+    'the `deviceKey` in the `deviceKeyInfo` of its MSO has the key type OKP (1) with the curve P-256 (1) and the coordinates of the device key, a key type and a curve that do not belong together',
+  ),
+  'mdoc.issuer-auth-es384-p256': mdoc(
+    'issuer-signature',
+    'the protected header of its `IssuerAuth` structure declares `alg` -35 (`ES384`), and the signature is made with SHA-384 by the P-256 key of the document signer, `r` and `s` 32 octets each',
+  ),
+  'mdoc.issuer-auth-esp384-p256': mdoc(
+    'issuer-signature',
+    'the protected header of its `IssuerAuth` structure declares `alg` -51 (`ESP384`, ECDSA on P-384 with SHA-384), and the signature is made with SHA-384 by the P-256 key of the document signer, `r` and `s` 32 octets each',
+  ),
+  'mdoc.issuer-auth-crit-unknown': mdoc(
+    'issuer-signature',
+    'the protected header of its `IssuerAuth` structure carries the private label -65537 with the value 1 and lists it in `crit` (label 2), and the signature is made over those bytes',
+  ),
   // Attribute variants of the PID (RP_WS_DM_IdentifyingData, RP_WS_DM_CredentialMetadata): the PID is issued with other
   // attributes, valid in every other respect, and presented for the query that requests them. The presentation
   // variants change what the Conformance Wallet discloses. Target `claims`: the disclosed claims do not satisfy the

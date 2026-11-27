@@ -9,7 +9,7 @@ Draft 0.3, 2026-11-17 (decisions on the open questions applied, see §8.1; stimu
 | System under test | Relying Party (RP): the RP Instance(s) plus the RP back end that decides whether a presentation is accepted. Not the PID Provider, not the Attestation Provider, not the Wallet. |
 | Sources | ARF repository `main` of 2026-10-02 (latest tag v3.0.0), Annex 2 HLRs and main document §6.6.3; FCAF `submitted` branch of 2026-10-16; OpenID4VP 1.0; HAIP 1.0; RFC 9901 (SD-JWT); SD-JWT VC draft-16; Token Status List draft-20; ISO/IEC 18013-5; ETSI TS 119 602, 119 612, 119 475, 119 472-2. Versions follow the FCAF reference table. |
 | Structure | FCAF hierarchy, with the RP test classes the FCAF methodology already reserves: `RP_WS`, `RP_PP`, `RP_AP`, `RP_Inf`. Plus a test book `RP_TB` for checks that need inspection instead of a protocol stimulus. |
-| Size | 222 test objectives: 138 unhappy flow (`_UF`) and 84 positive or informative (positive controls, request-side conformance checks, one `INFO`). Plus 10 test book items. Counted before format and transport variants are expanded. |
+| Size | 236 test objectives: 152 unhappy flow (`_UF`) and 84 positive or informative (positive controls, request-side conformance checks, one `INFO`). Plus 10 test book items. Counted before format and transport variants are expanded. |
 | Already covered elsewhere | 16 objectives correspond to existing OIDF OID4VP 1.0 verifier test modules (marked "OIDF" below). Everything else has no public test today. |
 
 ### Why the existing suites are not enough
@@ -188,6 +188,8 @@ The RP fills these in; profiles in the catalogue refer to them.
 | ICS-17 | Maximum accepted response size and decompressed status list size | |
 | ICS-18 | Sets `request_uri_method=post` and answers a POST with `wallet_nonce` | `P-POST` |
 | ICS-19 | The RP's own front end redeems the response code of a same-device redirect (an RP that is only a back end leaves this to the relying service) | `P-FE` |
+| ICS-20 | The RP rejects a credential in SD-JWT VC format whose signing certificate does not name its `iss`: a `uniformResourceIdentifier` SAN equal to `iss`, or, when the certificate has no URI SAN, a `dNSName` SAN equal to the host of `iss`, in ASCII and lower case and with the port only when it is not the default port of the scheme, as a URL parser gives it. A credential without `iss` is not checked (RP.P.13; SD-JWT VC §2.5) | used by `POLICY` |
+| ICS-21 | The RP rejects a credential in mdoc format whose IssuerAuth declares `ES384` (-35) over a P-256 document signer key (RP.P.14; RFC 9053 §2.1, RFC 9864 §2.1) | used by `POLICY` |
 
 ## 5. Catalogue
 
@@ -314,6 +316,9 @@ Columns: **Objective** says what is verified. **Stimulus** is the mutation or in
 | `RP_WS_SM_SessionBinding_008_UF` | mdoc: DeviceAuth over a SessionTranscript with a wrong OpenID4VPHandover element is rejected. | Wrong (a) nonce, (b) client_id, (c) response_uri, (d) jwkThumbprint; (e) `client_id` without its prefix; (f) `jwkThumbprint` `null` where the response is encrypted | REJ (OIDF `invalid-session-transcript` covers one element) | OID4VP B.2.6.1; ISO/IEC 18013-5 §9.1.3 | MD × RD | G/R |
 | `RP_WS_SM_SessionBinding_009_UF` | mdoc over DC API: handover with another origin, nonce or encryption key is rejected. | Wrong (a) origin, (b) nonce, (c) jwkThumbprint; (d) the right origin written with an `origin:` prefix | REJ | OID4VP B.2.6.2 | MD × DC | G/R |
 | `RP_WS_SM_SessionBinding_010_UF` | Proximity: DeviceAuth computed over the SessionTranscript of another session is rejected. | Transcript with other DeviceEngagement / EReaderKey | REJ | ISO/IEC 18013-5 §9.1.3 | MD × PX | G/R |
+| `RP_WS_SM_SessionBinding_011_UF` | mdoc via redirects: DeviceAuth over a SessionTranscript with an `OpenID4VPDCAPIHandover` instead of the `OpenID4VPHandover` is rejected. | Handover of the DC API flow, with the Origin of the `response_uri` | REJ | OID4VP B.2.6.1; ISO/IEC 18013-5 §9.1.3 | MD × RD | G/R |
+| `RP_WS_SM_SessionBinding_012_UF` | mdoc over DC API: DeviceAuth over a SessionTranscript with an `OpenID4VPHandover` instead of the `OpenID4VPDCAPIHandover` is rejected. | Handover of the redirect flow, with the Client Identifier and the Origin as `response_uri` | REJ | OID4VP B.2.6.2; ISO/IEC 18013-5 §9.1.3 | MD × DC | G/R |
+| `RP_WS_SM_SessionBinding_013_UF` | KB-JWT `exp` that is not a NumericDate is rejected. | `exp` = the string of a time one hour ahead | REJ | RFC 7519 §2, §4.1.4; RFC 9901 §7.3 step 5h | SD × RD, DC | G/R |
 
 ##### RP_WS_SM_DeviceBinding (`P-DB`)
 
@@ -333,6 +338,8 @@ Columns: **Objective** says what is verified. **Stimulus** is the mutation or in
 | `RP_WS_SM_DeviceBinding_012_UF` | Proximity: DeviceMac computed with the wrong reader key is rejected. | MAC with other EReaderKey | REJ | ISO/IEC 18013-5 §9.1.3 | MD × PX | G/O |
 | `RP_WS_SM_DeviceBinding_013_UF` | Device authentication with an algorithm outside ECCG ACM is rejected. | ES256K | REJ | OIA_03; HAIP 7 | SD, MD | S/R |
 | `RP_WS_SM_DeviceBinding_014` | A `cnf.jwk` carrying only the required JWK members is accepted. | Minimal `cnf.jwk` (`kty`, `crv`, `x`, `y`) | ACC (OIDF `minimal-cnf-jwk`) | RFC 7800 §3.2; SD-JWT VC §2.2.2.2; HAIP 6.1 | SD | G/R |
+| `RP_WS_SM_DeviceBinding_015_UF` | KB-JWT whose `crit` names a header parameter the RP does not understand is rejected. | `crit: ["rp_conformance_ext"]` with that parameter | REJ | RFC 7515 §4.1.11; RFC 9901 §7.3 | SD | G/R |
+| `RP_WS_SM_DeviceBinding_016_UF` | MSO device key whose key type does not fit its curve is rejected. | `deviceKey` with `kty` OKP (1) and `crv` P-256 (1) | REJ | RFC 9053 §7.1; ISO/IEC 18013-5 §9.1.3 | MD | G/R |
 
 ##### RP_WS_SM_IssuerIntegrity (authenticity of the credential)
 
@@ -355,6 +362,9 @@ SD-JWT VC:
 | `RP_WS_SM_IssuerIntegrity_013_UF` | `vct` not in the requested `vct_values` is rejected. | Other `vct` | REJ (OIDF `wrong-vct`) | OID4VP §8.6, §14.9, B.3.5 | SD | G/R |
 | `RP_WS_SM_IssuerIntegrity_014` | Decoy digests are ignored. | Credential with decoys | ACC | RFC 9901 §4.2.5 | SD | G/R |
 | `RP_WS_SM_IssuerIntegrity_015` | Recursive disclosures (structured objects such as address, place of birth) are resolved correctly. | Nested SD | ACC with correct values | RFC 9901 §4.2.6; PID rulebook | SD | G/R |
+| `RP_WS_SM_IssuerIntegrity_016_UF` | Issuer-signed JWT whose `crit` names a header parameter the RP does not understand is rejected. | `crit: ["rp_conformance_ext"]` with that parameter | REJ | RFC 7515 §4.1.11; RFC 9901 §7.1 | SD | G/R |
+| `RP_WS_SM_IssuerIntegrity_017_UF` | Whether a credential whose `exp` is in a disclosure instead of the Issuer-signed JWT is accepted is recorded. | `exp` moved from the payload into a disclosure | INFO (§8.4) | SD-JWT VC §2.2.2.2; RFC 9901 §9.7 | SD | G/O |
+| `RP_WS_SM_IssuerIntegrity_018_UF` | Whether a credential whose `iss` is in a disclosure instead of the Issuer-signed JWT is accepted is recorded. | `iss` moved from the payload into a disclosure | INFO (§8.4) | SD-JWT VC §2.2.2.2; RFC 9901 §9.7 | SD | G/O |
 
 mdoc:
 
@@ -369,6 +379,9 @@ mdoc:
 | `RP_WS_SM_IssuerIntegrity_026_UF` | A chain that only validates to a root embedded in `x5chain` is rejected. | Self-signed IACA `CA-X` in chain | REJ | ISO/IEC 18013-5 §9.3.1; OIA_12 | MD | G/R |
 | `RP_WS_SM_IssuerIntegrity_027_UF` | Whether a signing certificate that is not an mdoc document signer (no DS extended key usage) is accepted is recorded. | Plain end-entity certificate under the right anchor | INFO (§8.3) | ETSI TS 119 412-6 clause 4 (no EKU required); ISO/IEC 18013-5 Annex B not verified | MD | G/O |
 | `RP_WS_SM_IssuerIntegrity_028_UF` | MSO `validityInfo.signed` outside the DS certificate validity is rejected. | `signed` after DS `notAfter` | REJ | ISO/IEC 18013-5 §9.3.1 | MD | G/R |
+| `RP_WS_SM_IssuerIntegrity_029_UF` | Whether an IssuerAuth whose `crit` lists a header parameter the RP does not understand is accepted is recorded. | Private label -65537 in the protected header, listed in `crit` | INFO (§8.4) | RFC 9052 §3.1; ISO/IEC 18013-5 §9.1.2 (not verified) | MD | G/O |
+| `RP_WS_SM_IssuerIntegrity_041_UF` | IssuerAuth declaring the polymorphic `ES384` (-35) over a SHA-384 signature of the document signer's P-256 key. | `alg` -35, ECDSA P-256 with SHA-384 | POLICY (ICS-21, RP.P.14): refuses `ES384` over P-256 (REJ), or not (ACC) | RFC 9053 §2.1; RFC 9864 §2.1, §4.2.2, §4.4, §7; ISO/IEC 18013-5 §9.1.2 (not verified) | MD | G/O |
+| `RP_WS_SM_IssuerIntegrity_042_UF` | IssuerAuth declaring the fully specified `ESP384` (-51) over a signature of the document signer's P-256 key is rejected. | `alg` -51, ECDSA P-256 with SHA-384 | REJ | RFC 9864 §2.1 Table 1; RFC 9360 §5; ISO/IEC 18013-5 §9.1.2 (not verified) | MD | G/R |
 
 Certificate path, both formats:
 
@@ -382,6 +395,9 @@ Certificate path, both formats:
 | `RP_WS_SM_IssuerIntegrity_035_UF` | Revoked issuer signing certificate is rejected. *Not executable: optional check, the harness serves no CRLs.* | CRL marks DS / signing cert revoked | REJ | RFC 5280 §6.3; ICS-16 | SD, MD | G/O |
 | `RP_WS_SM_IssuerIntegrity_036_UF` | Key type or size outside ECCG ACM is rejected. | P-192, RSA-1024 | REJ | OIA_03 | SD, MD | S/R |
 | `RP_WS_SM_IssuerIntegrity_037_UF` | Unknown critical extension in the signing certificate is rejected. | Critical private extension | REJ | RFC 5280 §4.2, §6.1.5 (f); RFC 7515 §4.1.6 (SD); ISO/IEC 18013-5 §9.3.1 not verified (MD) | SD, MD | G/R |
+| `RP_WS_SM_IssuerIntegrity_038_UF` | Signing certificate under the right anchor that names another issuer's URI instead of `iss`. | Leaf with URI SAN `https://other-issuer.rp-test` only | POLICY (ICS-20, RP.P.13): checks the name (REJ), or not (ACC) | SD-JWT VC §2.5, §6.2; RFC 5280 §4.2.1.6 | SD | G/O |
+| `RP_WS_SM_IssuerIntegrity_039_UF` | Signing certificate under the right anchor that names only another host. | Leaf with DNS SAN `other-issuer.rp-test` only | POLICY (ICS-20, RP.P.13) | SD-JWT VC §2.5, §6.2; RFC 5280 §4.2.1.6 | SD | G/O |
+| `RP_WS_SM_IssuerIntegrity_040_UF` | Signing certificate under the right anchor whose URI names another issuer while its DNS name is the host of `iss`: the URI decides. | Leaf with URI SAN `https://other-issuer.rp-test` and DNS SAN of the `iss` host | POLICY (ICS-20, RP.P.13) | SD-JWT VC §2.5, §6.2; RFC 5280 §4.2.1.6 | SD | G/O |
 
 ##### RP_WS_SM_Validity (validity period of the credential)
 
@@ -663,6 +679,24 @@ normative strength. The upstream texts are in `adapters/eudiplo/upstream-finding
 | `SM_Validity_005_UF` | Reference: the no-fetch rule of Token Status List section 8.3 is in draft-17 and later ("MUST NOT" from draft-19); HAIP 1.0 pins draft-14, which has only "MUST precede". | The catalogue follows the FCAF's draft-20. |
 | (evaluation of `ACC`) | Released attributes that are empty objects are no longer dropped when compared. | An RP that releases an mdoc map as `{}` (`DM_IdentifyingData_001b`) is visible in every test case, not only where the map is requested. |
 
+### 8.4 Traces of the rows from the Polaris negative vectors (issue 10)
+
+Each row rests on the sentence quoted from the RFC Editor or IETF text (line numbers of the `.txt` file at the URL) or,
+for OpenID4VP, from the section named; ISO/IEC 18013-5 is cited by clause only.
+
+| Test case | Text |
+| --- | --- |
+| `SM_IssuerIntegrity_016_UF`, `SM_DeviceBinding_015_UF` | RFC 7515 §4.1.11 (<https://www.rfc-editor.org/rfc/rfc7515.txt>, l. 741-742): "If any of the listed extension Header Parameters are not understood and supported by the recipient, then the JWS is invalid." RFC 9901 §7.1 step 2b and §7.3 step 5c (<https://www.rfc-editor.org/rfc/rfc9901.txt>, l. 1667-1668, 1854-1855) validate the signature of the Issuer-signed JWT and of the KB-JWT "per Section 5.2 of [RFC7515]". RFC 7515 §5.2 step 5 (l. 907-911) is to verify that the implementation understands all fields required "by the 'crit' Header Parameter value"; "If any of the listed steps fails, then the signature or MAC cannot be validated" (RFC 7515 l. 851-853), and "at least one JWS Signature value MUST successfully validate, or the JWS MUST be considered invalid" (RFC 7515 l. 860-861). Both RFC 9901 §7.1 and §7.3 then require that processing "MUST be aborted" (l. 1754-1755, 1875-1876). |
+| `SM_IssuerIntegrity_017_UF`, `_018_UF` | SD-JWT VC §2.2.2.2 (draft-16, <https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-16.txt>, l. 468-470): "The following registered JWT claims are used within the SD-JWT component of the SD-JWT VC and MUST NOT be included in the Disclosures, i.e., cannot be selectively disclosed"; the list names `iss` and `exp`. The MUST NOT binds the Issuer, and no sentence of SD-JWT VC draft-16 or RFC 9901 requires the RP to refuse, hence `INFO`. RFC 9901 §9.7 (<https://www.rfc-editor.org/rfc/rfc9901.txt>, l. 2248-2254): "Verifiers cannot reliably depend on that and need to operate as though security-critical claims might be selectively disclosable." "Verifiers therefore MUST ensure that all claims they deem necessary for checking the validity of an SD-JWT in the given context are present (or disclosed, respectively) during validation of the SD-JWT." |
+| `SM_IssuerIntegrity_029_UF` | RFC 9052 §3.1 (<https://www.rfc-editor.org/rfc/rfc9052.txt>, l. 657-659): "This header parameter is used to indicate which protected header parameters an application that is processing a message is required to understand."; and l. 693-694: "the only requirement is that the header parameter is processed." No sentence of RFC 9052 says what a recipient does with a listed parameter it does not understand. The one fatal error it names (l. 694-697), a label in the `crit` list whose header parameter is not in the protected bucket, does not arise here, hence `INFO`; ISO/IEC 18013-5 was not verified. |
+| `SM_IssuerIntegrity_038_UF` to `_040_UF` | SD-JWT VC §2.5 (draft-16, l. 1038-1039 and 1048-1050): "the Issuer of the Verifiable Digital Credential is the subject of the end-entity certificate", and "If a recipient cannot validate that the public verification key corresponds the Issuer of the Issuer-signed JWT using a permitted key discovery and validation mechanism, the SD-JWT VC MUST be rejected." No sentence of SD-JWT VC draft-16 says how `iss` is compared with the certificate, hence `POLICY`. |
+| `SM_IssuerIntegrity_041_UF` | RFC 9864 §2.1 (<https://www.rfc-editor.org/rfc/rfc9864.txt>, l. 174-175): "The COSE algorithm registrations for ECDSA are polymorphic, since they do not specify the curve used." §7 (l. 650-655): "A cryptographic key MUST be used with only a single algorithm unless the use of the same key with different algorithms is proven secure.", and "it is RECOMMENDED that the algorithm parameter of JSON Web Keys and COSE Keys be present, unless there exists some other mechanism for ensuring that the key is used as intended." The document signer key also signs `ES256` in `RP_WS_IA_MainInteraction_001b`, and it comes in an X.509 certificate in `x5chain`, which is neither a JSON Web Key nor a COSE Key; §7 names no other mechanism for a signing key, so §7 does not tell the RP which one algorithm the key has. This row reads the MUST as one the RP can apply only through such a mechanism, hence `POLICY`; ISO/IEC 18013-5 was not verified. |
+| `SM_IssuerIntegrity_042_UF` | RFC 9864 §2.1 Table 1 (l. 190-191): "ESP384 \| -51 \| ECDSA using P-384 curve and SHA-384"; RFC 9360 §5 (<https://www.rfc-editor.org/rfc/rfc9360.txt>, l. 479-481): "Before using the key in a certificate, the key MUST be checked against the algorithm to be used, and any algorithm-specific checks need to be made." |
+| `SM_DeviceBinding_016_UF` | RFC 9053 §7.1 (<https://www.rfc-editor.org/rfc/rfc9053.txt>, l. 1648-1649): "Applications MUST check that the curve and the key type are consistent and reject a key if they are not." |
+| `SM_SessionBinding_011_UF` | OpenID4VP 1.0 B.2.6.1 (<https://openid.net/specs/openid-4-verifiable-presentations-1_0.html>): "Handover MUST be the OpenID4VPHandover CBOR structure as defined below." |
+| `SM_SessionBinding_012_UF` | OpenID4VP 1.0 B.2.6.2: "Handover MUST be the OpenID4VPDCAPIHandover CBOR structure as defined below." |
+| `SM_SessionBinding_013_UF` | RFC 9901 §7.3 (<https://www.rfc-editor.org/rfc/rfc9901.txt>, l. 1827-1828, 1872-1873, 1875-1876): Verifiers "MUST follow the following steps (or equivalent)", among them step 5h, "Check that the Key Binding JWT is a valid JWT in all other respects, per [RFC7519] and [RFC8725]"; "If any step fails, the presentation is not valid and processing MUST be aborted." RFC 7519 §4.1.4 (<https://www.rfc-editor.org/rfc/rfc7519.txt>, l. 512-513): "Its value MUST be a number containing a NumericDate value."; §2 (l. 287-288) defines a NumericDate as "A JSON numeric value". RFC 7519 §4 (l. 436-439) says that claims not understood "MUST be ignored" only "in the absence of such requirements", and this row reads step 5h as one. |
+
 ## 9. Next steps
 
 The written test cases and the catalogue rows changed to make them executable are listed in the
@@ -687,4 +721,7 @@ in [harness-design.md](harness-design.md) §11.
      absent request to the link-local address of `_006_UF`.
 
    `RP_Inf_SM_TrustMechanisms_010` and `_011` are not written because other test cases cover them.
-4. **Polaris negative vectors** (issue 10): map the remaining vectors to catalogue rows.
+4. **Polaris negative vectors** (issue 10): the vectors at the commit issue 10 links that had no counterpart row, all
+   but `x5c-includes-anchor`, are rows now (`SM_SessionBinding_011_UF` to `_013_UF`, `SM_DeviceBinding_015_UF`,
+   `_016_UF`, `SM_IssuerIntegrity_016_UF` to `_018_UF`, `_029_UF`, `_038_UF` to `_042_UF`, §8.4). The status vectors
+   keep `NOSTAT`.

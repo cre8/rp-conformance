@@ -145,4 +145,30 @@ export const definitions = [
       rejected('presentation.transcript-origin-prefixed', 'dc-api'),
     ],
   }),
+  // Issue 10: the handover of the other flow, and an `exp` of the KB-JWT that is not a NumericDate.
+  sessionBinding({
+    number: 11,
+    format: mdoc,
+    flow: 'redirect',
+    objective:
+      'Verify that the Relying Party rejects a presentation in mdoc format via redirects whose device signature covers a SessionTranscript with the handover of the W3C Digital Credentials API (`OpenID4VPDCAPIHandover`) instead of `OpenID4VPHandover`.',
+    references: ['[OpenID4VP] section B.2.6.1', ...DEVICE_AUTH],
+    steps: [rejected('presentation.transcript-dcapi-handover', 'redirect')],
+  }),
+  sessionBinding({
+    number: 12,
+    format: mdoc,
+    flow: 'dc-api',
+    objective:
+      'Verify that the Relying Party rejects a presentation in mdoc format via the W3C Digital Credentials API whose device signature covers a SessionTranscript with the handover of redirects (`OpenID4VPHandover`) instead of `OpenID4VPDCAPIHandover`.',
+    references: ['[OpenID4VP] section B.2.6.2', ...DEVICE_AUTH],
+    steps: [rejected('presentation.transcript-redirect-handover', 'dc-api')],
+  }),
+  sessionBinding({
+    number: 13,
+    format: sdJwtVc,
+    objective: 'Verify that the Relying Party rejects a presentation in SD-JWT VC format whose KB-JWT carries an `exp` claim that is a string instead of a NumericDate.',
+    references: ['[RFC7519] section 2, 4.1.4', ...KB_JWT],
+    steps: [rejected('presentation.kb-exp-string')],
+  }),
 ];

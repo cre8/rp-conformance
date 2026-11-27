@@ -199,6 +199,17 @@ export const policyApplicationSpecificStatus = (value: string): Expectation => (
   text: `If the Relying Party declares no meaning for the status value ${value} in its ICS: ${REJ_TEXT[0].toLowerCase()}${REJ_TEXT.slice(1)} If it declares a meaning: it handles the presentation as declared.`,
 });
 
+/**
+ * `POLICY` behind an ICS item that declares whether the Relying Party applies a check for which the traces in
+ * rp-test-catalogue.md section 8.4 find no requirement (RP.P.13, RP.P.14): `Yes` rejects the presentation, `No`
+ * accepts it.
+ */
+export const policyCheck = (item: 'RP.P.13' | 'RP.P.14', check: string): Expectation => ({
+  codes: ['POLICY'],
+  policy: { item },
+  text: `If the Relying Party declares in its ICS that it ${check} (${item} Yes): ${REJ_TEXT[0].toLowerCase()}${REJ_TEXT.slice(1)} If it declares that it does not (${item} No), it accepts the presentation: its verification result reports success and releases exactly the attributes requested in ${QUERY_PID}, with the values of the presented credential.`,
+});
+
 /** `LIST_RETRIEVED`: the Relying Party retrieved the list version the step published. */
 export const listRetrieved = (list: string): Expectation => ({
   codes: ['LIST_RETRIEVED'],

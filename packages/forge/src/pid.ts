@@ -110,8 +110,11 @@ export interface PresentOptions {
   now?: Date;
 }
 
-/** Claim names that cannot be disclosed (RFC 9901 section 4.2.1); a disclosure with one is presented as it is. */
-const RESERVED_NAMES = new Set(['_sd', '...']);
+/**
+ * Claim names that cannot be disclosed (RFC 9901 section 4.2.1), and the registered claims SD-JWT VC section 2.2.2.2
+ * does not let a disclosure carry; a disclosure with one is presented as it is, as the credential always shows them.
+ */
+const RESERVED_NAMES = new Set(['_sd', '...', 'iss', 'nbf', 'exp', 'cnf', 'vct', 'vct#integrity', 'status']);
 
 const HASHES: Record<string, string> = { 'sha-256': 'sha256', 'sha-1': 'sha1', md5: 'md5' };
 

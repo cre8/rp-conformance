@@ -111,6 +111,12 @@ const BINDING_REASONS: Partial<Record<FaultId, RegExp>> = {
   'presentation.device-signature-es256k': /alg -47/,
   'presentation.kb-duplicate-alg': /KB-JWT header carries the member alg twice/,
   'presentation.kb-duplicate-nonce': /KB-JWT payload carries the member nonce twice/,
+  // Issue 10.
+  'presentation.kb-crit-unknown': /KB-JWT header marks \["rp_conformance_ext"\] critical/,
+  'presentation.kb-exp-string': /KB-JWT exp "\d+" is not a NumericDate/,
+  'presentation.transcript-dcapi-handover': /covers an OpenID4VPDCAPIHandover instead of the OpenID4VPHandover/,
+  'presentation.transcript-redirect-handover': /covers an OpenID4VPHandover instead of the OpenID4VPDCAPIHandover/,
+  'mdoc.device-key-okp-p256': /key type 1 with the curve 1, which do not belong together/,
 };
 
 /** The reason for each fault of IssuerIntegrity: many fail the same check, so the reason shows each fails it for its own defect. */
@@ -168,6 +174,16 @@ const ISSUER_REASONS: Partial<Record<FaultId, RegExp>> = {
   'credential.x5c-50': /carries 50 certificates/,
   'mdoc.x5chain-50': /carries 50 certificates/,
   'credential.disclosure-invalid-json': /not base64url-encoded JSON/,
+  // Issue 10.
+  'credential.crit-unknown': /issuer-signed JWT header marks \["rp_conformance_ext"\] critical/,
+  'credential.exp-disclosed': /disclosure carries the claim exp/,
+  'credential.iss-disclosed': /disclosure carries the claim iss/,
+  'credential.signer-names-other-issuer': /names the URI https:\/\/other-issuer\.rp-test, not iss/,
+  'credential.signer-names-other-host': /names neither iss .* nor its host \(DNS names: other-issuer\.rp-test\)/,
+  'credential.signer-uri-beats-host': /names the URI https:\/\/other-issuer\.rp-test, not iss/,
+  'mdoc.issuer-auth-es384-p256': /IssuerAuth alg -35 pairs with P-384, and the document signer holds a key on P-256/,
+  'mdoc.issuer-auth-esp384-p256': /IssuerAuth alg -51 is ECDSA on P-384, and the document signer holds a key on P-256/,
+  'mdoc.issuer-auth-crit-unknown': /IssuerAuth crit lists the label -65537/,
 };
 
 /** The reason for the faults of encoding (Encoding_003), which fail the check that reads the artifact. */

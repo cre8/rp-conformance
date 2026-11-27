@@ -169,6 +169,19 @@ async function applyDisclosureFault(fault: FaultId, parts: SdJwtParts, ctx: Cred
       });
       return { jwt, disclosures };
     }
+    case 'credential.exp-disclosed':
+    case 'credential.iss-disclosed': {
+      // SD-JWT VC section 2.2.2.2 forbids these claims in disclosures: the claim moves from the payload into one.
+      const name = fault === 'credential.exp-disclosed' ? 'exp' : 'iss';
+      let disclosure = '';
+      const jwt = await resign((p) => {
+        if (p[name] === undefined) throw new Error(`the credential has no ${name} claim to disclose`);
+        disclosure = encodeDisclosure([salt(), name, p[name]]);
+        delete p[name];
+        (p._sd as string[]).push(disclosureDigest(disclosure));
+      });
+      return { jwt, disclosures: [...disclosures, disclosure] };
+    }
     case 'credential.decoys': {
       const decoys = [0, 1, 2].map(() => base64url.encode(sha256(randomBytes(32))));
       return { jwt: await resign((p) => void (p._sd as string[]).push(...decoys)), disclosures };
@@ -225,6 +238,17 @@ export async function applyCredentialFault(fault: FaultId, sdJwt: string, ctx: C
       const input = unsigned({ alg: signer.jwsAlg, x5c: [Buffer.from(signer.certificate.der).toString('base64')] });
       return withJwt(`${input}.${base64url.encode(signer.sign(input))}`);
     }
+    case 'credential.crit-unknown':
+      return withJwt(
+        await resignJws(
+          issuerJwt,
+          ({ header }) => {
+            header.rp_conformance_ext = 1;
+            header.crit = ['rp_conformance_ext'];
+          },
+          ctx.signer.key.privateKey,
+        ),
+      );
     case 'credential.no-x5c':
       return withJwt(await resignJws(issuerJwt, ({ header }) => void delete header.x5c, ctx.signer.key.privateKey));
     case 'credential.typ-missing':

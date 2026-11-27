@@ -27,6 +27,9 @@ export function describeKey(certificate: string | Uint8Array): string {
   return `of algorithm ${key.algorithm}`;
 }
 
+/** The registered claims SD-JWT VC section 2.2.2.2 forbids in disclosures, when used in the SD-JWT. */
+const NOT_DISCLOSABLE = new Set(['iss', 'nbf', 'exp', 'cnf', 'vct', 'vct#integrity', 'status']);
+
 interface Disclosure {
   salt: unknown;
   name?: unknown;
@@ -38,7 +41,8 @@ interface Disclosure {
  * Checks the disclosures against the issuer-signed payload and returns the claims with the disclosed values. Fails on an
  * `_sd_alg` other than `sha-256`, a disclosure that is not a JSON array of two (array element) or three (object property)
  * elements where it is referenced, a digest that occurs more than once, a disclosed claim name that is `_sd`, `...` or
- * already present at its level, and a disclosure that no digest references.
+ * already present at its level, a top-level disclosure of a claim SD-JWT VC section 2.2.2.2 forbids in one (`iss`,
+ * `exp`, …), and a disclosure that no digest references.
  */
 export function processDisclosures(payload: Record<string, unknown>, encoded: string[]): { claims: Record<string, unknown>; count: number } {
   const alg = payload._sd_alg ?? 'sha-256';
@@ -65,7 +69,7 @@ export function processDisclosures(payload: Record<string, unknown>, encoded: st
     seen.add(digest as string);
     return byDigest.get(digest as string);
   };
-  const resolve = (value: unknown): unknown => {
+  const resolve = (value: unknown, top = false): unknown => {
     if (Array.isArray(value)) {
       const out: unknown[] = [];
       for (const element of value) {
@@ -94,6 +98,7 @@ export function processDisclosures(payload: Record<string, unknown>, encoded: st
         const name = disclosure.name;
         if (typeof name !== 'string') fail('a disclosure has no claim name');
         if (name === '_sd' || name === '...') fail(`a disclosure has the reserved claim name ${String(name)}`);
+        if (top && NOT_DISCLOSABLE.has(name as string)) fail(`a disclosure carries the claim ${String(name)}, which SD-JWT VC does not let a disclosure carry`);
         if (Object.hasOwn(out, name as string)) fail(`the disclosed claim ${String(name)} is already present at its level`);
         used.add(digest as string);
         out[name as string] = resolve(disclosure.value);
@@ -103,7 +108,7 @@ export function processDisclosures(payload: Record<string, unknown>, encoded: st
     return value;
   };
   const { _sd_alg: _alg, ...rest } = payload;
-  const claims = resolve(rest) as Record<string, unknown>;
+  const claims = resolve(rest, true) as Record<string, unknown>;
   const unreferenced = [...byDigest.keys()].filter((d) => !used.has(d));
   if (unreferenced.length) fail(`${unreferenced.length} disclosure(s) are not referenced by a digest in the payload`);
   return { claims, count: encoded.length };

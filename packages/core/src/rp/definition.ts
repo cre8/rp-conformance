@@ -297,7 +297,8 @@ export type InformativeExpectationCode = 'INFO';
  * The ICS declaration a `POLICY` expectation is compared with: `RP.R.3`, the meaning the Relying Party assigns to an
  * application-specific status value; `RP.R.7`, the maximum age of a Status List Token, for a token `ageSeconds` old;
  * `RP.R.8`, whether it refuses a Status List Token issued in the future; `RP.P.12`, its policy for a PID whose
- * administrative expiry date has passed.
+ * administrative expiry date has passed; `RP.P.13` and `RP.P.14`, whether it applies a check for which the traces in
+ * rp-test-catalogue.md section 8.4 find no requirement (issue 10).
  */
 export type PolicyReference =
   | {
@@ -309,7 +310,11 @@ export type PolicyReference =
   | { item: 'RP.R.8' }
   | { item: 'RP.P.12' }
   /** `RP.T.4`: whether the Relying Party keeps the last valid version of a trust list after a new version fails its seal. */
-  | { item: 'RP.T.4' };
+  | { item: 'RP.T.4' }
+  /** `RP.P.13`: whether the Relying Party rejects an SD-JWT VC whose signing certificate does not name its `iss` (a URI SAN equal to it, or, with no URI SAN, a DNS SAN equal to its host as a URL parser gives it; without `iss`, no check). */
+  | { item: 'RP.P.13' }
+  /** `RP.P.14`: whether the Relying Party rejects an mdoc whose IssuerAuth declares `ES384` (-35) over a P-256 document signer key. */
+  | { item: 'RP.P.14' };
 
 /** An expected result of an RP test case. */
 export interface Expectation extends ExpectationOf<ExpectationCode> {

@@ -76,6 +76,11 @@ export interface MdocValidationOptions {
   statusListFreshness?: StatusListFreshness;
   /** Reject a PID whose administrative expiry date has passed (ICS RP.P.12 Reject). */
   rejectPastExpiryDate?: boolean;
+  /**
+   * The `client_id` of a request made through the DC API. It only names the defect of a device signature over an
+   * `OpenID4VPHandover`, which such a request does not take (B.2.6.2); left out, that defect fails without its name.
+   */
+  clientId?: string;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -94,6 +99,18 @@ export function openid4vpSessionTranscript(options: Pick<MdocValidationOptions, 
   return [null, null, ['OpenID4VPHandover', sha256(info)]];
 }
 
+const HANDOVER_NAMES = { redirect: 'OpenID4VPHandover', 'dc-api': 'OpenID4VPDCAPIHandover' } as const;
+
+/**
+ * The handover of the other flow that a wallet could build from the same request: an `OpenID4VPDCAPIHandover` over the
+ * Origin of `response_uri`, or an `OpenID4VPHandover` over `clientId` with the Origin of the page as `response_uri`.
+ */
+function otherHandover(options: Pick<MdocValidationOptions, 'handover' | 'clientId'>): Oid4vpHandover | undefined {
+  const { handover } = options;
+  if (handover.flow === 'redirect') return URL.canParse(handover.responseUri) ? { flow: 'dc-api', origin: new URL(handover.responseUri).origin } : undefined;
+  return options.clientId ? { flow: 'redirect', clientId: options.clientId, responseUri: handover.origin } : undefined;
+}
+
 /** An attribute value as JSON: `full-date` and `tdate` as their text, maps as objects. */
 export function jsonOf(value: unknown): unknown {
   if (value instanceof Tagged) return value.tag === 1004 || value.tag === 0 ? value.value : jsonOf(value.value);
@@ -103,11 +120,17 @@ export function jsonOf(value: unknown): unknown {
   return value;
 }
 
+/** The key type of each COSE elliptic curve: EC2 (2) for P-256, P-384, P-521 and secp256k1, OKP (1) for X25519, X448, Ed25519 and Ed448 (RFC 9053 section 7.1, RFC 8812). */
+const KEY_TYPE_OF_CURVE: Record<number, number> = { 1: 2, 2: 2, 3: 2, 4: 1, 5: 1, 6: 1, 7: 1, 8: 2 };
+
 /** The JWK of an EC2 P-256 COSE key (RFC 9053 section 7.1). */
 export function jwkOfCoseKey(key: unknown): JsonWebKey {
   if (!(key instanceof Map)) fail('the device key is not a COSE key');
   const map = key as CborMap;
   const [kty, crv, x, y] = [map.get(1), map.get(-1), map.get(-2), map.get(-3)];
+  // RFC 9053 section 7.1: "Applications MUST check that the curve and the key type are consistent".
+  const keyType = KEY_TYPE_OF_CURVE[crv as number];
+  if (keyType !== undefined && kty !== keyType) fail(`the device key has the key type ${String(kty)} with the curve ${String(crv)}, which do not belong together`);
   if (kty !== 2 || crv !== 1 || !(x instanceof Uint8Array) || !(y instanceof Uint8Array)) fail('the device key is not an EC2 key on P-256');
   return { kty: 'EC', crv: 'P-256', x: base64url.encode(x as Uint8Array), y: base64url.encode(y as Uint8Array) };
 }
@@ -168,10 +191,37 @@ export async function checkDocumentSignerTrust(trust: TrustStore, rule: TrustRul
   return match;
 }
 
-/** `issuer-signature` of an mdoc: ES256 by a P-256 document signer, the IssuerAuth signature verifies. */
+/**
+ * The curve of each ECDSA algorithm other than P-256: fixed by the fully specified ones (RFC 9864 section 2.1),
+ * suggested for the polymorphic ones (RFC 9053 section 2.1). It is consulted once the document signer key is known to
+ * be on P-256, so `ES256` (-7) and `ESP256` (-9) have no entry: they never disagree with the key.
+ */
+const ECDSA_CURVES: Record<number, { curve: string; fixed: boolean }> = {
+  [-35]: { curve: 'P-384', fixed: false },
+  [-36]: { curve: 'P-521', fixed: false },
+  [-51]: { curve: 'P-384', fixed: true },
+  [-52]: { curve: 'P-521', fixed: true },
+};
+
+/** The protected header labels the validator processes, and so understands when `crit` lists them (RFC 9052 section 3.1). */
+const UNDERSTOOD_LABELS = new Set<unknown>([COSE.alg, COSE.x5chain]);
+
+/**
+ * `issuer-signature` of an mdoc: `crit` lists no label the validator does not understand, the algorithm fits the curve
+ * of the document signer's key, ES256 by a P-256 document signer, the IssuerAuth signature verifies.
+ */
 export async function verifyIssuerAuth(issuerAuth: ReturnType<typeof readCose>, x5chain: Uint8Array[]): Promise<void> {
+  const crit = issuerAuth.protectedHeader.get(COSE.crit);
+  const unknown = crit === undefined ? [] : Array.isArray(crit) ? crit.filter((label) => !UNDERSTOOD_LABELS.has(label)) : [crit];
+  if (unknown.length) fail(`IssuerAuth crit lists the label ${unknown.map(String).join(', ')}, which the validator does not understand`);
   const key = describeKey(x5chain[0]);
   if (key !== 'P-256') fail(`the document signer certificate holds a key ${key}, not on P-256`);
+  // RFC 9360 section 5: the key is checked against the algorithm before it is used.
+  const alg = issuerAuth.protectedHeader.get(COSE.alg);
+  const pairing = ECDSA_CURVES[alg as number];
+  if (pairing && pairing.curve !== key) {
+    fail(`IssuerAuth alg ${String(alg)} ${pairing.fixed ? 'is ECDSA on' : 'pairs with'} ${pairing.curve}, and the document signer holds a key on ${key}`);
+  }
   if (issuerAuth.protectedHeader.get(COSE.alg) !== COSE_ALG.ES256) fail(`IssuerAuth alg ${String(issuerAuth.protectedHeader.get(COSE.alg))} is not supported`);
   const jwk = parseCertificate(x5chain[0]).publicKey.jwk as JsonWebKey;
   if (!(await verifyEs256(jwk as JsonWebKey, sigStructure(issuerAuth.protectedBytes, issuerAuth.payload as Uint8Array), issuerAuth.signature))) {
@@ -377,6 +427,13 @@ export async function validateMdocPresentation(presentation: string, options: Md
       const transcript = openid4vpSessionTranscript(options);
       const deviceAuthentication = encodeCbor(embedded(['DeviceAuthentication', transcript, document.get('docType'), deviceNameSpaces]));
       if (!(await verifyEs256(jwk, sigStructure(signature.protectedBytes, deviceAuthentication), signature.signature))) {
+        // OpenID4VP 1.0 B.2.6.1 and B.2.6.2: the handover follows how the request was made. A signature over the other
+        // handover of this request is named as such.
+        const other = otherHandover(options);
+        const otherAuthentication = other && encodeCbor(embedded(['DeviceAuthentication', openid4vpSessionTranscript({ ...options, handover: other }), document.get('docType'), deviceNameSpaces]));
+        if (otherAuthentication && (await verifyEs256(jwk, sigStructure(signature.protectedBytes, otherAuthentication), signature.signature))) {
+          fail(`the deviceSignature covers an ${HANDOVER_NAMES[other.flow]} instead of the ${HANDOVER_NAMES[options.handover.flow]} of this request`);
+        }
         fail('the deviceSignature does not verify over the SessionTranscript of this request');
       }
     });

@@ -7,7 +7,7 @@ INHERIT: mkdocs.yml
 site_name: Peer Conformance (PCAF)
 site_description: Functional conformance test cases for the peers of the EUDI Wallet (Relying Parties, PID Providers and Attestation Providers) in the FCAF format, and the harness that runs them. Unofficial draft.
 site_author: eudi-pcaf
-site_url: https://rp-conformance.eudi-wallet.dev/
+site_url: https://pcaf.eudi-wallet.dev/
 repo_url: https://github.com/cre8/eudi-pcaf
 repo_name: cre8/eudi-pcaf
 # The pages are rendered from packages/definitions, packages/issuer-definitions and the FCAF branches, so there is

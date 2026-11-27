@@ -34,7 +34,7 @@ except the one check the issuer definitions do not satisfy yet
 
 ## The site
 
-`scripts/site-build.sh` builds [rp-conformance.eudi-wallet.dev](https://rp-conformance.eudi-wallet.dev/) from both
+`scripts/site-build.sh` builds [pcaf.eudi-wallet.dev](https://pcaf.eudi-wallet.dev/) from both
 overlays, the site-only pages in `website/` and the project documents that `scripts/site-project-pages.py` copies;
 `SITE_SERVE=1` serves it locally. A new project document needs an entry there, in the navigation of
 `website/mkdocs.yml` and in the path filter of `.github/workflows/pages.yml`. The overlays in `fcaf-overlay` and

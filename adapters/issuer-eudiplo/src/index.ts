@@ -254,7 +254,8 @@ export class IssuerEudiploAdapter implements IssuerAdapter {
       id,
       name: `Issuer conformance ${namespace}`,
       description: 'Created by the issuer conformance harness',
-      roles: ['issuance:manage', 'issuance:offer'],
+      // keys:manage: since EUDIPLO 11.0 (EUDIPLO/eudiplo#1700) only it writes key chains; issuance:manage no longer does.
+      roles: ['issuance:manage', 'issuance:offer', 'keys:manage'],
     };
     let tenant: { client: { clientId: string; clientSecret: string } };
     try {

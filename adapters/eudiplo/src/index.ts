@@ -127,7 +127,8 @@ export class EudiploAdapter implements RelyingPartyAdapter {
         id: this.tenantId,
         name: `PCAF ${namespace}`,
         description: 'Created by the PCAF harness (eudi-pcaf)',
-        roles: ['presentation:manage', 'presentation:request'],
+        // keys:manage: since EUDIPLO 11.0 (EUDIPLO/eudiplo#1700) only it writes key chains; presentation:manage no longer does.
+        roles: ['presentation:manage', 'presentation:request', 'keys:manage'],
       },
       rootToken,
     );

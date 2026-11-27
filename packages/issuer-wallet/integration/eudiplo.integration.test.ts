@@ -88,7 +88,7 @@ beforeAll(async () => {
   const tenant = await call<{ client: { clientId: string; clientSecret: string } }>(
     'POST',
     '/api/tenant',
-    { id: namespace, name: `Issuer wallet ${namespace}`, description: 'Issue 15 integration test', roles: ['issuance:manage', 'issuance:offer'] },
+    { id: namespace, name: `Issuer wallet ${namespace}`, description: 'Issue 15 integration test', roles: ['issuance:manage', 'issuance:offer', 'keys:manage'] },
     root,
   );
   token = await tokenOf(tenant.client.clientId, tenant.client.clientSecret);

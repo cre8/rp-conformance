@@ -1,4 +1,4 @@
-import { verifyEs256 } from '@rp-conformance/forge';
+import { verifyEs256 } from '@eudi-pcaf/forge';
 import { type Certificate, namesEqual, parseCertificate, verifyCertificateSignature } from '@owf/x509';
 
 export type PathResult =

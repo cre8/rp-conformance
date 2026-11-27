@@ -1,8 +1,8 @@
 {
-  "name": "@rp-conformance/trust-infrastructure",
+  "name": "@eudi-pcaf/trust-infrastructure",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
-  "dependencies": {"@rp-conformance/core": "workspace:*"}
+  "dependencies": {"@eudi-pcaf/core": "workspace:*"}
 }

@@ -5,7 +5,7 @@ import type { RunReport } from './runner';
 export async function writeSummary(report: RunReport, path: string): Promise<void> {
   const { run } = report;
   const lines = [
-    `# RP conformance run ${run.id}`,
+    `# PCAF run ${run.id}`,
     '',
     `Adapter \`${run.adapter}\`${run.rp ? ` (${Object.entries(run.rp).map(([k, v]) => `${k} \`${v}\``).join(', ')})` : ''}, flows ${run.flows.join(', ') || 'none'}, ${run.startedAt} to ${run.finishedAt ?? ''}.`,
     '',

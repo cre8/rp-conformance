@@ -2,7 +2,7 @@
 // what the Provider issues, and revocation through the adapter. `_001` names `SD`, `_002` names `MD`; `_003` names no
 // format and runs in `SD` until the mdoc PID lands (issue 21). The grant does not change what is published, so each runs
 // in `PA`; `AC` follows with the authorization code flow.
-import { defineIssuerTestCase, type FormatVariant, issuerProfiles, relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, issuerProfiles, relevancy } from '@eudi-pcaf/core';
 import { fetchStep, issueStep, LIST_FORMAT, published, revokedStep, revokeStep } from '../../status';
 import { FORMAT_NAMES, pidProfile, preconditions, technologyOf } from '../../wording';
 

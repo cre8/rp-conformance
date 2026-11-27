@@ -3,18 +3,18 @@
 // EUDIPLO signs with an internal key chain of its own (the Test Registrar is issue 14, the issuer adapter issue 16).
 // Needs Docker, so it is not part of `pnpm test`:
 //
-//   EUDIPLO_PORT=3215 docker compose --env-file adapters/issuer-eudiplo/reference.env -p rp-conformance-i15 \
+//   EUDIPLO_PORT=3215 docker compose --env-file adapters/issuer-eudiplo/reference.env -p eudi-pcaf-i15 \
 //     -f adapters/eudiplo/docker-compose.yml up -d --wait
 //   EUDIPLO_PORT=3215 pnpm test:issuer-wallet:eudiplo
-//   docker compose -p rp-conformance-i15 -f adapters/eudiplo/docker-compose.yml down -v
+//   docker compose -p eudi-pcaf-i15 -f adapters/eudiplo/docker-compose.yml down -v
 //
 // ISSUER_WALLET_EVIDENCE=<file> writes the evidence of both issuances as JSON.
 import { randomUUID } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
-import { base64url, createTestPki, decodeJws, type TestPki, verifyEs256 } from '@rp-conformance/forge';
-import { StatusProvider } from '@rp-conformance/status-provider';
-import { TrustInfrastructure } from '@rp-conformance/trust-infrastructure';
-import { CLIENT_ATTESTATION_HEADER, CLIENT_ATTESTATION_POP_HEADER, publishTlWp, TestWalletProvider } from '@rp-conformance/wallet-provider';
+import { base64url, createTestPki, decodeJws, type TestPki, verifyEs256 } from '@eudi-pcaf/forge';
+import { StatusProvider } from '@eudi-pcaf/status-provider';
+import { TrustInfrastructure } from '@eudi-pcaf/trust-infrastructure';
+import { CLIENT_ATTESTATION_HEADER, CLIENT_ATTESTATION_POP_HEADER, publishTlWp, TestWalletProvider } from '@eudi-pcaf/wallet-provider';
 import { parseCertificate } from '@owf/x509';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { type IssuanceEvidence, IssuanceClient, walletUnitOf } from '../src/index';

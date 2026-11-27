@@ -1,5 +1,5 @@
-import { acc, comments, defineTestCase, flowsOf, ics, pid, preconditions, presentationStep, relevancy, step } from '@rp-conformance/core';
-import { definitions } from '@rp-conformance/definitions';
+import { acc, comments, defineTestCase, flowsOf, ics, pid, preconditions, presentationStep, relevancy, step } from '@eudi-pcaf/core';
+import { definitions } from '@eudi-pcaf/definitions';
 import { describe, expect, it } from 'vitest';
 import { applicability } from '../src/ics';
 import { selectTestCases } from '../src/runner';

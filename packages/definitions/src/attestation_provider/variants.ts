@@ -23,7 +23,7 @@ import {
   type StepAction,
   type StepDefinition,
   type TestCaseDefinition,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 
 interface CategoryWording {
   category: Exclude<CredentialCategory, 'pid'>;

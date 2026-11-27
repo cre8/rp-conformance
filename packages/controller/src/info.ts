@@ -29,7 +29,7 @@ export function harnessInfo() {
     }
   };
   return {
-    name: 'rp-conformance',
+    name: 'eudi-pcaf',
     phase: 4,
     node: process.version,
     libraries: {

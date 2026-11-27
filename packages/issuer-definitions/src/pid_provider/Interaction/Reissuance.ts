@@ -1,6 +1,6 @@
 // PP_WS_IA_Reissuance (`P-REISS`, issuer catalogue section 5.1.2): the refresh grant with the refresh token of the
 // first issuance and the original DPoP key, then a credential request with the new access token.
-import { defineIssuerTestCase, type FormatVariant, type GrantVariant, relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, type GrantVariant, relevancy } from '@eudi-pcaf/core';
 import { iss, issuance, preconditions, rej, technologyOf } from '../../wording';
 import { both, conf, FORMAT, GRANT, MAIN, profileOf, ufPreconditions } from '../session';
 

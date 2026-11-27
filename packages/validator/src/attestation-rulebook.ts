@@ -5,8 +5,8 @@
 // `full-date` in mdoc), and, as the suite's reading of that rulebook for ARB_30, each attribute selectively
 // disclosable on its own and nothing else. The revocation method is the one of VCR_01 and VCR_02: a Token Status List
 // reference, or a validity period of at most 24 hours.
-import { ATTESTATION_DOCTYPE, ATTESTATION_VCT, type AttestationSubject } from '@rp-conformance/core';
-import { base64url, Tagged } from '@rp-conformance/forge';
+import { ATTESTATION_DOCTYPE, ATTESTATION_VCT, type AttestationSubject } from '@eudi-pcaf/core';
+import { base64url, Tagged } from '@eudi-pcaf/forge';
 import type { IssuerSignedElement } from './mdoc';
 import { fail } from './status-list';
 

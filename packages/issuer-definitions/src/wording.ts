@@ -8,7 +8,7 @@ import {
   type IssuanceAction,
   type IssuerExpectation,
   issuerProfiles,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 
 /**
  * The credential configuration of a step, by reference to the ICS: `ICS-02.<format variant>` names the configuration

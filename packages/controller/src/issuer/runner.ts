@@ -29,9 +29,9 @@ import {
   type TokenReuseAction,
   type Verdict,
   variantOf,
-} from '@rp-conformance/core';
-import { type HttpExchange, IssuanceClient, type IssuanceEvidence, type IssueOptions, credentialIdentifierOf, oauthErrorOf, walletUnitOf } from '@rp-conformance/issuer-wallet';
-import { checkAuthorizationResponse, comparePidFormats, type IssuedOutputOptions, validateIssuedMdoc, validateIssuedSdJwtVc } from '@rp-conformance/validator';
+} from '@eudi-pcaf/core';
+import { type HttpExchange, IssuanceClient, type IssuanceEvidence, type IssueOptions, credentialIdentifierOf, oauthErrorOf, walletUnitOf } from '@eudi-pcaf/issuer-wallet';
+import { checkAuthorizationResponse, comparePidFormats, type IssuedOutputOptions, validateIssuedMdoc, validateIssuedSdJwtVc } from '@eudi-pcaf/validator';
 import { worst } from '../evaluate';
 import {
   type AttestationState,

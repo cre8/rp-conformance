@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { ISSUER_ICS_ITEMS, type IssuerIcs, type IssuerProfile } from '@rp-conformance/core';
+import { ISSUER_ICS_ITEMS, type IssuerIcs, type IssuerProfile } from '@eudi-pcaf/core';
 import { parse } from 'yaml';
 
 /** The ICS of EUDIPLO as this adapter configures it. */

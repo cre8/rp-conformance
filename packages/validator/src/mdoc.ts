@@ -1,7 +1,7 @@
 // The reference validator for an mdoc presentation (ISO/IEC 18013-5 section 9.3.1, OpenID4VP 1.0 Appendix B.2): one
 // named check per property, so a fault can be shown to fail exactly one of them. It decodes the DeviceResponse as raw
 // CBOR and computes the SessionTranscript itself; nothing of @owf/mdoc, which built the artifacts, is used here.
-import { type CheckId, IDENTIFIER_LIST_CHECKS, MDOC_CREDENTIAL_CHECKS, STATUS_LIST_CHECKS } from '@rp-conformance/core';
+import { type CheckId, IDENTIFIER_LIST_CHECKS, MDOC_CREDENTIAL_CHECKS, STATUS_LIST_CHECKS } from '@eudi-pcaf/core';
 import {
   base64url,
   type CborMap,
@@ -22,7 +22,7 @@ import {
   Tagged,
   verifyEs256,
   x5chainOf,
-} from '@rp-conformance/forge';
+} from '@eudi-pcaf/forge';
 import { parseCertificate } from '@owf/x509';
 import { describeKey } from './disclosures';
 import { checkClaims, type RequestedClaim } from './claims';

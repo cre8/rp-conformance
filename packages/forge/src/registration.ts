@@ -1,5 +1,5 @@
 import { credential, signWRPRC, WRP_ENTITLEMENTS, wrprc } from '@owf/eudi-registration-certificate';
-import type { DcqlQuery } from '@rp-conformance/core';
+import type { DcqlQuery } from '@eudi-pcaf/core';
 import { base64url, signEs256 } from './crypto';
 import type { TestPki } from './pki';
 

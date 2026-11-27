@@ -1,8 +1,8 @@
 // The Test Wallet Provider (issuer harness design section 5.2): the Wallet Units `CW-1`, `CW-2` (`WP-A`) and `CW-B`
 // (`WP-B`), their WIAs, PoPs and KAs, and the status lists `SL-WP-A` and `SL-WP-B`, served by the Test Status Provider.
 import { randomInt } from 'node:crypto';
-import { buildStatusListTokenJwt, type EcKeyPair, generateEcKeyPair, type TestEntity, type TestPki } from '@rp-conformance/forge';
-import type { StatusProvider } from '@rp-conformance/status-provider';
+import { buildStatusListTokenJwt, type EcKeyPair, generateEcKeyPair, type TestEntity, type TestPki } from '@eudi-pcaf/forge';
+import type { StatusProvider } from '@eudi-pcaf/status-provider';
 import {
   buildKeyAttestation,
   buildWia,

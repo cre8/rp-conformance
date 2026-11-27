@@ -3,7 +3,7 @@
 // sends (point `credential-request`, section 6.2). Each check is named (`METADATA_CHECKS`, `OFFER_CHECKS`,
 // `CREDENTIAL_REQUEST_CHECKS`), so a `CONF` test case names the checks it requires and a credential request fault can be
 // shown to fail exactly one of them. The functions are pure: the runner hands them what it fetched.
-import { base64url, PID_DOCTYPE } from '@rp-conformance/forge';
+import { base64url, PID_DOCTYPE } from '@eudi-pcaf/forge';
 import { parseAccessCertificate, validateAccessCertificate } from '@owf/eudi-access-certificate';
 import { parseWRPRC, validateWRPRCPayload } from '@owf/eudi-registration-certificate';
 import { type Certificate, parseCertificate } from '@owf/x509';

@@ -1,7 +1,7 @@
 // PP_WS_SH_Encoding (issuer catalogue section 5.1.5): malformed and oversized requests, URLs in JOSE headers, status
 // references to untrusted or private addresses, and a decompression bomb as status list. The faults of `_003_UF` and
 // `_004_UF` are those of the points `wia`, `ka` and `proof` (PR 52); `NOFETCH` reads the Test Status Provider's log.
-import { defineIssuerTestCase, type FormatVariant, type GrantVariant, relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, type GrantVariant, relevancy } from '@eudi-pcaf/core';
 import { iss, issuance, rej, technologyOf } from '../../wording';
 import { both, FORMAT, faultStep, GRANT, MAIN, noFetch, profileOf, ufPreconditions } from '../session';
 

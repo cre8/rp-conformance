@@ -1,4 +1,4 @@
-import { parseTestCaseId, type TestCaseDefinition } from '@rp-conformance/core';
+import { parseTestCaseId, type TestCaseDefinition } from '@eudi-pcaf/core';
 
 export const CLASS_DIR: Record<string, string> = { WS: 'wallet_solution', PP: 'pid_provider', AP: 'attestation_provider', Inf: 'infrastructure' };
 export const CLASS_TITLE: Record<string, string> = {

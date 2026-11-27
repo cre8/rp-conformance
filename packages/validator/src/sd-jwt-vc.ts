@@ -1,5 +1,5 @@
-import { type CheckId, CREDENTIAL_CHECKS, STATUS_LIST_CHECKS } from '@rp-conformance/core';
-import { base64url, PID_VCT, sha256, verifyEs256 } from '@rp-conformance/forge';
+import { type CheckId, CREDENTIAL_CHECKS, STATUS_LIST_CHECKS } from '@eudi-pcaf/core';
+import { base64url, PID_VCT, sha256, verifyEs256 } from '@eudi-pcaf/forge';
 import { describeKey, processDisclosures } from './disclosures';
 import { checkClaims, type RequestedClaim } from './claims';
 import { type Certificate, parseCertificate } from '@owf/x509';

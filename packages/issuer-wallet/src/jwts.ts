@@ -4,8 +4,8 @@
 // same `JwtParts` and `signJwt` as the Test Wallet Provider's builders, so the fault layer (issue 18) can change any
 // member of a valid message, or sign it with another key, without a library refusing the result.
 import { randomUUID } from 'node:crypto';
-import { base64url, type EcKeyPair, sha256 } from '@rp-conformance/forge';
-import { type JwsSigner, type JwtParts, keySigner, type Overrides, signJwt } from '@rp-conformance/wallet-provider';
+import { base64url, type EcKeyPair, sha256 } from '@eudi-pcaf/forge';
+import { type JwsSigner, type JwtParts, keySigner, type Overrides, signJwt } from '@eudi-pcaf/wallet-provider';
 
 /** JOSE `typ` values of the JWTs the client signs. */
 export const CLIENT_TYP = {

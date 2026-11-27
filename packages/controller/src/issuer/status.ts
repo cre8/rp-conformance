@@ -12,10 +12,10 @@ import {
   type PresentAction,
   type TestSubject,
   type Verdict,
-} from '@rp-conformance/core';
-import { defaultQueries, issueRegistrationCertificate } from '@rp-conformance/forge';
-import type { IssuedCredential } from '@rp-conformance/issuer-wallet';
-import { ReferenceRelyingParty, type ReferenceRpResult } from '@rp-conformance/reference-rp';
+} from '@eudi-pcaf/core';
+import { defaultQueries, issueRegistrationCertificate } from '@eudi-pcaf/forge';
+import type { IssuedCredential } from '@eudi-pcaf/issuer-wallet';
+import { ReferenceRelyingParty, type ReferenceRpResult } from '@eudi-pcaf/reference-rp';
 import {
   evaluatePublishedStatus,
   type FetchedVersion,
@@ -27,8 +27,8 @@ import {
   type StatusListFormat,
   type StatusReference,
   statusReferenceOfIssued,
-} from '@rp-conformance/validator';
-import { ConformanceWallet } from '@rp-conformance/wallet';
+} from '@eudi-pcaf/validator';
+import { ConformanceWallet } from '@eudi-pcaf/wallet';
 import { type Evaluation, worst } from '../evaluate';
 import type { IssuerHarness } from './harness';
 import { issuerIcsValue } from './ics';

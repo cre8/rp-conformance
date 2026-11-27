@@ -10,10 +10,10 @@ import type {
   RulebookTrust,
   RunningServer,
   ServerOptions,
-} from '@rp-conformance/core';
-import { categoryOfCredentialQuery, sendJson, sendText, startServer } from '@rp-conformance/core';
-import { base64url, decodeCbor, jwkThumbprint, type Oid4vpHandover, PID_DOCTYPE, PID_VCT, readCose, signCompactJws } from '@rp-conformance/forge';
-import type { CheckResult } from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
+import { categoryOfCredentialQuery, sendJson, sendText, startServer } from '@eudi-pcaf/core';
+import { base64url, decodeCbor, jwkThumbprint, type Oid4vpHandover, PID_DOCTYPE, PID_VCT, readCose, signCompactJws } from '@eudi-pcaf/forge';
+import type { CheckResult } from '@eudi-pcaf/core';
 import {
   type FetchedStatusList,
   type ListSource,
@@ -27,7 +27,7 @@ import {
   validateCombinedBinding,
   validateSdJwtVcPresentation,
   validateVpToken,
-} from '@rp-conformance/validator';
+} from '@eudi-pcaf/validator';
 import { exportJWK, generateKeyPair, importJWK } from 'jose';
 
 export interface ReferenceRpOptions extends ServerOptions {

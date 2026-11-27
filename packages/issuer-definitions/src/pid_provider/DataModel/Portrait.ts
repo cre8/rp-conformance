@@ -1,6 +1,6 @@
 // PP_WS_DM_Portrait: the PID after the User opted out of the portrait (issuer catalogue section 5.1.4, PID_03). Runs
 // only where the Provider offers the opt-out (ICS-17); otherwise the step is NOT APPLICABLE.
-import { defineIssuerTestCase, type FormatVariant, type GrantVariant, relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, type GrantVariant, relevancy } from '@eudi-pcaf/core';
 import { conf, expand, OUTPUT_COMMENTS } from '../../output';
 import { FORMAT_NAMES, GRANT_NAMES, issuance, pidProfile, preconditions, technologyOf } from '../../wording';
 

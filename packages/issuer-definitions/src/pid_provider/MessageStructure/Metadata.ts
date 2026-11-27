@@ -2,7 +2,7 @@
 // metadata, plain and signed with its access certificate, and as Authorization Server metadata (`OBS-META`). The
 // metadata does not depend on the grant or the format of an issuance, so these test cases have no variant, except
 // `_013`, which concerns mdoc only.
-import { defineIssuerTestCase, type IssuerArtifactCheck, issuerProfiles, relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type IssuerArtifactCheck, issuerProfiles, relevancy } from '@eudi-pcaf/core';
 import { preconditions } from '../../wording';
 import { conf } from './conf';
 

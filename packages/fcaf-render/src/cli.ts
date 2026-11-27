@@ -4,8 +4,8 @@
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { baselineDefinitions, definitions } from '@rp-conformance/definitions';
-import { issuerDefinitions } from '@rp-conformance/issuer-definitions';
+import { baselineDefinitions, definitions } from '@eudi-pcaf/definitions';
+import { issuerDefinitions } from '@eudi-pcaf/issuer-definitions';
 import { compareOverlay, renderBaseline, renderIssuer, writeOverlay } from './write';
 
 const { values } = parseArgs({ options: { check: { type: 'boolean' }, out: { type: 'string' }, 'out-issuer': { type: 'string' } } });

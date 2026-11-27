@@ -5,8 +5,8 @@ around the system under test (SUT).
 
 | Suite | System under test | What the harness plays | Adapter interface |
 | --- | --- | --- | --- |
-| Relying Party suite (`rp-conformance run`) | A Relying Party (verifier) | The wallet, the PID and attestation providers, the status lists, the trust lists | `RelyingPartyAdapter` |
-| Issuer suite (`rp-conformance issuer run`) | A PID Provider or Attestation Provider | The wallet, the Wallet Provider with its attestations, the Registrar, the trust lists | `IssuerAdapter` |
+| Relying Party suite (`eudi-pcaf run`) | A Relying Party (verifier) | The wallet, the PID and attestation providers, the status lists, the trust lists | `RelyingPartyAdapter` |
+| Issuer suite (`eudi-pcaf issuer run`) | A PID Provider or Attestation Provider | The wallet, the Wallet Provider with its attestations, the Registrar, the trust lists | `IssuerAdapter` |
 
 For either suite, the one piece you write is the **adapter**: a TypeScript module that lets the harness drive your
 system. The two interfaces differ, because a verifier and an issuer are driven differently.
@@ -52,7 +52,7 @@ pnpm install
 pnpm playwright:install
 ```
 
-Copy the template to a folder of your own under `adapters/`, so it can import `@rp-conformance/core` from the
+Copy the template to a folder of your own under `adapters/`, so it can import `@eudi-pcaf/core` from the
 workspace, and change the `name` in its `package.json`:
 
 ```bash
@@ -62,14 +62,14 @@ cp -R adapters/template adapters/my-rp
 Then run the two positive controls of the PID (SD-JWT VC and mdoc) against your running Relying Party:
 
 ```bash
-MY_RP_URL=http://127.0.0.1:8080 pnpm rp-conformance run --adapter adapters/my-rp/src/index.ts --ics adapters/my-rp/ics.yaml --only 'RP_WS_IA_MainInteraction_001*'
+MY_RP_URL=http://127.0.0.1:8080 pnpm eudi-pcaf run --adapter adapters/my-rp/src/index.ts --ics adapters/my-rp/ics.yaml --only 'RP_WS_IA_MainInteraction_001*'
 ```
 
 Outside a clone, keep the adapter in your own repository and run it with the Docker image, which can resolve
-`@rp-conformance/core` from any directory ([running.md](running.md#docker-image)). The
+`@eudi-pcaf/core` from any directory ([running.md](running.md#docker-image)). The
 packages are not published to npm, so for type checking in your editor you still need a clone.
 
-`pnpm rp-conformance --list` lists every test case and marks the positive controls.
+`pnpm eudi-pcaf --list` lists every test case and marks the positive controls.
 
 ## What the adapter implements
 
@@ -259,10 +259,10 @@ made-up admin API and marks every call with `TODO`. It is written for a PID Prov
 under `adapters/`, then run the positive controls of the PID:
 
 ```bash
-MY_ISSUER_URL=http://127.0.0.1:8080 pnpm rp-conformance issuer run --adapter adapters/my-issuer/src/index.ts --ics adapters/my-issuer/ics.yaml --only PP_WS_IA_MainInteraction_001
+MY_ISSUER_URL=http://127.0.0.1:8080 pnpm eudi-pcaf issuer run --adapter adapters/my-issuer/src/index.ts --ics adapters/my-issuer/ics.yaml --only PP_WS_IA_MainInteraction_001
 ```
 
-`pnpm rp-conformance issuer --list` lists every test case with its variants, and marks the positive controls.
+`pnpm eudi-pcaf issuer --list` lists every test case with its variants, and marks the positive controls.
 
 ### What the issuer adapter implements
 
@@ -300,7 +300,7 @@ configuration ID (`ICS-02.SD: pid-sd-jwt-vc`). `createOffer` gets your IDs.
 ### Subjects, authentication and status
 
 - **The test subjects.** The Conformance Wallet compares every issued value with the data of `SUBJ-1` and `SUBJ-2`
-  (`PID_TEST_SUBJECTS` of `@rp-conformance/core`; `ATTESTATION_TEST_SUBJECTS` for `default_credential_A`). The
+  (`PID_TEST_SUBJECTS` of `@eudi-pcaf/core`; `ATTESTATION_TEST_SUBJECTS` for `default_credential_A`). The
   template sends them with each offer, in the claim names of the format (`pidClaimsOf`). If your Provider takes the
   data from its own records, seed the two subjects there instead (ICS-17). The Provider adds the issuance metadata and
   the age attributes itself.

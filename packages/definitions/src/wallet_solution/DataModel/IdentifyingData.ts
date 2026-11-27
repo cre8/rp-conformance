@@ -23,7 +23,7 @@ import {
   type StepDefinition,
   step,
   testCaseId,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 
 const sdJwtVc = formats.sdJwtVc;
 const mdoc = formats.mdoc;

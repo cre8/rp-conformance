@@ -13,7 +13,7 @@ import {
   type IssuerProfile,
   SESSION_FAULTS,
   type SessionFaultId,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 import { issuance, pidProfile, preconditions } from '../wording';
 
 /**

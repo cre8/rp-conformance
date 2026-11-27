@@ -14,11 +14,11 @@ import {
   type RunningServer,
   sendJson,
   startServer,
-} from '@rp-conformance/core';
-import { createTestPki } from '@rp-conformance/forge';
-import { StatusProvider } from '@rp-conformance/status-provider';
-import { checkAuthorizationResponse, type GrantFlowInput, type GrantFlowOptions, validateGrantFlow } from '@rp-conformance/validator';
-import { TestWalletProvider } from '@rp-conformance/wallet-provider';
+} from '@eudi-pcaf/core';
+import { createTestPki } from '@eudi-pcaf/forge';
+import { StatusProvider } from '@eudi-pcaf/status-provider';
+import { checkAuthorizationResponse, type GrantFlowInput, type GrantFlowOptions, validateGrantFlow } from '@eudi-pcaf/validator';
+import { TestWalletProvider } from '@eudi-pcaf/wallet-provider';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { type Authenticate, type IssuanceEvidence, IssuanceClient, WALLET_REDIRECT_URI, walletUnitOf } from '../src/index';
 

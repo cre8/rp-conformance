@@ -3,7 +3,7 @@
 // subject data, and status that must stay unchanged. `_001` to `_003` are in Revocation.ts (issue 22). The catalogue
 // names no format for these test cases, so each runs in `SD` and `MD`; the grant does not change what is published, so
 // each runs in `PA` (`AC` follows with the authorization code flow), except `_004`, whose logical PID spans both formats.
-import { defineIssuerTestCase, type FormatVariant, issuerProfiles, relevancy, type WalletEventAction } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, issuerProfiles, relevancy, type WalletEventAction } from '@eudi-pcaf/core';
 import { published } from '../../status';
 import { revokedWithin, unchangedFor, unitIssuance } from '../../inspection';
 import { configurationOf, FORMAT_NAMES, iss, issuance, pidProfile, preconditions, technologyOf } from '../../wording';

@@ -9,8 +9,8 @@
 // of the issuer suite.
 import { createPublicKey, verify as nodeVerify } from 'node:crypto';
 import { inflateSync } from 'node:zlib';
-import { type CheckId, ISSUER_REQUEST_CHECKS } from '@rp-conformance/core';
-import { base64url } from '@rp-conformance/forge';
+import { type CheckId, ISSUER_REQUEST_CHECKS } from '@eudi-pcaf/core';
+import { base64url } from '@eudi-pcaf/forge';
 import { parseCertificate } from '@owf/x509';
 import { CheckRecorder, NotApplicable, type ValidationMode, type ValidationResult } from './checks';
 import { fail } from './status-list';

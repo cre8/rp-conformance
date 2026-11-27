@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { FLOWS, type Flow } from '@rp-conformance/core';
+import { FLOWS, type Flow } from '@eudi-pcaf/core';
 import { parse } from 'yaml';
 import type { RunReport } from './runner';
 

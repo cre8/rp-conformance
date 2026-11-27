@@ -1,12 +1,12 @@
-// The session faults of issue 25 (`SESSION_FAULTS`, @rp-conformance/core): each is a pure change of a valid request of
+// The session faults of issue 25 (`SESSION_FAULTS`, @eudi-pcaf/core): each is a pure change of a valid request of
 // the session client (session.ts), applied through its seams after the valid build: the `jwt` hook for the claims of a
 // DPoP proof, the `body` hook for the JSON of a credential, notification or deferred request before it is encrypted, the
 // `request` hook for headers and the body as sent. Batch faults also set how many proofs the request carries and which
 // key signs each. A test definition names the fault only.
 import { generateKeyPairSync, randomBytes, randomUUID } from 'node:crypto';
-import { type SessionFaultId, sessionFaultInfo } from '@rp-conformance/core';
-import { base64url, flipBitInSegment, generateEcKeyPair, sha256 } from '@rp-conformance/forge';
-import { CLIENT_ATTESTATION_HEADER, keySigner, signJwt } from '@rp-conformance/wallet-provider';
+import { type SessionFaultId, sessionFaultInfo } from '@eudi-pcaf/core';
+import { base64url, flipBitInSegment, generateEcKeyPair, sha256 } from '@eudi-pcaf/forge';
+import { CLIENT_ATTESTATION_HEADER, keySigner, signJwt } from '@eudi-pcaf/wallet-provider';
 import type { HttpRequestMessage, IssuanceStep } from './http';
 import { publicJwkOf } from './jwts';
 import type { CredentialRequestOptions, SessionHooks } from './session';

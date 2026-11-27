@@ -5,14 +5,14 @@
 // issuer request check; a step that expects `REJ` fails exactly one: its fault's target, or, after a `wallet-event`,
 // the status check of the attestation whose list the event changed.
 import { randomUUID } from 'node:crypto';
-import { type IssuerFaultId, type IssuerRequestCheck, type IssuerTestCaseDefinition, issuerFaultInfo, type RunningServer, sendJson, startServer, variantOf } from '@rp-conformance/core';
-import { createTestPki, decodeJws, LIST_PROFILES } from '@rp-conformance/forge';
-import { issuerDefinitions } from '@rp-conformance/issuer-definitions';
-import { IssuanceClient, KEY_ATTESTATION_HEADER } from '@rp-conformance/issuer-wallet';
-import { StatusProvider } from '@rp-conformance/status-provider';
-import { TrustInfrastructure } from '@rp-conformance/trust-infrastructure';
-import { checkLote, type LoadedList, validateIssuerRequest } from '@rp-conformance/validator';
-import { CLIENT_ATTESTATION_HEADER, CLIENT_ATTESTATION_POP_HEADER, publishTlWp, TestWalletProvider, type WalletUnitId } from '@rp-conformance/wallet-provider';
+import { type IssuerFaultId, type IssuerRequestCheck, type IssuerTestCaseDefinition, issuerFaultInfo, type RunningServer, sendJson, startServer, variantOf } from '@eudi-pcaf/core';
+import { createTestPki, decodeJws, LIST_PROFILES } from '@eudi-pcaf/forge';
+import { issuerDefinitions } from '@eudi-pcaf/issuer-definitions';
+import { IssuanceClient, KEY_ATTESTATION_HEADER } from '@eudi-pcaf/issuer-wallet';
+import { StatusProvider } from '@eudi-pcaf/status-provider';
+import { TrustInfrastructure } from '@eudi-pcaf/trust-infrastructure';
+import { checkLote, type LoadedList, validateIssuerRequest } from '@eudi-pcaf/validator';
+import { CLIENT_ATTESTATION_HEADER, CLIENT_ATTESTATION_POP_HEADER, publishTlWp, TestWalletProvider, type WalletUnitId } from '@eudi-pcaf/wallet-provider';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { applyWalletEvent, newAttestationState, prepareIssuance, rememberIssuance } from '../src/issuer/attestations';
 

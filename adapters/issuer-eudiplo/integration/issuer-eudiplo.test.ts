@@ -1,19 +1,19 @@
 // Integration test of the EUDIPLO issuer adapter against a running EUDIPLO (not part of `pnpm test`):
 //
-//   EUDIPLO_PORT=3216 docker compose --env-file adapters/issuer-eudiplo/reference.env -p rp-conformance-i16 \
+//   EUDIPLO_PORT=3216 docker compose --env-file adapters/issuer-eudiplo/reference.env -p eudi-pcaf-i16 \
 //     -f adapters/eudiplo/docker-compose.yml up -d --wait
 //   EUDIPLO_PORT=3216 pnpm test:issuer-eudiplo
-//   docker compose -p rp-conformance-i16 -f adapters/eudiplo/docker-compose.yml down -v
+//   docker compose -p eudi-pcaf-i16 -f adapters/eudiplo/docker-compose.yml down -v
 //
 // It enrols the SUT with the Test Registrar, publishes TL-WP and TL-PID, runs setUp, checks the Credential Issuer
 // metadata (plain and signed), creates offers each way, tries setStatus on a session without a credential, and tears
 // the tenant down. EUDIPLO_EXPECT_VERSION (default: the pinned reference image, reference.env) is the version the test
 // expects the instance to report; the reference's own features (CSR, strict status checks, revocation chaining) are
 // checked only when it reports the reference version.
-import { buildSealedLote, createTestPki, enrolSut, toEnrolledCertificate, type TestPki } from '@rp-conformance/forge';
-import { TrustInfrastructure } from '@rp-conformance/trust-infrastructure';
-import { publishTlWp, WALLET_PROVIDER_IDS } from '@rp-conformance/wallet-provider';
-import { AuthorizationEndpointError, type IssuerTestEnvironment, type PublishedTrustList } from '@rp-conformance/core';
+import { buildSealedLote, createTestPki, enrolSut, toEnrolledCertificate, type TestPki } from '@eudi-pcaf/forge';
+import { TrustInfrastructure } from '@eudi-pcaf/trust-infrastructure';
+import { publishTlWp, WALLET_PROVIDER_IDS } from '@eudi-pcaf/wallet-provider';
+import { AuthorizationEndpointError, type IssuerTestEnvironment, type PublishedTrustList } from '@eudi-pcaf/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { EudiploError, IssuerEudiploAdapter, loadIssuerIcs, PID_DOCTYPE, PID_MDOC_CONFIGURATION, PID_SD_JWT_CONFIGURATION, PID_SUBJECTS, PID_VCT, REFERENCE_EUDIPLO, SECOND_SD_JWT_CONFIGURATION } from '../src/index';
 

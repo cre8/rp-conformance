@@ -24,7 +24,7 @@ import {
   faultInfo,
   step,
   testCaseId,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 
 const REFERENCES: Record<Flow, string[]> = {
   redirect: ['[HAIP] section 5, 5.1', '[OpenID4VP] section 8.3, 8.3.1'],

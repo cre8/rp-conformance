@@ -1,6 +1,6 @@
 // PP_WS_IA_Batch (`P-BATCH`, issuer catalogue section 5.1.2): one credential request with `batch_size` proofs, each
 // signed by another attested key of one KA.
-import { defineIssuerTestCase, type FormatVariant, type GrantVariant, ICS_BATCH_SIZE, relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, type GrantVariant, ICS_BATCH_SIZE, relevancy } from '@eudi-pcaf/core';
 import { iss, issuance, preconditions, rej, technologyOf } from '../../wording';
 import { both, conf, FORMAT, faultStep, GRANT, MAIN, profileOf, ufPreconditions } from '../session';
 

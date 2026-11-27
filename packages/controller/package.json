@@ -1,32 +1,33 @@
 {
-  "name": "@rp-conformance/controller",
+  "name": "@eudi-pcaf/controller",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
   "dependencies": {
-    "@rp-conformance/adapter-eudiplo": "workspace:*",
-    "@rp-conformance/adapter-issuer-eudiplo": "workspace:*",
-    "@rp-conformance/adapter-reference": "workspace:*",
-    "@rp-conformance/dc-api-shim": "workspace:*",
-    "@rp-conformance/definitions": "workspace:*",
-    "@rp-conformance/forge": "workspace:*",
-    "@rp-conformance/issuer-definitions": "workspace:*",
-    "@rp-conformance/issuer-wallet": "workspace:*",
-    "@rp-conformance/reference-rp": "workspace:*",
-    "@rp-conformance/status-provider": "workspace:*",
-    "@rp-conformance/trust-infrastructure": "workspace:*",
-    "@rp-conformance/validator": "workspace:*",
-    "@rp-conformance/wallet": "workspace:*",
-    "@rp-conformance/wallet-provider": "workspace:*",
+    "@eudi-pcaf/adapter-eudiplo": "workspace:*",
+    "@eudi-pcaf/adapter-issuer-eudiplo": "workspace:*",
+    "@eudi-pcaf/adapter-reference": "workspace:*",
+    "@eudi-pcaf/dc-api-shim": "workspace:*",
+    "@eudi-pcaf/definitions": "workspace:*",
+    "@eudi-pcaf/forge": "workspace:*",
+    "@eudi-pcaf/issuer-definitions": "workspace:*",
+    "@eudi-pcaf/issuer-wallet": "workspace:*",
+    "@eudi-pcaf/reference-rp": "workspace:*",
+    "@eudi-pcaf/status-provider": "workspace:*",
+    "@eudi-pcaf/trust-infrastructure": "workspace:*",
+    "@eudi-pcaf/validator": "workspace:*",
+    "@eudi-pcaf/wallet": "workspace:*",
+    "@eudi-pcaf/wallet-provider": "workspace:*",
     "tsx": "^4.23.15",
     "yaml": "^2.9.1"
   },
   "bin": {
-    "rp-conformance": "./bin/rp-conformance.mjs"
+    "eudi-pcaf": "./bin/eudi-pcaf.mjs",
+    "rp-conformance": "./bin/eudi-pcaf.mjs"
   },
   "devDependencies": {
-    "@rp-conformance/core": "workspace:*",
+    "@eudi-pcaf/core": "workspace:*",
     "@xmldom/xmldom": "^0.9.12"
   }
 }

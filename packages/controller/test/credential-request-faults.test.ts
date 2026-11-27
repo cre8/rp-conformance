@@ -2,10 +2,10 @@
 // credential request passes every credential request check of the reference validator, and each fault fails exactly
 // its target check and no other (`null`: none). Level 2: every step of an issuer definition that names such a fault
 // expects `REJ` exactly when the fault has a target.
-import { CREDENTIAL_REQUEST_FAULT_IDS, CREDENTIAL_REQUEST_FAULTS, isCredentialRequestFault } from '@rp-conformance/core';
-import { issuerDefinitions } from '@rp-conformance/issuer-definitions';
-import { applyCredentialRequestFault, type CredentialRequestFaultContext, CredentialRequestFaultNotApplicable, credentialRequestFaultHook } from '@rp-conformance/issuer-wallet';
-import { validateCredentialRequest } from '@rp-conformance/validator';
+import { CREDENTIAL_REQUEST_FAULT_IDS, CREDENTIAL_REQUEST_FAULTS, isCredentialRequestFault } from '@eudi-pcaf/core';
+import { issuerDefinitions } from '@eudi-pcaf/issuer-definitions';
+import { applyCredentialRequestFault, type CredentialRequestFaultContext, CredentialRequestFaultNotApplicable, credentialRequestFaultHook } from '@eudi-pcaf/issuer-wallet';
+import { validateCredentialRequest } from '@eudi-pcaf/validator';
 import { describe, expect, it } from 'vitest';
 
 const context: CredentialRequestFaultContext = {

@@ -1,6 +1,6 @@
 // PP_WS_IA_Notification (`P-NOT`, issuer catalogue section 5.1.2): the notification endpoint, with the
 // `notification_id` of a credential response and the access token of its session.
-import { defineIssuerTestCase, type FormatVariant, type GrantVariant, type IssuerStepDefinition, relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, type GrantVariant, type IssuerStepDefinition, relevancy } from '@eudi-pcaf/core';
 import { iss, issuance, preconditions, technologyOf } from '../../wording';
 import { conf, FORMAT, GRANT, MAIN, profileOf, rejAny, ufPreconditions } from '../session';
 

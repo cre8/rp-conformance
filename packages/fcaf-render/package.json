@@ -1,12 +1,12 @@
 {
-  "name": "@rp-conformance/fcaf-render",
+  "name": "@eudi-pcaf/fcaf-render",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
   "dependencies": {
-    "@rp-conformance/core": "workspace:*",
-    "@rp-conformance/definitions": "workspace:*",
-    "@rp-conformance/issuer-definitions": "workspace:*"
+    "@eudi-pcaf/core": "workspace:*",
+    "@eudi-pcaf/definitions": "workspace:*",
+    "@eudi-pcaf/issuer-definitions": "workspace:*"
   }
 }

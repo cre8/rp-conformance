@@ -1,16 +1,16 @@
 {
-  "name": "@rp-conformance/adapter-issuer-eudiplo",
+  "name": "@eudi-pcaf/adapter-issuer-eudiplo",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
   "dependencies": {
-    "@rp-conformance/core": "workspace:*",
+    "@eudi-pcaf/core": "workspace:*",
     "yaml": "^2.9.1"
   },
   "devDependencies": {
-    "@rp-conformance/forge": "workspace:*",
-    "@rp-conformance/trust-infrastructure": "workspace:*",
-    "@rp-conformance/wallet-provider": "workspace:*"
+    "@eudi-pcaf/forge": "workspace:*",
+    "@eudi-pcaf/trust-infrastructure": "workspace:*",
+    "@eudi-pcaf/wallet-provider": "workspace:*"
   }
 }

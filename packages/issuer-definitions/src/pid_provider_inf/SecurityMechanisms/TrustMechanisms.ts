@@ -4,7 +4,7 @@
 // refreshes, then `SCN-I` shows what it trusts. After each test case the harness publishes the default `TL-WP` again
 // under a higher sequence number. Each runs in `SD` and `MD` and in both grants: the Provider checks the WIA at the
 // token endpoint in `PA`, at PAR in `AC`.
-import { defineIssuerTestCase, type FormatVariant, type GrantVariant, type IssuerExpectation, type IssuerStepDefinition, relevancy, type WalletUnit } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, type GrantVariant, type IssuerExpectation, type IssuerStepDefinition, relevancy, type WalletUnit } from '@eudi-pcaf/core';
 import { inspected, inspectStep, trustListStep, unitIssuance } from '../../inspection';
 import { rejected } from '../../pid_provider/SecurityMechanisms/attestations';
 import { FORMAT_NAMES, GRANT_NAMES, issuance, pidProfile, preconditions, technologyOf } from '../../wording';

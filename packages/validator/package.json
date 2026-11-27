@@ -1,5 +1,5 @@
 {
-  "name": "@rp-conformance/validator",
+  "name": "@eudi-pcaf/validator",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -14,17 +14,17 @@
     "@owf/identity-common": "^0.7.0",
     "@owf/token-status-list": "^0.7.0",
     "@owf/x509": "^0.7.0",
-    "@rp-conformance/core": "workspace:*",
-    "@rp-conformance/forge": "workspace:*",
+    "@eudi-pcaf/core": "workspace:*",
+    "@eudi-pcaf/forge": "workspace:*",
     "@sd-jwt/core": "^0.24.3",
     "@sd-jwt/sd-jwt-vc": "^0.24.3",
     "jose": "^6.2.15"
   },
   "devDependencies": {
     "@owf/mdoc": "0.9.3",
-    "@rp-conformance/definitions": "workspace:*",
-    "@rp-conformance/status-provider": "workspace:*",
-    "@rp-conformance/trust-infrastructure": "workspace:*",
+    "@eudi-pcaf/definitions": "workspace:*",
+    "@eudi-pcaf/status-provider": "workspace:*",
+    "@eudi-pcaf/trust-infrastructure": "workspace:*",
     "@xmldom/xmldom": "^0.9.12"
   }
 }

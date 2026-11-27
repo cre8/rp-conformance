@@ -1,6 +1,6 @@
 // The named faults of the point `credential-request` (issuer harness design section 6.2): each is applied to the
 // credential request after its valid build, and must fail exactly its `target` check of
-// `validateCredentialRequest` (@rp-conformance/validator) and no other; `null` marks the one that must pass every check,
+// `validateCredentialRequest` (@eudi-pcaf/validator) and no other; `null` marks the one that must pass every check,
 // since the catalogue expects `ISS` for it. `text` is the FCAF wording of the difference. The implementations are in
 // packages/issuer-wallet/src/credential-request-faults.ts.
 //

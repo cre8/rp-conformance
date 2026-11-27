@@ -1,10 +1,10 @@
 // The faults of the point `credential-request` (issuer harness design section 6.2; `CREDENTIAL_REQUEST_FAULTS` in
-// @rp-conformance/core): each is a pure change of the JSON body of a valid credential request, applied by a request
+// @eudi-pcaf/core): each is a pure change of the JSON body of a valid credential request, applied by a request
 // hook after the issuance client built the request and before it is sent. The values a fault needs (a second
 // configuration of the metadata, the `credential_identifier` of the token response) come from the flow, so
 // `issueWithCredentialRequestFault` runs `SCN-I` step by step and hands them to the hook.
 import { randomBytes } from 'node:crypto';
-import type { CredentialRequestFaultId } from '@rp-conformance/core';
+import type { CredentialRequestFaultId } from '@eudi-pcaf/core';
 import { IssuanceClient, type IssuanceClientOptions, type IssuanceEvidence, type IssueOptions, type WalletUnitBinding } from './client';
 import type { RequestHook } from './http';
 

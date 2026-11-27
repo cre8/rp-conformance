@@ -1,7 +1,7 @@
 // Evaluators of the issuer expected results (issuer harness design section 6.3). They are pure: the runner hands them
 // what the step saw (the HTTP exchanges with the Provider, what it issued, the reference validator's results) and they
 // return a verdict with its reason.
-import type { CheckResult, IssuerExpectation, IssuerExpectationCode } from '@rp-conformance/core';
+import type { CheckResult, IssuerExpectation, IssuerExpectationCode } from '@eudi-pcaf/core';
 import { type Evaluation, worst } from '../evaluate';
 
 /** One request of the step to the Provider and its answer, as the evaluators need it. */

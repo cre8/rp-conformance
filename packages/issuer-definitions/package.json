@@ -1,11 +1,11 @@
 {
-  "name": "@rp-conformance/issuer-definitions",
+  "name": "@eudi-pcaf/issuer-definitions",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
   "dependencies": {
-    "@rp-conformance/core": "workspace:*"
+    "@eudi-pcaf/core": "workspace:*"
   },
   "devDependencies": {
     "yaml": "^2.9.1"

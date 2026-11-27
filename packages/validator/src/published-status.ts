@@ -5,8 +5,8 @@
 // publication itself: the URI, anonymous access, the media type per `Accept`, cache headers, privacy of the URIs, the
 // token's lifetime claims, the list size, the algorithm, the signer's validity, and that a fresh version is always there.
 import { inflateSync } from 'node:zlib';
-import type { CheckResult, CheckStatus } from '@rp-conformance/core';
-import { COSE, COSE_ALG, decodeCbor, decodeEmbedded, readCose, x5chainOf } from '@rp-conformance/forge';
+import type { CheckResult, CheckStatus } from '@eudi-pcaf/core';
+import { COSE, COSE_ALG, decodeCbor, decodeEmbedded, readCose, x5chainOf } from '@eudi-pcaf/forge';
 import { parseCertificate } from '@owf/x509';
 import { CheckRecorder, CheckFailure, NotApplicable } from './checks';
 import { base64Of, decodeSegment, decodeStatusListToken, evaluateStatusList, field, type FetchedStatusList } from './status-list';

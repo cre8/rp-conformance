@@ -1,7 +1,7 @@
 // The identifier list procedure of the reference validator (ISO/IEC 18013-5 second edition section 12.3.6.4): the
 // checks of a Status List Token in CWT format, which section 12.3.6.1 makes binding on both revocation mechanisms, and
 // absence of the MSO's identifier.
-import { type CborMap, COSE, COSE_ALG } from '@rp-conformance/forge';
+import { type CborMap, COSE, COSE_ALG } from '@eudi-pcaf/forge';
 import { type CheckRecorder, NotApplicable } from './checks';
 import { CWT, decodeCoseToken, type FetchedStatusList, fail, leafJwk, verifyCoseSign1 } from './status-list';
 import type { MatchedIssuer } from './trust';

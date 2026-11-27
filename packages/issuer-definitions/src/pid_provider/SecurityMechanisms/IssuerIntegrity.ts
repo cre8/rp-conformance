@@ -2,7 +2,7 @@
 // validator on `OBS-CRED`. Each test case runs `SCN-I` without mutation (`ISS`, which includes `issuer-trust` to `PP-T`),
 // then inspects the credential with the named checks. A test case that names no format runs in `SD` and `MD`; each runs
 // in `PA` (`AC` follows with the authorization code flow).
-import { defineIssuerTestCase, type FormatVariant, type IssuerInspectionCheck, relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, type IssuerInspectionCheck, relevancy } from '@eudi-pcaf/core';
 import { inspected, inspectStep, unitIssuance } from '../../inspection';
 import { FORMAT_NAMES, pidProfile, preconditions, technologyOf } from '../../wording';
 

@@ -1,4 +1,4 @@
-import { ageOf, ATTESTATION_TEST_SUBJECTS, PID_TEST_SUBJECTS, pidClaimsOf, type TestSubject } from '@rp-conformance/core';
+import { ageOf, ATTESTATION_TEST_SUBJECTS, PID_TEST_SUBJECTS, pidClaimsOf, type TestSubject } from '@eudi-pcaf/core';
 
 /**
  * The attribute values the adapter seeds for each test subject (issuer catalogue section 3.4, ICS-17). EUDIPLO takes the

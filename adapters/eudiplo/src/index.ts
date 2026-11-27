@@ -13,7 +13,7 @@ import {
   sendText,
   startServer,
   type TestEnvironment,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 
 export interface EudiploAdapterOptions {
   /**
@@ -125,8 +125,8 @@ export class EudiploAdapter implements RelyingPartyAdapter {
       '/api/tenant',
       {
         id: this.tenantId,
-        name: `RP conformance ${namespace}`,
-        description: 'Created by the RP conformance harness',
+        name: `PCAF ${namespace}`,
+        description: 'Created by the PCAF harness (eudi-pcaf)',
         roles: ['presentation:manage', 'presentation:request'],
       },
       rootToken,

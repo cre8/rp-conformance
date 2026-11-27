@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { type RequestLogEntry, type RunningServer, type ServerOptions, sendJson, startServer } from '@rp-conformance/core';
+import { type RequestLogEntry, type RunningServer, type ServerOptions, sendJson, startServer } from '@eudi-pcaf/core';
 
 /** How the Test Status Provider answers for one URL (harness design section 4.6). */
 export interface StatusBehaviour {

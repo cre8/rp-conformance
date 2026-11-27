@@ -2,7 +2,7 @@
 // as the RP catalogue's `RP_PP_*` and `RP_WS_SM_Revocation` tests assume them. `_001` names `SD` and `MD`, `_007` `MD`
 // (identifier lists, `P-IL`); the others name no format and run in `SD` until the mdoc PID lands (issue 21). Every one
 // runs in `PA`: the grant does not change what is published.
-import { defineIssuerTestCase, type FormatVariant, issuerProfiles, relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, issuerProfiles, relevancy } from '@eudi-pcaf/core';
 import { fetchStep, issueStep, LIST_FORMAT, published, revokedStep, revokeStep } from '../../status';
 import { FORMAT_NAMES, pidProfile, preconditions, technologyOf } from '../../wording';
 

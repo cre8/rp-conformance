@@ -1,8 +1,8 @@
 // Renders the issuer test cases (issuer harness design section 4, row `fcaf-render`, and decision 1): one FCAF test case
-// page per test case ID of `@rp-conformance/issuer-definitions`. A test case has one definition per variant (format,
+// page per test case ID of `@eudi-pcaf/issuer-definitions`. A test case has one definition per variant (format,
 // grant, category; issuer catalogue section 2.3), and the FCAF has one file per ID, so the variants of an ID are merged
 // into one page: what all of them share is rendered once, what differs is listed per variant.
-import { parseIssuerTestCaseId, variantOf, type IssuerTestCaseDefinition } from '@rp-conformance/core';
+import { parseIssuerTestCaseId, variantOf, type IssuerTestCaseDefinition } from '@eudi-pcaf/core';
 
 /** The directory of the PID Provider SUT below `docs/fcaf`. */
 export const PID_PROVIDER_DIR = 'suts/pid_provider';

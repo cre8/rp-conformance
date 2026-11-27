@@ -1,4 +1,4 @@
-import { durationMs, type Ics, type PublishableList, type PublishedTrustList, type TestEnvironment, type TrustListAction } from '@rp-conformance/core';
+import { durationMs, type Ics, type PublishableList, type PublishedTrustList, type TestEnvironment, type TrustListAction } from '@eudi-pcaf/core';
 import {
   buildSealedLote,
   buildTrustListVersion,
@@ -13,9 +13,9 @@ import {
   LIST_PROFILES,
   type LoteListId,
   type TestPki,
-} from '@rp-conformance/forge';
-import { StatusProvider } from '@rp-conformance/status-provider';
-import { TrustInfrastructure } from '@rp-conformance/trust-infrastructure';
+} from '@eudi-pcaf/forge';
+import { StatusProvider } from '@eudi-pcaf/status-provider';
+import { TrustInfrastructure } from '@eudi-pcaf/trust-infrastructure';
 
 const LISTS: LoteListId[] = ['TL-PID', 'TL-PUB', 'TL-WP', 'TL-AC', 'TL-RC'];
 

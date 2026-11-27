@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import type { Ics, TestCaseDefinition } from '@rp-conformance/core';
+import type { Ics, TestCaseDefinition } from '@eudi-pcaf/core';
 import { parse } from 'yaml';
 
 /** Reads an ICS file: a YAML map from ICS item ID (for example `RP.G.1`) to the declared option. */

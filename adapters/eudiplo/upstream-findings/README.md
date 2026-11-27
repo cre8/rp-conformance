@@ -49,7 +49,7 @@ EUDIPLO_IMAGE=ghcr.io/eudiplo/eudiplo:main docker compose -f adapters/eudiplo/do
 ```
 
 ```bash
-pnpm rp-conformance run --adapter eudiplo --only '<test case ID>'
+pnpm eudi-pcaf run --adapter eudiplo --only '<test case ID>'
 ```
 
 The run writes `reports/<run>/report.json` and, per test case, flow and step, the request object, the credential, the

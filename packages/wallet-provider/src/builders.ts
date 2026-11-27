@@ -3,7 +3,7 @@
 // the fault layer (issue 18) can build each one-fault variant with the same functions. JWTs are assembled directly, as
 // in the forge, so no library stands between a valid artifact and its deliberate fault.
 import { randomUUID } from 'node:crypto';
-import { base64url, type CertifiedKey, type EcKeyPair, type ForeignSigner, signEs256 } from '@rp-conformance/forge';
+import { base64url, type CertifiedKey, type EcKeyPair, type ForeignSigner, signEs256 } from '@eudi-pcaf/forge';
 import type { Certificate } from '@owf/x509';
 import {
   ISO_18045,

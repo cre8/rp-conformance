@@ -1,8 +1,8 @@
 // Issue 26: building blocks of the test cases of `PP_WS_SM_IssuerIntegrity`, `PP_WS_SM_Unlinkability`,
 // `PP_WS_SM_Revocation_004` to `_010` and `PP_Inf_SM_TrustMechanisms`: the `inspect` step with the wording of its
 // checks, issuance steps of a Wallet Unit, the `trust-list` step, and the status steps of chaining and suspension.
-import type { FormatVariant, GrantVariant, IssuanceAction, IssuerExpectation, IssuerInspectionCheck, IssuerStepDefinition, IssuerTrustListAction, WalletUnit } from '@rp-conformance/core';
-import { faultInfo } from '@rp-conformance/core';
+import type { FormatVariant, GrantVariant, IssuanceAction, IssuerExpectation, IssuerInspectionCheck, IssuerStepDefinition, IssuerTrustListAction, WalletUnit } from '@eudi-pcaf/core';
+import { faultInfo } from '@eudi-pcaf/core';
 import { FORMAT_NAMES, GRANT_NAMES, iss, issuance } from './wording';
 
 /** What each check of an `inspect` step establishes, as the FCAF text names it. */

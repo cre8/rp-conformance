@@ -22,7 +22,7 @@ const report = (results: TestCaseRecord[], error?: string): RunReport => ({
     rp: { version: '9.1.0-main.d3cf4ab', revision: 'd3cf4abd0' },
     flows: ['redirect', 'dc-api'],
     ics: { items: {} },
-    harness: { name: 'rp-conformance', phase: 4, node: 'v22', libraries: { '@openid4vc/openid4vp': '0', playwright: '0' } },
+    harness: { name: 'eudi-pcaf', phase: 4, node: 'v22', libraries: { '@openid4vc/openid4vp': '0', playwright: '0' } },
     environment: { namespace: 'r1', statusProvider: '', trustInfrastructure: '', trustLists: [], listOfTrustedLists: { url: '', pointers: [] } },
     summary: {},
     ...(error ? { error } : {}),

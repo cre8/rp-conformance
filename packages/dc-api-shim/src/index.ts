@@ -118,14 +118,14 @@ export class DcApiShim {
 
   /**
    * Launches Chromium (the headless shell). Install it once with
-   * `pnpm --filter @rp-conformance/dc-api-shim exec playwright install --only-shell chromium`.
+   * `pnpm --filter @eudi-pcaf/dc-api-shim exec playwright install --only-shell chromium`.
    */
   static async launch(): Promise<DcApiShim> {
     try {
       return new DcApiShim(await chromium.launch({ headless: true }));
     } catch (error) {
       throw new Error(
-        `the DC API shim could not launch Chromium (pnpm --filter @rp-conformance/dc-api-shim exec playwright install --only-shell chromium): ${(error as Error).message.split('\n')[0]}`,
+        `the DC API shim could not launch Chromium (pnpm --filter @eudi-pcaf/dc-api-shim exec playwright install --only-shell chromium): ${(error as Error).message.split('\n')[0]}`,
       );
     }
   }

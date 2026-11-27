@@ -1,7 +1,7 @@
 // Template of an issuer adapter, for a PID Provider: copy this file, replace the HTTP calls to "my issuer" with the API
 // of your Provider, and run it with
 //
-//   pnpm rp-conformance issuer run --adapter ./my-adapter.ts --ics my-ics.yaml
+//   pnpm eudi-pcaf issuer run --adapter ./my-adapter.ts --ics my-ics.yaml
 //
 // The walkthrough is in adapter-guide.md, "Issuer adapters". The Provider API this template assumes is made up, and
 // every call to it is marked `TODO`:
@@ -31,7 +31,7 @@ import {
   PID_TEST_SUBJECTS,
   pidClaimsOf,
   type TestSubject,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 
 /** Where the harness reaches your Provider's admin API. Use 127.0.0.1, not localhost (adapter-guide.md, "Networking"). */
 const ISSUER_URL = (process.env.MY_ISSUER_URL ?? 'http://127.0.0.1:8080').replace(/\/$/, '');
@@ -265,7 +265,7 @@ function certificate(cert: EnrolledCertificate | undefined) {
 /**
  * The subject's PID data, in the claim names of the format (PID Rulebook: chapter 5 for SD-JWT VC, 4 for mdoc). An
  * Attestation Provider issues `default_credential_A` instead: its values are `ATTESTATION_TEST_SUBJECTS` of
- * `@rp-conformance/core`.
+ * `@eudi-pcaf/core`.
  */
 function subjectClaims(subject: TestSubject, format: Format): Record<string, unknown> {
   return pidClaimsOf(PID_TEST_SUBJECTS[subject], format);

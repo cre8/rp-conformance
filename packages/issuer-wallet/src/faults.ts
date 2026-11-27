@@ -1,5 +1,5 @@
 // The fault layer of the issuer suite at the points `wia`, `wia-pop`, `ka` and `proof` (issuer harness design section
-// 6.2). Every fault of `ISSUER_FAULTS` (@rp-conformance/core) is a pure change of a valid message: the Test Wallet
+// 6.2). Every fault of `ISSUER_FAULTS` (@eudi-pcaf/core) is a pure change of a valid message: the Test Wallet
 // Provider and the issuance client build the WIA, PoP, KA and proof valid, and the fault decodes one of them, changes it
 // and signs it again, with the original signer or the one the fault names. Where a library would refuse the result
 // (another key, `alg` `none`, `HS256`, `ES256K`, P-521, a point off the curve), the JWT is assembled directly.
@@ -9,8 +9,8 @@
 // the KA in the proof header and the proof's claims; `request` for omitted headers and re-signed proofs). A test
 // definition (issue 19) names the fault only.
 import { createHmac, createPublicKey, generateKeyPairSync, randomUUID, sign as nodeSign, X509Certificate } from 'node:crypto';
-import { type IssuerFaultId, issuerFaultInfo } from '@rp-conformance/core';
-import { base64url, type EcKeyPair, flipBitInSegment, foreignSigner, generateEcKeyPair, type TestEntity } from '@rp-conformance/forge';
+import { type IssuerFaultId, issuerFaultInfo } from '@eudi-pcaf/core';
+import { base64url, type EcKeyPair, flipBitInSegment, foreignSigner, generateEcKeyPair, type TestEntity } from '@eudi-pcaf/forge';
 import {
   CLIENT_ATTESTATION_HEADER,
   CLIENT_ATTESTATION_POP_HEADER,
@@ -24,7 +24,7 @@ import {
   signJwt,
   type TestWalletProvider,
   type WalletUnitId,
-} from '@rp-conformance/wallet-provider';
+} from '@eudi-pcaf/wallet-provider';
 import { type JwtHook, type KeyAttestationWithKeys, type MessageHooks, type WalletUnitBinding, walletUnitOf } from './client';
 import type { HttpRequestMessage, RequestHook } from './http';
 import { KEY_ATTESTATION_HEADER, publicJwkOf } from './jwts';

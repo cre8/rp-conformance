@@ -18,8 +18,8 @@ import {
   sessionFaultInfo,
   ICS_BATCH_SIZE,
   type Verdict,
-} from '@rp-conformance/core';
-import { base64url } from '@rp-conformance/forge';
+} from '@eudi-pcaf/core';
+import { base64url } from '@eudi-pcaf/forge';
 import {
   applyIssuerFault,
   applySessionFault,
@@ -30,9 +30,9 @@ import {
   type SessionHooks,
   type SessionState,
   walletUnitOf,
-} from '@rp-conformance/issuer-wallet';
-import { jwkThumbprint, validateIssuedSdJwtVc } from '@rp-conformance/validator';
-import type { WalletUnitId } from '@rp-conformance/wallet-provider';
+} from '@eudi-pcaf/issuer-wallet';
+import { jwkThumbprint, validateIssuedSdJwtVc } from '@eudi-pcaf/validator';
+import type { WalletUnitId } from '@eudi-pcaf/wallet-provider';
 import type { AttestationState } from './attestations';
 import type { LifecycleState } from './status';
 import { type Evaluation, worst } from '../evaluate';

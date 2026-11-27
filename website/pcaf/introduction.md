@@ -49,4 +49,4 @@ The PCAF consists of:
 - the test cases of each [System Under Test](suts/index.md), each traced to the requirements it tests;
 - an Implementation Conformance Statement (ICS) for [Relying Parties](ics-rp.md) and for [PID and Attestation Providers](ics-issuer.md).
 
-The PCAF is a framework, not a test tool. Its test cases are tool-agnostic and can be executed manually or with any tool. They are rendered from executable definitions, and an [open-source reference harness](https://github.com/cre8/rp-conformance) runs them unattended. You run it in your own test environment; it is not a hosted service. See [Framework and harness](../index.md#framework-and-harness).
+The PCAF is a framework, not a test tool. Its test cases are tool-agnostic and can be executed manually or with any tool. They are rendered from executable definitions, and an [open-source reference harness](https://github.com/cre8/eudi-pcaf) runs them unattended. You run it in your own test environment; it is not a hosted service. See [Framework and harness](../index.md#framework-and-harness).

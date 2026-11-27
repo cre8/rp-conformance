@@ -1,5 +1,5 @@
 // RP_WS_MS_CredentialFormats: the DCQL query of the Relying Party's request.
-import { formats, type FormatWording, ics, pidQueryOf, preconditions, relevancy } from '@rp-conformance/core';
+import { formats, type FormatWording, ics, pidQueryOf, preconditions, relevancy } from '@eudi-pcaf/core';
 import { requestTestCase } from '../requests';
 
 const credentialFormats = (testCase: Omit<Parameters<typeof requestTestCase>[0], 'layer' | 'area'>) =>

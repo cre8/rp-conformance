@@ -2,8 +2,8 @@ import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DOMParser } from '@xmldom/xmldom';
-import { defineTestBookItem, relevancy } from '@rp-conformance/core';
-import { definitions, testBook } from '@rp-conformance/definitions';
+import { defineTestBookItem, relevancy } from '@eudi-pcaf/core';
+import { definitions, testBook } from '@eudi-pcaf/definitions';
 import { describe, expect, it } from 'vitest';
 import { junitXml } from '../src/junit';
 import { runOutcome } from '../src/known-findings';
@@ -28,7 +28,7 @@ const report = (results: TestCaseRecord[], items: TestBookRecord[]): RunReport =
     adapter: 'reference',
     flows: ['redirect'],
     ics: { items: {} },
-    harness: { name: 'rp-conformance', phase: 4, node: 'v22', libraries: { '@openid4vc/openid4vp': '0', playwright: '0' } },
+    harness: { name: 'eudi-pcaf', phase: 4, node: 'v22', libraries: { '@openid4vc/openid4vp': '0', playwright: '0' } },
     environment: { namespace: 'r1', statusProvider: '', trustInfrastructure: '', trustLists: [], listOfTrustedLists: { url: '', pointers: [] } },
     summary: { PASS: results.length },
   },

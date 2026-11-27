@@ -15,7 +15,7 @@ import {
   scenario,
   step,
   testCaseId,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 import { CIR_PRESENTATION, queryVariant } from './IdentifyingData';
 
 const sdJwtVc = formats.sdJwtVc;

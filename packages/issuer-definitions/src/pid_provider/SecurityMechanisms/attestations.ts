@@ -15,7 +15,7 @@ import {
   issuerFaultInfo,
   type Relevancy,
   type WalletUnit,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 import { FORMAT_NAMES, GRANT_NAMES, iss, issuance, pidProfile, preconditions, technologyOf } from '../../wording';
 
 export const CONTROL = 'PP_WS_IA_MainInteraction_001';

@@ -4,8 +4,8 @@
 // first) are carried out by the issuance client (client.ts), which asks `grantFaultInfo` what a fault needs. Which
 // check each fault must fail is in `GRANT_FAULTS` (packages/core/src/issuer/grant-faults.ts).
 import { createHash, randomBytes, randomInt } from 'node:crypto';
-import type { GrantFaultId } from '@rp-conformance/core';
-import { base64url } from '@rp-conformance/forge';
+import type { GrantFaultId } from '@eudi-pcaf/core';
+import { base64url } from '@eudi-pcaf/forge';
 import type { AuthorizationParameters } from './requests';
 
 /** The `credential_configuration_id` and `scope` no Credential Issuer offers (`IA_AuthorizationCode_006_UF`). */

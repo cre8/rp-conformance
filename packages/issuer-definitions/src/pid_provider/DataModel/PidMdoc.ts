@@ -9,7 +9,7 @@ import {
   issuerProfiles,
   relevancy,
   type Relevancy,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 import { conf, expand, GRANTS, OUTPUT_COMMENTS } from '../../output';
 import { configurationOf, GRANT_NAMES, issuance, pidProfile, preconditions, technologyOf } from '../../wording';
 

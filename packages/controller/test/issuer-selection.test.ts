@@ -1,7 +1,7 @@
-// Selection of the issuer suite (`rp-conformance issuer`): patterns, positive controls first, one definition per
+// Selection of the issuer suite (`eudi-pcaf issuer`): patterns, positive controls first, one definition per
 // variant, `--list`, the usage, and the applicability of a definition and its variant to the Provider's ICS.
-import { defineIssuerTestCase, type IssuerIcs, type IssuerTestCaseDefinition, relevancy } from '@rp-conformance/core';
-import { issuance, iss, pidProfile, preconditions, rej } from '@rp-conformance/issuer-definitions';
+import { defineIssuerTestCase, type IssuerIcs, type IssuerTestCaseDefinition, relevancy } from '@eudi-pcaf/core';
+import { issuance, iss, pidProfile, preconditions, rej } from '@eudi-pcaf/issuer-definitions';
 import { describe, expect, it } from 'vitest';
 import { issuerMain, listIssuerTestCases } from '../src/issuer/cli';
 import { issuerApplicability, resolveConfigurations, usesTxCode } from '../src/issuer/ics';
@@ -68,7 +68,7 @@ describe('issuer selection', () => {
     expect(await issuerMain(['--list'], io)).toBe(0);
     expect(out).toContain(`${CONTROL} [SD+PA] (positive control)`);
     expect(await issuerMain(['run'], io)).toBe(2);
-    expect(err).toContain('rp-conformance issuer run --adapter <eudiplo|path>');
+    expect(err).toContain('eudi-pcaf issuer run --adapter <eudiplo|path>');
   });
 });
 

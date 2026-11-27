@@ -16,7 +16,7 @@ import {
   presentationStep,
   step,
   testCaseId,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 
 const SD_JWT_VC_REFERENCES = ['[RFC9901] section 7.1', '[SD-JWT VC] section 2.4', '[OpenID4VP] section 8.6', '[CIR 2024/2982 amended] Annex II'];
 const MDOC_REFERENCES = ['[ISO/IEC 18013-5] section 9.3.1', '[OpenID4VP] section 8.6', '[HAIP] section 5.3.1', '[CIR 2024/2982 amended] Annex II'];

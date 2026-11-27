@@ -1,6 +1,6 @@
 // PP_WS_DM_PidSdJwt: the PID in SD-JWT VC format against the PID Rulebook, ARF Annex 3.01 chapter 5 (issuer catalogue
 // section 5.1.4). Every test case runs `SCN-I` for the SD-JWT VC PID without mutation and checks one rule (`CONF`).
-import { defineIssuerTestCase, type FormatVariant, type GrantVariant, type IssuerOutputCheck, relevancy, type Relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, type GrantVariant, type IssuerOutputCheck, relevancy, type Relevancy } from '@eudi-pcaf/core';
 import { conf, expand, OUTPUT_COMMENTS } from '../../output';
 import { GRANT_NAMES, issuance, pidProfile, preconditions, technologyOf } from '../../wording';
 

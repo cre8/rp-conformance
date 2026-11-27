@@ -3,7 +3,7 @@
 // the PID Provider's additions. It is laid over the FCAF `submitted` content with the RP overlay, so its copies of
 // defaults.md, references.md, .nav.yml and suts/index.md are the RP overlay's plus the issuer additions.
 import { readFile } from 'node:fs/promises';
-import { ISSUER_ICS_ITEMS, parseIssuerTestCaseId, type IssuerTestCaseDefinition } from '@rp-conformance/core';
+import { ISSUER_ICS_ITEMS, parseIssuerTestCaseId, type IssuerTestCaseDefinition } from '@eudi-pcaf/core';
 import {
   groupByTestCase,
   ISSUER_CLASS_DIR,

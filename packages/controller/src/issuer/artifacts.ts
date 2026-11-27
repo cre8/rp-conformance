@@ -2,7 +2,7 @@
 // sections 2 and 6): the `metadata` action (`SCN-M`, `OBS-META`), the capture of a credential offer for an `issuance`
 // step that expects `CONF` (`PP_WS_MS_Offer`), and an issuance with one `credential-request` fault. Each fills the step
 // record and evaluates its expectation; the runner calls them from `runIssuerStep` and `runIssuance`.
-import { type CheckResult, type CredentialRequestFaultId, type IssuanceAction, type IssuerExpectation, type IssuerIcs, OFFER_CHECKS, type WalletUnit } from '@rp-conformance/core';
+import { type CheckResult, type CredentialRequestFaultId, type IssuanceAction, type IssuerExpectation, type IssuerIcs, OFFER_CHECKS, type WalletUnit } from '@eudi-pcaf/core';
 import {
   type HttpExchange,
   type HttpResponseRecord,
@@ -13,8 +13,8 @@ import {
   nonceRequest,
   send,
   walletUnitOf,
-} from '@rp-conformance/issuer-wallet';
-import { type FetchedArtifact, type ProviderCategory, validateCredentialOffer, validateCredentialRequest, validateIssuerMetadata } from '@rp-conformance/validator';
+} from '@eudi-pcaf/issuer-wallet';
+import { type FetchedArtifact, type ProviderCategory, validateCredentialOffer, validateCredentialRequest, validateIssuerMetadata } from '@eudi-pcaf/validator';
 import type { Evaluation } from '../evaluate';
 import type { IssuerHarness } from './harness';
 import { resolveConfigurations, usesTxCode } from './ics';
@@ -23,7 +23,7 @@ import { resolveConfigurations, usesTxCode } from './ics';
 export interface ArtifactStepContext {
   harness: IssuerHarness;
   ics: IssuerIcs;
-  adapter: { createOffer: import('@rp-conformance/core').IssuerAdapter['createOffer'] };
+  adapter: { createOffer: import('@eudi-pcaf/core').IssuerAdapter['createOffer'] };
 }
 
 /** What these steps write into the step record (a subset of `IssuerStepRecord`). */
@@ -35,7 +35,7 @@ export interface ArtifactStepRecord {
   /** The named checks the step ran over the captured artifact. */
   checks?: CheckResult[];
   error?: string;
-  verdict: import('@rp-conformance/core').Verdict;
+  verdict: import('@eudi-pcaf/core').Verdict;
   reason: string;
 }
 

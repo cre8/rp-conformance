@@ -4,7 +4,7 @@
 // (ICS-15). A test case that changed `TL-WP` restores the default version under a higher sequence number afterwards, so
 // later test cases see the trust configuration of `default_configuration_PP_1` again. Test cases with a `trust-list`
 // step change what the Provider trusts for every Wallet Unit; the runner runs them one at a time (none of them waits).
-import { durationMs, faultInfo, type IssuerAdapter, type IssuerExpectation, type IssuerIcs, type IssuerTrustListAction } from '@rp-conformance/core';
+import { durationMs, faultInfo, type IssuerAdapter, type IssuerExpectation, type IssuerIcs, type IssuerTrustListAction } from '@eudi-pcaf/core';
 import type { Evaluation } from '../evaluate';
 import type { IssuerHarness } from './harness';
 import { issuerIcsValue } from './ics';

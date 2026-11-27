@@ -1,6 +1,6 @@
 // The requests the issuance client sends to the token, nonce and credential endpoints, each built by its own pure
 // function from the values of the flow, so a fault can replace one member or the whole request.
-import { CLIENT_ATTESTATION_HEADER, CLIENT_ATTESTATION_POP_HEADER } from '@rp-conformance/wallet-provider';
+import { CLIENT_ATTESTATION_HEADER, CLIENT_ATTESTATION_POP_HEADER } from '@eudi-pcaf/wallet-provider';
 import type { HttpRequestMessage } from './http';
 
 /** OpenID4VCI 1.0 section 4.1.1. */

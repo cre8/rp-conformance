@@ -1,7 +1,7 @@
 {
-  "name": "rp-conformance",
+  "name": "eudi-pcaf",
   "private": true,
-  "description": "Functional conformance tests and test harness for EUDI Wallet Relying Parties",
+  "description": "Functional conformance tests and test harness for EUDI Wallet Relying Parties, PID Providers and Attestation Providers (PCAF)",
   "type": "module",
   "packageManager": "pnpm@11.20.0",
   "engines": {
@@ -12,15 +12,16 @@
     "test:issuer-eudiplo": "vitest run --config adapters/issuer-eudiplo/vitest.integration.config.ts --root .",
     "test:issuer-wallet:eudiplo": "vitest run --root . --config packages/issuer-wallet/vitest.integration.config.ts",
     "types:check": "tsc --noEmit -p tsconfig.json",
-    "rp-conformance": "node packages/controller/bin/rp-conformance.mjs",
+    "eudi-pcaf": "node packages/controller/bin/eudi-pcaf.mjs",
+    "rp-conformance": "node packages/controller/bin/eudi-pcaf.mjs",
     "fcaf:render": "tsx packages/fcaf-render/src/cli.ts",
-    "playwright:install": "pnpm --filter @rp-conformance/dc-api-shim exec playwright install --only-shell chromium"
+    "playwright:install": "pnpm --filter @eudi-pcaf/dc-api-shim exec playwright install --only-shell chromium"
   },
   "devDependencies": {
     "@types/node": "^22.19.0",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3",
     "vitest": "^5.1.0",
-    "@rp-conformance/controller": "workspace:*"
+    "@eudi-pcaf/controller": "workspace:*"
   }
 }

@@ -1,7 +1,7 @@
 // Building blocks of the test cases that check what the Provider issued (`OBS-CRED`): `SM_Validity` and the PID
 // Rulebook areas `DM_*` (issuer catalogue sections 5.1.3 and 5.1.4). Each runs `SCN-I` without mutation and expects
 // `CONF` with the named checks of the reference validator.
-import { type CheckId, type FormatVariant, type GrantVariant, type IssuerExpectation, issuerProfiles } from '@rp-conformance/core';
+import { type CheckId, type FormatVariant, type GrantVariant, type IssuerExpectation, issuerProfiles } from '@eudi-pcaf/core';
 import { FORMAT_NAMES, pidProfile } from './wording';
 
 /** Every grant a test case runs in when the catalogue names none (section 2.3): one definition each. */

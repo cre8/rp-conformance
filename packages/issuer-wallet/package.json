@@ -1,5 +1,5 @@
 {
-  "name": "@rp-conformance/issuer-wallet",
+  "name": "@eudi-pcaf/issuer-wallet",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -7,14 +7,14 @@
   "dependencies": {
     "@openid4vc/oauth2": "^0.9.2",
     "@openid4vc/openid4vci": "^0.9.2",
-    "@rp-conformance/core": "workspace:*",
-    "@rp-conformance/forge": "workspace:*",
-    "@rp-conformance/wallet-provider": "workspace:*"
+    "@eudi-pcaf/core": "workspace:*",
+    "@eudi-pcaf/forge": "workspace:*",
+    "@eudi-pcaf/wallet-provider": "workspace:*"
   },
   "devDependencies": {
-    "@rp-conformance/status-provider": "workspace:*",
-    "@rp-conformance/trust-infrastructure": "workspace:*",
+    "@eudi-pcaf/status-provider": "workspace:*",
+    "@eudi-pcaf/trust-infrastructure": "workspace:*",
     "@owf/x509": "^0.7.0",
-    "@rp-conformance/validator": "workspace:*"
+    "@eudi-pcaf/validator": "workspace:*"
   }
 }

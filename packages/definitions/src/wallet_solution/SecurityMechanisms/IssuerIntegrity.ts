@@ -25,7 +25,7 @@ import {
   type StepDefinition,
   step,
   testCaseId,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 import { oidf } from './binding';
 
 const sdJwtVc = formats.sdJwtVc;

@@ -25,11 +25,11 @@ import {
   type Verdict,
   controlsOf,
   durationMs,
-} from '@rp-conformance/core';
-import { base64url, credentialQueryOf, defaultEntitiesOf, forgePresentations, heldCredentialOf, requestAnchorKeyIds, trustedListEntitiesOf } from '@rp-conformance/forge';
-import { DcApiShim, type DcApiOutcome, type DcApiRun } from '@rp-conformance/dc-api-shim';
-import { validateRequests } from '@rp-conformance/validator';
-import { ConformanceWallet, type DcApiAnswer, type HeldCredential, type PresentationEvidence } from '@rp-conformance/wallet';
+} from '@eudi-pcaf/core';
+import { base64url, credentialQueryOf, defaultEntitiesOf, forgePresentations, heldCredentialOf, requestAnchorKeyIds, trustedListEntitiesOf } from '@eudi-pcaf/forge';
+import { DcApiShim, type DcApiOutcome, type DcApiRun } from '@eudi-pcaf/dc-api-shim';
+import { validateRequests } from '@eudi-pcaf/validator';
+import { ConformanceWallet, type DcApiAnswer, type HeldCredential, type PresentationEvidence } from '@eudi-pcaf/wallet';
 import { evaluate, worst } from './evaluate';
 import { type Harness, startHarness } from './harness';
 import { applicability, icsAnswer } from './ics';

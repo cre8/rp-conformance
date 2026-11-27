@@ -1,7 +1,7 @@
 // PP_WS_IA_PreAuthorized: the pre-authorized code is single-use, protected by its `tx_code`, limited in time, and bound
 // to its offer (issuer catalogue section 5.1.2). One definition per format variant; the grant is `PA` by definition.
 // The faults are those of the point `token-request` (`GRANT_FAULTS`), the reuse is a `token-reuse` step.
-import { defineIssuerTestCase, type FormatVariant, GRANT_FAULTS, type GrantFaultId, relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, GRANT_FAULTS, type GrantFaultId, relevancy } from '@eudi-pcaf/core';
 import { FORMAT_NAMES, iss, issuance, pidProfile, preconditions, rej, technologyOf } from '../../wording';
 
 const CONTROL = 'PP_WS_IA_MainInteraction_001';

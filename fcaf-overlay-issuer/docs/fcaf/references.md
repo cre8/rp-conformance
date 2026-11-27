@@ -63,8 +63,8 @@ The syntax follows that used for the EUDI Wallet Architecture and Reference Fram
 | [GDPR] | - | [Regulation (EU) 2016/679](https://eur-lex.europa.eu/eli/reg/2016/679/oj): General Data Protection Regulation. |
 | [Attestation-Based Client Auth] | draft | Same as [IETF draft-attestation-based-client-auth]: OAuth 2.0 Attestation-Based Client Authentication. |
 | [ETSI EN 319 411-1] | - | ETSI EN 319 411-1: Electronic Signatures and Trust Infrastructures (ESI); Policy and security requirements for Trust Service Providers issuing certificates; Part 1: General requirements. |
-| [Issuer catalogue] | draft 0.2 | [PID Provider and Attestation Provider functional conformance tests: test catalogue](https://github.com/cre8/rp-conformance/blob/main/issuer-test-catalogue.md) of the rp-conformance project, with its decisions. |
-| [RP catalogue] | draft | [Relying Party functional conformance tests: test catalogue](https://github.com/cre8/rp-conformance/blob/main/rp-test-catalogue.md) of the rp-conformance project, with its decisions. |
+| [Issuer catalogue] | draft 0.2 | [PID Provider and Attestation Provider functional conformance tests: test catalogue](https://github.com/cre8/eudi-pcaf/blob/main/issuer-test-catalogue.md) of the eudi-pcaf project, with its decisions. |
+| [RP catalogue] | draft | [Relying Party functional conformance tests: test catalogue](https://github.com/cre8/eudi-pcaf/blob/main/rp-test-catalogue.md) of the eudi-pcaf project, with its decisions. |
 | [RFC 5280] | - | Same as [RFC5280]. |
 | [OWASP] | - | [OWASP Top 10](https://owasp.org/www-project-top-ten/): the most critical security risks to web applications. |
 | [OWASP API Security Top 10] | 2023 | [OWASP API Security Top 10](https://owasp.org/API-Security/): the most critical security risks to APIs. |

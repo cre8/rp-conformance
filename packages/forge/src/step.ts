@@ -2,7 +2,7 @@
 // and the credential the Conformance Wallet presents, valid first and then with the step's fault. The controller and
 // the self-validation use the same function, so the self-validated artifacts are the ones the Relying Party receives.
 import { randomInt } from 'node:crypto';
-import { type CredentialFormat, holderCurveOf, type PresentationAction } from '@rp-conformance/core';
+import { type CredentialFormat, holderCurveOf, type PresentationAction } from '@eudi-pcaf/core';
 import { applyCredentialFault, applyStatusListFault, type ServedStatusList, type StatusListFaultContext } from './faults';
 import { applyIdentifierListFault, applyMdocFault, applyStatusListCwtFault, bindMdocToSecp256k1Key } from './faults-cose';
 import { buildIdentifierListCwt, IDENTIFIER_LIST_CWT_TYPE } from './identifier-list';

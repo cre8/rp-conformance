@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { issuerProfiles, variantOf, type IssuerTestCaseDefinition } from '@rp-conformance/core';
-import { baselineDefinitions, definitions } from '@rp-conformance/definitions';
-import { issuerDefinitions } from '@rp-conformance/issuer-definitions';
+import { issuerProfiles, variantOf, type IssuerTestCaseDefinition } from '@eudi-pcaf/core';
+import { baselineDefinitions, definitions } from '@eudi-pcaf/definitions';
+import { issuerDefinitions } from '@eudi-pcaf/issuer-definitions';
 import { describe, expect, it } from 'vitest';
 import { compareOverlay, groupByTestCase, ISSUER_TECHNOLOGY, issuerTestCasePath, renderBaseline, renderIssuer, renderIssuerTestCase } from '../src/index';
 

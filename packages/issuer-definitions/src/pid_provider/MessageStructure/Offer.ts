@@ -1,6 +1,6 @@
 // PP_WS_MS_Offer (issuer catalogue section 5.1.1): the credential offer the adapter obtains from the Provider. The
 // Conformance Wallet resolves the offer and fetches the metadata of its issuer, without redeeming it (`Capture`).
-import { defineIssuerTestCase, type FormatVariant, type GrantVariant, relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, type GrantVariant, relevancy } from '@eudi-pcaf/core';
 import { FORMAT_NAMES, GRANT_NAMES, iss, issuance, pidProfile, preconditions, technologyOf } from '../../wording';
 import { conf } from './conf';
 

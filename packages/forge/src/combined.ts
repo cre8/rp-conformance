@@ -2,7 +2,7 @@
 // `vp_token` that carries their presentations, valid or with one `vp-token` fault. The Conformance Wallet and the
 // self-validation build the `vp_token` with the same function, so the self-validated `vp_token` is the one the Relying
 // Party receives.
-import { type DcqlQuery, type FaultId, faultInfo, type PresentationAction } from '@rp-conformance/core';
+import { type DcqlQuery, type FaultId, faultInfo, type PresentationAction } from '@eudi-pcaf/core';
 import { type CborMap, decodeCbor, decodeEmbedded, encodeCbor, type Tagged } from './cbor';
 import { base64url } from './crypto';
 import { encodeDeviceResponse, requestedElements } from './mdoc';

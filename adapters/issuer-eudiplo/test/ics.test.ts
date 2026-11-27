@@ -1,4 +1,4 @@
-import { ISSUER_ICS_ITEMS } from '@rp-conformance/core';
+import { ISSUER_ICS_ITEMS } from '@eudi-pcaf/core';
 import { describe, expect, it } from 'vitest';
 import { durationSeconds, icsProblems, loadIssuerIcs } from '../src/index';
 

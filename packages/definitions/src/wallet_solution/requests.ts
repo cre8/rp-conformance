@@ -18,7 +18,7 @@ import {
   relevancy,
   step,
   testCaseId,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 
 export interface RequestTestCase {
   layer: 'MS' | 'SM' | 'IA';

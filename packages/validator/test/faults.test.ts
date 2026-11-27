@@ -10,9 +10,9 @@ import {
   RESPONSE_CHECKS,
   statusListToken,
   type TrustListAction,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 import { createPublicKey, verify, X509Certificate } from 'node:crypto';
-import { defaultEntitiesOf, faultySigner, isSignerFault, mdocValidity, trustedListEntitiesOf } from '@rp-conformance/forge';
+import { defaultEntitiesOf, faultySigner, isSignerFault, mdocValidity, trustedListEntitiesOf } from '@eudi-pcaf/forge';
 import {
   base64url,
   type CborMap,
@@ -27,7 +27,7 @@ import {
   sigStructure,
   Tagged,
   x5chainOf,
-} from '@rp-conformance/forge';
+} from '@eudi-pcaf/forge';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { MDOC_IDENTIFIER_LIST_CHECKS, MDOC_STATUS_LIST_CHECKS, openid4vpSessionTranscript, SD_JWT_VC_CHECKS, TRUST_RULES } from '../src/index';
 import { AUDIENCE, Fixture, RESPONSE_URI } from './fixture';

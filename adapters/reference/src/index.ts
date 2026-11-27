@@ -7,8 +7,8 @@ import {
   type RelyingPartyResult,
   type StartedPresentation,
   type TestEnvironment,
-} from '@rp-conformance/core';
-import { ReferenceRelyingParty, type ReferenceRpResult, USER_SESSION_COOKIE } from '@rp-conformance/reference-rp';
+} from '@eudi-pcaf/core';
+import { ReferenceRelyingParty, type ReferenceRpResult, USER_SESSION_COOKIE } from '@eudi-pcaf/reference-rp';
 
 export interface ReferenceAdapterOptions {
   /** Port of the reference Relying Party; 0 picks a free port. */

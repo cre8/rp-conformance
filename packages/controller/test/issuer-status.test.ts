@@ -1,7 +1,7 @@
 // The evaluators of the lifecycle steps (issue 22; issuer harness design section 6.3): `REVOKED(t)`, `UNCHANGED`,
 // `CONF` over a published status list, and `ACC` / `REJ` of a presentation to the reference Relying Party.
-import type { IssuerIcs } from '@rp-conformance/core';
-import { executableIssuerDefinitions } from '@rp-conformance/issuer-definitions';
+import type { IssuerIcs } from '@eudi-pcaf/core';
+import { executableIssuerDefinitions } from '@eudi-pcaf/issuer-definitions';
 import { describe, expect, it } from 'vitest';
 import {
   declaredFormats,

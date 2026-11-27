@@ -2,8 +2,8 @@
 // or with one request fault. Only the self-validation of the request-side checks uses it: the harness checks the
 // requests the Relying Party under test sends, and never sends one itself.
 import { createHash, randomBytes } from 'node:crypto';
-import type { CapturedRequest, DcqlQuery, FaultId, Flow } from '@rp-conformance/core';
-import { faultInfo } from '@rp-conformance/core';
+import type { CapturedRequest, DcqlQuery, FaultId, Flow } from '@eudi-pcaf/core';
+import { faultInfo } from '@eudi-pcaf/core';
 import { base64url, signCompactJws } from './crypto';
 import { PID_NAMESPACE } from './mdoc';
 import type { CertifiedKey, TestPki } from './pki';

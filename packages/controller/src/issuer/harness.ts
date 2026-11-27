@@ -1,12 +1,12 @@
 // The harness services of an issuer run (issuer harness design sections 3 and 5.3): the test PKI, the Test Status
 // Provider (`SL-WP-A`, `SL-WP-B`), the Test Trust Infrastructure (`TL-WP`, `TL-PID`, `TL-AC`, `TL-RC`), the Test Wallet
 // Provider with its Wallet Units, and the enrolment of the Provider under test by the Test Registrar.
-import { CATEGORY_ENTITIES, ATTESTATION_DOCTYPE, ATTESTATION_VCT, type CredentialSigningProfile, durationMs, type IssuerAdapter, type ProviderCategory, type PublishedListOfTrustedLists, type RulebookTrust, type IssuerIcs, type IssuerTestEnvironment, type IssuerTrustListAction, type PublishedTrustList } from '@rp-conformance/core';
-import { buildSealedLote, buildTrustedLists, buildTrustListVersion, TRUSTED_LIST_MEDIA_TYPE, createTestPki, type Enrolment, enrolSut, LIST_PROFILES, type LoteListId, PID_DOCTYPE, PID_VCT, type TestPki, toEnrolledCertificate } from '@rp-conformance/forge';
-import { StatusProvider } from '@rp-conformance/status-provider';
-import { TrustInfrastructure } from '@rp-conformance/trust-infrastructure';
-import { type TrustRule, TRUST_RULES, TrustStore } from '@rp-conformance/validator';
-import { publishTlWp, TestWalletProvider, tlWpEntities } from '@rp-conformance/wallet-provider';
+import { CATEGORY_ENTITIES, ATTESTATION_DOCTYPE, ATTESTATION_VCT, type CredentialSigningProfile, durationMs, type IssuerAdapter, type ProviderCategory, type PublishedListOfTrustedLists, type RulebookTrust, type IssuerIcs, type IssuerTestEnvironment, type IssuerTrustListAction, type PublishedTrustList } from '@eudi-pcaf/core';
+import { buildSealedLote, buildTrustedLists, buildTrustListVersion, TRUSTED_LIST_MEDIA_TYPE, createTestPki, type Enrolment, enrolSut, LIST_PROFILES, type LoteListId, PID_DOCTYPE, PID_VCT, type TestPki, toEnrolledCertificate } from '@eudi-pcaf/forge';
+import { StatusProvider } from '@eudi-pcaf/status-provider';
+import { TrustInfrastructure } from '@eudi-pcaf/trust-infrastructure';
+import { type TrustRule, TRUST_RULES, TrustStore } from '@eudi-pcaf/validator';
+import { publishTlWp, TestWalletProvider, tlWpEntities } from '@eudi-pcaf/wallet-provider';
 
 /** What the access certificate from `AC-A` names for the Provider under test (`default_configuration_PP_1`). */
 export const PROVIDER_ACCESS = { entityIdentifier: 'VATDE-987654321', serviceIdentifier: 'S1', tradeName: 'PID Provider under conformance test' };

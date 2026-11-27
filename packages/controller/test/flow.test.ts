@@ -1,4 +1,4 @@
-import type { Expectation, RelyingPartyResult } from '@rp-conformance/core';
+import type { Expectation, RelyingPartyResult } from '@eudi-pcaf/core';
 import { describe, expect, it } from 'vitest';
 import { evaluateFlowCodes, type FlowEvaluationInput, forgedRedirectUri, responseCodeOf, type TransactionTrace, unknownRequestUri } from '../src/flow';
 

@@ -1,7 +1,7 @@
 // PP_WS_IA_MainInteraction: the positive baseline of the issuer suite and the positive controls of its `_UF` test
 // cases (issuer catalogue section 5.1.2). One definition per variant, expanded by a function as the RP definitions
 // expand their formats: `SD` and `MD` × `PA` and `AC` (`AC` with issue 20).
-import { defineIssuerTestCase, type FormatVariant, type GrantVariant, issuerProfiles, relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, type GrantVariant, issuerProfiles, relevancy } from '@eudi-pcaf/core';
 import { configurationOf, FORMAT_NAMES, GRANT_NAMES, iss, issuance, pidProfile, preconditions, technologyOf } from '../../wording';
 
 const mainInteraction001 = (format: FormatVariant, grant: GrantVariant) =>

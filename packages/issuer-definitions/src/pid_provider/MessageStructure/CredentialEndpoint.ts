@@ -1,7 +1,7 @@
 // PP_WS_MS_CredentialEndpoint (issuer catalogue section 5.1.1): the credential request, valid and with one fault of the
 // point `credential-request` each (issuer harness design section 6.2). Every step runs `SCN-I`; offer, metadata,
 // token and nonce request are valid, the fault changes the credential request only.
-import { CREDENTIAL_REQUEST_FAULTS, type CredentialRequestFaultId, defineIssuerTestCase, type FormatVariant, type GrantVariant, relevancy } from '@rp-conformance/core';
+import { CREDENTIAL_REQUEST_FAULTS, type CredentialRequestFaultId, defineIssuerTestCase, type FormatVariant, type GrantVariant, relevancy } from '@eudi-pcaf/core';
 import { FORMAT_NAMES, GRANT_NAMES, iss, issuance, pidProfile, preconditions, rej, technologyOf } from '../../wording';
 
 const CONTROL = 'PP_WS_IA_MainInteraction_001';

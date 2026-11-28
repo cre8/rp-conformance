@@ -1,7 +1,7 @@
 // The Provider's ICS (issuer catalogue section 4) as the controller reads it: profiles for the applicability of a test
 // case and its variant, declared values for the steps.
 import { readFile } from 'node:fs/promises';
-import { CATEGORY_PROFILES, ISSUER_ICS_ITEMS, type IssuerIcs, type IssuerProfile, type IssuerTestCaseDefinition, PROVIDER_CATEGORIES, type ProviderCategory, VARIANT_PROFILES } from '@rp-conformance/core';
+import { CATEGORY_PROFILES, ISSUER_ICS_ITEMS, type IssuerIcs, type IssuerProfile, type IssuerTestCaseDefinition, PROVIDER_CATEGORIES, type ProviderCategory, VARIANT_PROFILES } from '@eudi-pcaf/core';
 import { parse } from 'yaml';
 
 const PROFILES = new Set<string>(Object.values(ISSUER_ICS_ITEMS).flatMap((item) => [...item.profiles]));

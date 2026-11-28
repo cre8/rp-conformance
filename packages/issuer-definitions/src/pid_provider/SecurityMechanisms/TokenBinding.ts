@@ -1,6 +1,6 @@
 // PP_WS_SM_TokenBinding: DPoP-bound access tokens (issuer catalogue section 5.1.3). The DPoP faults are applied at the
 // credential endpoint, the resource the access token is for; the nonce fault at the token endpoint.
-import { defineIssuerTestCase, type FormatVariant, type GrantVariant, relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, type GrantVariant, relevancy } from '@eudi-pcaf/core';
 import { iss, issuance, preconditions, rej, technologyOf } from '../../wording';
 import { conf, FORMAT, faultStep, GRANT, MAIN, profileOf, ufPreconditions } from '../session';
 

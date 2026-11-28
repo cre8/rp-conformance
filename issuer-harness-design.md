@@ -108,7 +108,7 @@ Host names stay `*.rp-test` until the repository is renamed (catalogue decision 
 | `validator` | All 9 credential checks except `key-binding`, all Status List Token and identifier list checks, path validation, `TrustStore`, `TRUST_RULES` per category | `key-binding` becomes `holder-binding` on the issuer side: `cnf.jwk` or `deviceKeyInfo` equals a proof key and one of the KA's `attested_keys`, since there is no presentation. New: PID Rulebook checks (`DM_*`), metadata checks (`MS_Metadata`), and issuer request checks for the self-validation (§7) |
 | `status-provider` | Unchanged: per-URL artifacts, programmable behaviour, request log | None |
 | `trust-infrastructure` | Unchanged: namespaced, versioned lists, retrieval log | None |
-| `controller` | Selection, gating, step execution, report, JUnit XML, known findings, CLI conventions | A runner per SUT kind behind one CLI (`rp-conformance issuer run --adapter … --ics …`). New evaluators for the issuer codes (§6.3). Long-running steps (`REVOKED(t)` with `t` up to 24 h) are scheduled after the others |
+| `controller` | Selection, gating, step execution, report, JUnit XML, known findings, CLI conventions | A runner per SUT kind behind one CLI (`eudi-pcaf issuer run --adapter … --ics …`). New evaluators for the issuer codes (§6.3). Long-running steps (`REVOKED(t)` with `t` up to 24 h) are scheduled after the others |
 | `fcaf-render` | Test case rendering, lint integration | A second overlay, `fcaf-overlay-issuer/`, for the issuer test cases (decision 1, §12) |
 | `wallet`, `reference-rp`, `dc-api-shim` | Used only by `PP_RP_SM_Revocation_008`: the issued credential is presented to the reference RP | None |
 
@@ -282,7 +282,7 @@ The output side is validated without the SUT. Credentials and status lists that 
 ## 8. Deployment and CI
 
 - The issuer run uses the same Compose file as the EUDIPLO RP run. One EUDIPLO instance serves both suites, in separate tenants.
-- The nightly job gets a second step after the RP run: `rp-conformance issuer run --adapter eudiplo --ics adapters/issuer-eudiplo/ics.yaml --known-findings adapters/issuer-eudiplo/known-findings.yaml`, with its own report, JUnit suite and artifact.
+- The nightly job gets a second step after the RP run: `eudi-pcaf issuer run --adapter eudiplo --ics adapters/issuer-eudiplo/ics.yaml --known-findings adapters/issuer-eudiplo/known-findings.yaml`, with its own report, JUnit suite and artifact.
 - The fault and output self-validation of the issuer suite (§7, levels 1 and 2) is part of `pnpm test`. The reference run against the pinned EUDIPLO image is a CI job of its own on every pull request that touches the issuer suite, since it needs Docker.
 
 ## 9. Gaps and risks
@@ -310,7 +310,7 @@ The output side is validated without the SUT. Credentials and status lists that 
 | I3 | Rest of `PP_WS` (`MS_*`, `TokenBinding`, `Batch`, `Reissuance`, `Deferred`, `Notification`, `IssuerIntegrity`, `Unlinkability`, `SH_*`), revocation chaining, `PP_Inf` | Remaining PID Provider objectives. Done: `MS_*` (issue 24); DPoP, batch, re-issuance, deferred issuance, notification, encoding and encryption (issue 25); revocation chaining, `PP_Inf`, `SM_IssuerIntegrity` and `SM_Unlinkability` (issue 26) |
 | I4 | `AP_*`: category variants `Q`, `PB`, `E` of every objective not marked PID only, and the objectives from 100 | Attestation Provider objectives. Done (issue 27): the variants are derived from the `PP_*` definitions (`packages/issuer-definitions/src/attestation_provider/`), the objectives from 100 are written; the runner runs each category against its own Provider instance (its own harness services, enrolment as `QP-T`, `PB-T` or `EP-T`, adapter set-up; for EUDIPLO a tenant each) in parallel with the PID Provider, from the `categories` of the ICS |
 
-Every `PP_*` and `AP_*` objective of the catalogue outside the test book (`PP_TB_*`, inspections) has an executable test case, except `PP_WS_IA_MainInteraction_002` (a Wallet Unit of a second listed Wallet Provider is served the same way). It has no definition of its own; `PP_Inf_SM_TrustMechanisms_001` issues to `CW-B` of `WP-B` next to `CW-1` of `WP-A` and so exercises the same scenario. `pnpm rp-conformance issuer --list` lists every test case and variant.
+Every `PP_*` and `AP_*` objective of the catalogue outside the test book (`PP_TB_*`, inspections) has an executable test case, except `PP_WS_IA_MainInteraction_002` (a Wallet Unit of a second listed Wallet Provider is served the same way). It has no definition of its own; `PP_Inf_SM_TrustMechanisms_001` issues to `CW-B` of `WP-B` next to `CW-1` of `WP-A` and so exercises the same scenario. `pnpm eudi-pcaf issuer --list` lists every test case and variant.
 
 ## 11. Relation to the catalogue
 

@@ -1,7 +1,7 @@
 // The publication checks of `OBS-SL` (issue 22), proven without a Provider, as the issuer harness design section 7
 // asks of every output check: a status list the forge builds valid and serves well passes every check, and each mutation
 // of the publication fails exactly its target check among the publication checks.
-import { buildStatusListTokenCwt, buildStatusListTokenJwt, createTestPki, type TestPki } from '@rp-conformance/forge';
+import { buildStatusListTokenCwt, buildStatusListTokenJwt, createTestPki, type TestPki } from '@eudi-pcaf/forge';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
   evaluatePublishedStatus,

@@ -9,9 +9,9 @@
 // any of them.
 import { randomUUID } from 'node:crypto';
 import { type CredentialOfferObject, determineAuthorizationServerForCredentialOffer, type IssuerMetadataResult } from '@openid4vc/openid4vci';
-import type { EcKeyPair } from '@rp-conformance/forge';
-import { type JwtParts, keySigner, signJwt, wiaPopParts } from '@rp-conformance/wallet-provider';
-import { CLIENT_ATTESTATION_HEADER, CLIENT_ATTESTATION_POP_HEADER } from '@rp-conformance/wallet-provider';
+import type { EcKeyPair } from '@eudi-pcaf/forge';
+import { type JwtParts, keySigner, signJwt, wiaPopParts } from '@eudi-pcaf/wallet-provider';
+import { CLIENT_ATTESTATION_HEADER, CLIENT_ATTESTATION_POP_HEADER } from '@eudi-pcaf/wallet-provider';
 import { type Authenticate, IssuanceClient, IssuanceError, type IssuanceEvidence, type JwtPoint, type KeyAttestationWithKeys, type MessageHooks, type WalletUnitBinding } from './client';
 import { type HttpExchange, type HttpRequestMessage, type HttpResponseRecord, type IssuanceStep, jsonOf, oauthErrorOf, send } from './http';
 import { decryptJwe, encryptJwe, generateEncryptionKey } from './jwe';

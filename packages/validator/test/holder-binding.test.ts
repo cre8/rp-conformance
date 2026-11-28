@@ -1,6 +1,6 @@
 // `holder-binding` and the issued-credential validation of the issuer side (`OBS-CRED`): a credential the forge issues
 // valid passes every check; bound to another key, or to a key the KA does not attest, it fails `holder-binding` only.
-import { buildSealedLote, createTestPki, type EcKeyPair, generateEcKeyPair, issuePidSdJwtVc, LIST_PROFILES, PID_VCT, type TestPki } from '@rp-conformance/forge';
+import { buildSealedLote, createTestPki, type EcKeyPair, generateEcKeyPair, issuePidSdJwtVc, LIST_PROFILES, PID_VCT, type TestPki } from '@eudi-pcaf/forge';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { checkHolderBinding, ISSUED_SD_JWT_VC_CHECKS, TRUST_RULES, TrustStore, validateIssuedSdJwtVc } from '../src/index';
 

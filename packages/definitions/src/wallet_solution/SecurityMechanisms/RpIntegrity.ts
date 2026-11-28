@@ -2,7 +2,7 @@
 // registration certificate. Not written: `_008` (several services; no ICS item and no second service in
 // `default_configuration_rp_1`), `_009` (intermediaries), `_010` and `_011` (ISO/IEC 18013-5 proximity, which the harness
 // does not cover).
-import { relevancy } from '@rp-conformance/core';
+import { relevancy } from '@eudi-pcaf/core';
 import { requestTestCase } from '../requests';
 
 const rpIntegrity = (testCase: Omit<Parameters<typeof requestTestCase>[0], 'layer' | 'area'>) => requestTestCase({ layer: 'SM', area: 'RpIntegrity', ...testCase });

@@ -10,9 +10,9 @@ import {
   presentSdJwtVc,
   type TestPki,
   LIST_PROFILES,
-} from '@rp-conformance/forge';
-import { StatusProvider } from '@rp-conformance/status-provider';
-import { TrustInfrastructure } from '@rp-conformance/trust-infrastructure';
+} from '@eudi-pcaf/forge';
+import { StatusProvider } from '@eudi-pcaf/status-provider';
+import { TrustInfrastructure } from '@eudi-pcaf/trust-infrastructure';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { type ListSource, SD_JWT_VC_CHECKS, TRUST_RULES, TrustStore, validateSdJwtVcPresentation, verifyLote } from '../src/index';
 

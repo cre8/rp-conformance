@@ -16,7 +16,7 @@ import {
   type StepDefinition,
   step,
   testCaseId,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 
 export interface BindingTestCase {
   number: number;

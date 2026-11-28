@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { pid, presentation } from '@rp-conformance/core';
-import { base64url, createTestPki, forgePresentation, PID_QUERY, signCompactJws, type TestPki } from '@rp-conformance/forge';
+import { pid, presentation } from '@eudi-pcaf/core';
+import { base64url, createTestPki, forgePresentation, PID_QUERY, signCompactJws, type TestPki } from '@eudi-pcaf/forge';
 import { compactDecrypt, exportJWK, generateKeyPair, type JWK } from 'jose';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { ConformanceWallet, type DcApiCall, type HeldCredential } from '../src/index';

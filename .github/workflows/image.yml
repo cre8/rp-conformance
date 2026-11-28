@@ -1,6 +1,6 @@
 name: Harness image
 
-# Builds the harness image (Dockerfile) and publishes it to ghcr.io/cre8/rp-conformance: `main` and `sha-<commit>` from
+# Builds the harness image (Dockerfile) and publishes it to ghcr.io/cre8/eudi-pcaf: `main` and `sha-<commit>` from
 # main, `<version>`, `v<major>` and `latest` from a tag v<version>. The GitHub Action (action.yml) of a tag or of main
 # uses the image of the same name. A pull request that touches the image or the action builds the image without
 # publishing it and runs the action from its source against the reference RP, with a built-in adapter and with an
@@ -43,9 +43,9 @@ jobs:
         run: |
           mkdir -p .action-test
           cat > .action-test/adapter.ts <<'EOF'
-          // Stands for an adapter of the user's own: it imports @rp-conformance/core from the image.
-          import { durationMs } from '@rp-conformance/core';
-          if (durationMs('PT1M') !== 60_000) throw new Error('@rp-conformance/core did not resolve');
+          // Stands for an adapter of the user's own: it imports @eudi-pcaf/core from the image.
+          import { durationMs } from '@eudi-pcaf/core';
+          if (durationMs('PT1M') !== 60_000) throw new Error('@eudi-pcaf/core did not resolve');
           export { createAdapter } from '/app/adapters/reference/src/index.ts';
           EOF
           cp adapters/reference/ics.yaml .action-test/ics.yaml
@@ -54,7 +54,7 @@ jobs:
         with:
           adapter: ./.action-test/adapter.ts
           ics: .action-test/ics.yaml
-          image: rp-conformance:action
+          image: eudi-pcaf:action
           only: RP_WS_SM_Revocation_001a
           flows: redirect
           artifact-name: action-module
@@ -85,7 +85,10 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/cre8/rp-conformance
+          # The image name before the rename to eudi-pcaf keeps being published, so pinned users keep getting updates.
+          images: |
+            ghcr.io/cre8/eudi-pcaf
+            ghcr.io/cre8/rp-conformance
           tags: |
             type=raw,value=main,enable={{is_default_branch}}
             type=sha,prefix=sha-,enable={{is_default_branch}}

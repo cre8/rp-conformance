@@ -1,6 +1,6 @@
 // PP_WS_IA_Deferred (`P-DEF`, issuer catalogue section 5.1.2): a deferred credential response, followed at the
 // deferred credential endpoint.
-import { defineIssuerTestCase, type FormatVariant, type GrantVariant, relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, type GrantVariant, relevancy } from '@eudi-pcaf/core';
 import { iss, issuance, preconditions, rej, technologyOf } from '../../wording';
 import { both, conf, FORMAT, faultStep, GRANT, MAIN, profileOf, ufPreconditions } from '../session';
 

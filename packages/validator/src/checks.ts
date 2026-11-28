@@ -1,4 +1,4 @@
-import type { CheckId, CheckResult, CheckStatus } from '@rp-conformance/core';
+import type { CheckId, CheckResult, CheckStatus } from '@eudi-pcaf/core';
 
 /**
  * `first-failure`: stop at the first failed check, as a Relying Party does (no status list is fetched for an invalid

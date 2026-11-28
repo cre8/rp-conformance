@@ -15,7 +15,7 @@ docker compose -f adapters/eudiplo/docker-compose.yml up -d --wait
 ```
 
 ```bash
-pnpm rp-conformance run --adapter eudiplo --known-findings adapters/eudiplo/known-findings.yaml
+pnpm eudi-pcaf run --adapter eudiplo --known-findings adapters/eudiplo/known-findings.yaml
 ```
 
 `EUDIPLO_IMAGE=ghcr.io/eudiplo/eudiplo:main` runs the unreleased main image instead.
@@ -56,9 +56,9 @@ For a second EUDIPLO next to a running one, give it another project name and por
 port, the `PUBLIC_URL` and the adapter's default URL together:
 
 ```bash
-EUDIPLO_PORT=3100 docker compose -p rp-conformance-eudiplo-2 -f adapters/eudiplo/docker-compose.yml up -d --wait
+EUDIPLO_PORT=3100 docker compose -p eudi-pcaf-eudiplo-2 -f adapters/eudiplo/docker-compose.yml up -d --wait
 ```
 
 ```bash
-EUDIPLO_PORT=3100 pnpm rp-conformance run --adapter eudiplo
+EUDIPLO_PORT=3100 pnpm eudi-pcaf run --adapter eudiplo
 ```

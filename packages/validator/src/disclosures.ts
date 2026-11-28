@@ -1,7 +1,7 @@
 // The disclosures of an SD-JWT (RFC 9901 section 7.1, steps 2d to 5), processed by the reference validator itself so
 // that each defect of IssuerIntegrity_008 to _012 is named: the hash algorithm, the form of each disclosure, digests that
 // occur twice, claim names that are reserved or already present, and disclosures no digest references.
-import { base64url, sha256 } from '@rp-conformance/forge';
+import { base64url, sha256 } from '@eudi-pcaf/forge';
 import { parseCertificate } from '@owf/x509';
 import { fail } from './status-list';
 

@@ -1,8 +1,8 @@
 // Issue 26: self-validation of the checks of `PP_WS_SM_IssuerIntegrity`, `PP_WS_SM_Unlinkability` and
 // `PP_Inf_SM_TrustMechanisms_008`: a credential the forge issues as the catalogue requires passes each check, and a
 // credential or set of credentials with one defect fails exactly the check of that rule.
-import { ISSUER_INTEGRITY_CHECKS } from '@rp-conformance/core';
-import { base64url, createTestPki, type EcKeyPair, generateEcKeyPair, issueMdoc, issuePidSdJwtVc, type TestPki } from '@rp-conformance/forge';
+import { ISSUER_INTEGRITY_CHECKS } from '@eudi-pcaf/core';
+import { base64url, createTestPki, type EcKeyPair, generateEcKeyPair, issueMdoc, issuePidSdJwtVc, type TestPki } from '@eudi-pcaf/forge';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
   checkIssuerIntegrity,

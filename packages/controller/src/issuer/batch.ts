@@ -4,10 +4,10 @@
 // (OpenID4VCI 1.0 section 8.2, `proofs.jwt` with several entries), each with the same `aud`, `nonce` and KA as the
 // first. The credentials of the answer are then matched to their proof keys by the key they are bound to. Issue 25's
 // session client implements batch issuance in full; this covers the valid batch only.
-import { base64url, decodeCbor, decodeJws, type EcKeyPair } from '@rp-conformance/forge';
-import { type IssuedCredential, keyProofParts, type MessageHooks, type WalletUnitBinding, walletUnitOf } from '@rp-conformance/issuer-wallet';
-import { asMap, deviceKeyOfMso, readIssuerSigned, sameEcKey } from '@rp-conformance/validator';
-import { keySigner, signJwt, type TestWalletProvider, type WalletUnitId } from '@rp-conformance/wallet-provider';
+import { base64url, decodeCbor, decodeJws, type EcKeyPair } from '@eudi-pcaf/forge';
+import { type IssuedCredential, keyProofParts, type MessageHooks, type WalletUnitBinding, walletUnitOf } from '@eudi-pcaf/issuer-wallet';
+import { asMap, deviceKeyOfMso, readIssuerSigned, sameEcKey } from '@eudi-pcaf/validator';
+import { keySigner, signJwt, type TestWalletProvider, type WalletUnitId } from '@eudi-pcaf/wallet-provider';
 
 export interface BatchBinding {
   unit: WalletUnitBinding;

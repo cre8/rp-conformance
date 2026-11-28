@@ -1,10 +1,10 @@
 // The fault layer (harness design section 4.3): pure, named functions that turn a valid artifact into one with exactly
-// one deliberate fault. The catalogue (point, target check, FCAF wording) is FAULTS in @rp-conformance/core; this
+// one deliberate fault. The catalogue (point, target check, FCAF wording) is FAULTS in @eudi-pcaf/core; this
 // module implements every entry, at three points: the issued credential, the Status List Token, the Authorization
 // Response.
 import { createHash, createHmac, createPublicKey, generateKeyPairSync, randomBytes, randomUUID, sign as nodeSign } from 'node:crypto';
 import { createDeflate } from 'node:zlib';
-import { type FaultId, faultInfo, type FaultPoint, type Flow } from '@rp-conformance/core';
+import { type FaultId, faultInfo, type FaultPoint, type Flow } from '@eudi-pcaf/core';
 import { CompactEncrypt, CompactSign, exportJWK, generateKeyPair, importJWK, type JWK } from 'jose';
 import { createCertificate } from '@owf/x509';
 import { base64url, derEcdsaSignature, type EcKeyPair, randomSerial, sha256, signEs256 } from './crypto';

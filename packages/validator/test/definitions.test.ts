@@ -1,6 +1,6 @@
-import { type Flow, faultInfo, faultsOf, flowsOf, type TestCaseDefinition } from '@rp-conformance/core';
-import { executableDefinitions } from '@rp-conformance/definitions';
-import { defaultEntitiesOf, trustedListEntitiesOf } from '@rp-conformance/forge';
+import { type Flow, faultInfo, faultsOf, flowsOf, type TestCaseDefinition } from '@eudi-pcaf/core';
+import { executableDefinitions } from '@eudi-pcaf/definitions';
+import { defaultEntitiesOf, trustedListEntitiesOf } from '@eudi-pcaf/forge';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { Fixture, type Transaction } from './fixture';
 

@@ -1,4 +1,4 @@
-import { type RequestLogEntry, type RunningServer, type ServerOptions, sendJson, startServer } from '@rp-conformance/core';
+import { type RequestLogEntry, type RunningServer, type ServerOptions, sendJson, startServer } from '@eudi-pcaf/core';
 
 export interface TrustInfrastructureOptions extends ServerOptions {
   /** Base URL under which the Relying Party reaches the lists, for example `http://host.docker.internal:7002`. */

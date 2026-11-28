@@ -58,7 +58,7 @@ jobs:
           test "$revision" = "$EUDIPLO_REVISION" || { echo "::error::image revision $revision is not the pinned $EUDIPLO_REVISION"; exit 1; }
       - name: Issuer suite against EUDIPLO
         run: >-
-          pnpm rp-conformance issuer run --adapter eudiplo
+          pnpm eudi-pcaf issuer run --adapter eudiplo
           --ics adapters/issuer-eudiplo/ics.yaml
           --known-findings adapters/issuer-eudiplo/known-findings.yaml
           --report-dir reports

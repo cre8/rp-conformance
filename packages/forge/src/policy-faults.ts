@@ -2,7 +2,7 @@
 // (RP_PP_SM_Revocation_014, decided by the policy the Relying Party declares), an SD-JWT VC issued in the future
 // (RP_WS_SM_Validity_004, recorded only) and an MSO status element that names the certificate of the Status List Token
 // (RP_PP_SM_Revocation_031, valid). The fault layer (faults.ts, faults-cose.ts) calls these first.
-import type { FaultId } from '@rp-conformance/core';
+import type { FaultId } from '@eudi-pcaf/core';
 import { type CborMap, coseValue, decodeCbor, decodeEmbedded, embedded, encodeCbor, readCose, sigStructure } from './cbor';
 import { signEs256 } from './crypto';
 import { resignJws } from './jose';

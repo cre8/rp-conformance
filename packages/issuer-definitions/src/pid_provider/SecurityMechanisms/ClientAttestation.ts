@@ -1,7 +1,7 @@
 // PP_WS_SM_ClientAttestation: the WIA as OAuth client attestation and its PoP, at the token endpoint (and at PAR once
 // the authorization code flow exists), issuer catalogue section 5.1.3. One definition per test case and variant; the
 // variants run so far are `SD` × `PA`, as for the positive control `PP_WS_IA_MainInteraction_001`.
-import { type FormatVariant, type GrantVariant, type IssuerTestCaseDefinition, relevancy } from '@rp-conformance/core';
+import { type FormatVariant, type GrantVariant, type IssuerTestCaseDefinition, relevancy } from '@eudi-pcaf/core';
 import { FORMAT_NAMES, GRANT_NAMES } from '../../wording';
 import { faultStep, issuanceStep, maintenanceConf, rejected, revocationStep, STATUS_LIST_FAULTS, STATUS_LIST_HTTP, statusListSteps, validStep, securityTestCase } from './attestations';
 

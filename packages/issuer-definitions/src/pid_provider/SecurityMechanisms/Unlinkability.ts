@@ -1,7 +1,7 @@
 // PP_WS_SM_Unlinkability (issue 26; issuer catalogue section 5.1.3): what makes two credentials of the Provider linkable.
 // `_001` and `_002` compare 20 issuances to `CW-1` and `CW-2`, `_003` and `_004` batches, `_005` one credential with the
 // WIA and KA it was issued for. Each runs in `SD` and `MD`, in `PA` (`AC` follows with the authorization code flow).
-import { defineIssuerTestCase, type FormatVariant, type IssuerInspectionCheck, type IssuerStepDefinition, issuerProfiles, relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, type IssuerInspectionCheck, type IssuerStepDefinition, issuerProfiles, relevancy } from '@eudi-pcaf/core';
 import { inspected, inspectStep, unitIssuance } from '../../inspection';
 import { FORMAT_NAMES, pidProfile, preconditions, technologyOf } from '../../wording';
 

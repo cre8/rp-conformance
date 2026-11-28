@@ -1,6 +1,6 @@
 // Class RP_TB: the test book of the Relying Party (rp-test-catalogue.md section 5.4). Requirements without a standard
 // interface, checked by inspection; every run reports them as REVIEW with their method.
-import { defineTestBookItem, relevancy, type TestBookItem } from '@rp-conformance/core';
+import { defineTestBookItem, relevancy, type TestBookItem } from '@eudi-pcaf/core';
 
 export const testBook: TestBookItem[] = [
   {

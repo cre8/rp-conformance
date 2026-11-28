@@ -1,7 +1,7 @@
 // Issue 26: the versions of `TL-WP` a `trust-list` step publishes (PP_Inf_SM_TrustMechanisms), built with the RP
 // harness's trust-list faults, and the Wallet Units of `WP-C` and `WP-W` they are about.
-import { base64url, buildTrustListVersion, createTestPki, type TestPki } from '@rp-conformance/forge';
-import { StatusProvider } from '@rp-conformance/status-provider';
+import { base64url, buildTrustListVersion, createTestPki, type TestPki } from '@eudi-pcaf/forge';
+import { StatusProvider } from '@eudi-pcaf/status-provider';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { anchorsInList, serviceFor, TestWalletProvider, tlWpEntities } from '../src/index';
 

@@ -1,4 +1,4 @@
-import { isExecutable, type IssuerTestCaseDefinition } from '@rp-conformance/core';
+import { isExecutable, type IssuerTestCaseDefinition } from '@eudi-pcaf/core';
 import { definitions as pidMdoc } from './pid_provider/DataModel/PidMdoc';
 import { definitions as pidSdJwt } from './pid_provider/DataModel/PidSdJwt';
 import { definitions as portrait } from './pid_provider/DataModel/Portrait';

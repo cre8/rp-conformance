@@ -1,4 +1,4 @@
-import { isExecutable, type TestCaseDefinition } from '@rp-conformance/core';
+import { isExecutable, type TestCaseDefinition } from '@eudi-pcaf/core';
 import { definitions as ppRevocation } from './pid_provider/SecurityMechanisms/Revocation';
 import { definitions as mainInteraction, furtherDefinitions as furtherMainInteraction } from './wallet_solution/Interaction/MainInteraction';
 import { definitions as infTrustMechanisms } from './infrastructure/SecurityMechanisms/TrustMechanisms';

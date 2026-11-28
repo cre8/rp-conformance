@@ -1,6 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import { hostname } from 'node:os';
-import { parseTestCaseId } from '@rp-conformance/core';
+import { parseTestCaseId } from '@eudi-pcaf/core';
 import type { RunReport, TestBookRecord, TestCaseRecord } from './runner';
 
 /** XML 1.0 text: escaped, without the control characters XML does not allow. */
@@ -90,7 +90,7 @@ export function junitXml(report: RunReport): string {
   total.skipped += testBook.length;
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    `<testsuites name="${xml(`rp-conformance ${run.id}`)}" ${attributes(total)}>`,
+    `<testsuites name="${xml(`eudi-pcaf ${run.id}`)}" ${attributes(total)}>`,
     ...suites,
     '</testsuites>',
     '',

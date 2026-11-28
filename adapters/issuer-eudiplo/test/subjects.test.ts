@@ -1,6 +1,6 @@
 // The claims the adapter seeds are the suite's test subjects (core PID_TEST_SUBJECTS) in each format's names, with the
 // ages and dates the PID derives at issuance.
-import { PID_TEST_SUBJECTS, pidClaimsOf } from '@rp-conformance/core';
+import { PID_TEST_SUBJECTS, pidClaimsOf } from '@eudi-pcaf/core';
 import { describe, expect, it } from 'vitest';
 import { PID_SUBJECTS, pidClaimsFor } from '../src/index';
 

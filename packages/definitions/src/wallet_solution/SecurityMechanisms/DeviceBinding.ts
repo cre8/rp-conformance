@@ -12,7 +12,7 @@ import {
   rejOrAcc,
   relevancy,
   step,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 import { bindingTestCase, oidf, rejected } from './binding';
 
 const sdJwtVc = formats.sdJwtVc;

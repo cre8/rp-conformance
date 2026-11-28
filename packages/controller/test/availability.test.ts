@@ -1,9 +1,9 @@
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ReferenceAdapter } from '@rp-conformance/adapter-reference';
-import { acc, defineTestCase, ics, pid, preconditions, presentationStep, type RelyingPartyResult, relevancy, step } from '@rp-conformance/core';
-import { executableDefinitions } from '@rp-conformance/definitions';
+import { ReferenceAdapter } from '@eudi-pcaf/adapter-reference';
+import { acc, defineTestCase, ics, pid, preconditions, presentationStep, type RelyingPartyResult, relevancy, step } from '@eudi-pcaf/core';
+import { executableDefinitions } from '@eudi-pcaf/definitions';
 import { describe, expect, it } from 'vitest';
 import { loadIcs } from '../src/ics';
 import { runConformance } from '../src/runner';
@@ -43,7 +43,7 @@ describe('a Relying Party that stops answering', () => {
       adapter: new DyingAdapter(),
       ics,
       definitions: [control, twoPresentations('RP_WS_SM_Validity_901_UF'), twoPresentations('RP_WS_SM_Validity_902_UF')],
-      reportDir: await mkdtemp(join(tmpdir(), 'rp-conformance-')),
+      reportDir: await mkdtemp(join(tmpdir(), 'eudi-pcaf-')),
       harnessHost: '127.0.0.1',
       // One flow, so the Relying Party stops after the control and the first presentation of 901.
       flows: ['redirect'],

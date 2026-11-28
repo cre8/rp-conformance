@@ -1,7 +1,7 @@
 // `TL-WP` as the issuer suite needs it (issuer catalogue section 3.2): which service of a Wallet Provider anchors which
 // artifact, its versions, and publishing them through the Test Trust Infrastructure.
-import { buildSealedLote, type CertifiedKey, defaultEntitiesOf, LIST_PROFILES, type TestEntity, type TestPki } from '@rp-conformance/forge';
-import type { TrustInfrastructure } from '@rp-conformance/trust-infrastructure';
+import { buildSealedLote, type CertifiedKey, defaultEntitiesOf, LIST_PROFILES, type TestEntity, type TestPki } from '@eudi-pcaf/forge';
+import type { TrustInfrastructure } from '@eudi-pcaf/trust-infrastructure';
 
 /** What a Wallet Provider signs: WIAs, KAs, or the status lists of both. */
 export type WalletProviderPurpose = 'wia' | 'ka' | 'status';

@@ -15,12 +15,12 @@ import {
   type RunningServer,
   sendJson,
   startServer,
-} from '@rp-conformance/core';
-import { createTestPki, decodeJws, LIST_PROFILES, type TestPki } from '@rp-conformance/forge';
-import { StatusProvider } from '@rp-conformance/status-provider';
-import { TrustInfrastructure } from '@rp-conformance/trust-infrastructure';
-import { checkLote, type LoadedList, validateIssuerRequest } from '@rp-conformance/validator';
-import { CLIENT_ATTESTATION_HEADER, CLIENT_ATTESTATION_POP_HEADER, publishTlWp, TestWalletProvider, WALLET_UNITS, type WalletUnitId } from '@rp-conformance/wallet-provider';
+} from '@eudi-pcaf/core';
+import { createTestPki, decodeJws, LIST_PROFILES, type TestPki } from '@eudi-pcaf/forge';
+import { StatusProvider } from '@eudi-pcaf/status-provider';
+import { TrustInfrastructure } from '@eudi-pcaf/trust-infrastructure';
+import { checkLote, type LoadedList, validateIssuerRequest } from '@eudi-pcaf/validator';
+import { CLIENT_ATTESTATION_HEADER, CLIENT_ATTESTATION_POP_HEADER, publishTlWp, TestWalletProvider, WALLET_UNITS, type WalletUnitId } from '@eudi-pcaf/wallet-provider';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { applyIssuerFault, type IssuanceEvidence, IssuanceClient, type IssuerFaultContext, KEY_ATTESTATION_HEADER } from '../src/index';
 

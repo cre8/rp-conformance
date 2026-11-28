@@ -13,8 +13,8 @@
 // - `pid-portrait`: after a portrait opt-out, the portrait is present and empty (PID_03).
 //
 // Every function returns the detail of a passed check or throws (`fail`); the caller records it with `CheckRecorder`.
-import { ageOf, PID_SD_JWT_NAMES, type PidSubject, pidClaimsOf } from '@rp-conformance/core';
-import { Tagged } from '@rp-conformance/forge';
+import { ageOf, PID_SD_JWT_NAMES, type PidSubject, pidClaimsOf } from '@eudi-pcaf/core';
+import { Tagged } from '@eudi-pcaf/forge';
 import type { IssuerSignedElement } from './mdoc';
 import { fail } from './status-list';
 

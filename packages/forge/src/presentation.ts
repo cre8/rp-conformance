@@ -3,7 +3,7 @@
 // Appendix B.2.6, valid or with one presentation fault. The Conformance Wallet and the self-validation build it with the
 // same function, so the self-validated presentations are the ones the Relying Party receives.
 import { createHmac, generateKeyPairSync, type KeyObject, randomBytes, sign as nodeSign } from 'node:crypto';
-import { type FaultId, faultInfo } from '@rp-conformance/core';
+import { type FaultId, faultInfo } from '@eudi-pcaf/core';
 import { type CborMap, COSE_ALG, coseValue, decodeCbor, encodeCbor, readCose } from './cbor';
 import { base64url, type EcKeyPair, generateEcKeyPair, publicJwkToPem, sha256 } from './crypto';
 import { flipBitInBytes, OTHER_DOCTYPE } from './faults-cose';

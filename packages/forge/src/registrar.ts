@@ -6,7 +6,7 @@
 import { createAccessCertificate } from '@owf/eudi-access-certificate';
 import { signWRPRC, WRP_ENTITLEMENTS, wrprc } from '@owf/eudi-registration-certificate';
 import { type Certificate, createCertificate, type NameAttributeInput } from '@owf/x509';
-import type { EnrolledCertificate, EnrolmentRequest } from '@rp-conformance/core';
+import type { EnrolledCertificate, EnrolmentRequest } from '@eudi-pcaf/core';
 import { base64url, type EcKeyPair, generateEcKeyPair, randomSerial, sha256, signEs256 } from './crypto';
 import { verifyCsr } from './csr';
 import { annexBExtensions, type CertifiedKey, documentSignerValidity, type TestEntity, type TestPki } from './pki';

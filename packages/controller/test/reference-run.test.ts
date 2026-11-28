@@ -1,9 +1,9 @@
 import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ReferenceAdapter } from '@rp-conformance/adapter-reference';
-import { flowsOf } from '@rp-conformance/core';
-import { executableDefinitions as definitions } from '@rp-conformance/definitions';
+import { ReferenceAdapter } from '@eudi-pcaf/adapter-reference';
+import { flowsOf } from '@eudi-pcaf/core';
+import { executableDefinitions as definitions } from '@eudi-pcaf/definitions';
 import { describe, expect, it } from 'vitest';
 import { loadIcs } from '../src/ics';
 import { changesTrust, runConformance, selectTestCases } from '../src/runner';
@@ -12,7 +12,7 @@ import { changesTrust, runConformance, selectTestCases } from '../src/runner';
 // it runs in (redirects, and the DC API through the shim), which also proves that each positive control is reachable.
 describe('run against the reference Relying Party', () => {
   it('every executable test definition passes in both flows', async () => {
-    const reportDir = await mkdtemp(join(tmpdir(), 'rp-conformance-'));
+    const reportDir = await mkdtemp(join(tmpdir(), 'eudi-pcaf-'));
     const ics = await loadIcs(new URL('../../../adapters/reference/ics.yaml', import.meta.url).pathname);
     const { report, reportPath } = await runConformance({ adapter: new ReferenceAdapter(), ics, definitions, reportDir, harnessHost: '127.0.0.1' });
     const notPassed = report.results
@@ -41,7 +41,7 @@ describe('run against the reference Relying Party', () => {
   // Harness design section 6: with concurrency the verdicts stay the same, the trust-changing test cases run after the
   // others, and the report keeps definition order.
   it('runs test cases concurrently with the same verdicts and order', async () => {
-    const reportDir = await mkdtemp(join(tmpdir(), 'rp-conformance-'));
+    const reportDir = await mkdtemp(join(tmpdir(), 'eudi-pcaf-'));
     const ics = await loadIcs(new URL('../../../adapters/reference/ics.yaml', import.meta.url).pathname);
     const only = ['RP_PP_SM_Revocation_00*', 'RP_Inf_SM_TrustMechanisms_001', 'RP_WS_SM_TrustMechanisms_007a_UF'];
     const lines: string[] = [];

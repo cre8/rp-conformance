@@ -1,6 +1,6 @@
 // The evaluators of `ISS` and `REJ` (issuer harness design section 6.3), and how the runner turns the issuance
 // client's evidence into what they read.
-import type { CheckResult } from '@rp-conformance/core';
+import type { CheckResult } from '@eudi-pcaf/core';
 import { describe, expect, it } from 'vitest';
 import { evaluateIssuance, evaluateIssued, evaluateRejected, type IssuanceObservation, type ObservedExchange } from '../src/issuer/evaluate';
 import { observationOf } from '../src/issuer/runner';

@@ -1,8 +1,8 @@
 // How the Test Status Provider answers for the status list of a step (RP_PP_IA_Supportive): the URI the credential
 // references and the behaviour registered for it.
 import { createServer } from 'node:net';
-import { durationMs, type Ics, type StatusEndpoint, type StatusListSpec } from '@rp-conformance/core';
-import type { StatusBehaviour } from '@rp-conformance/status-provider';
+import { durationMs, type Ics, type StatusEndpoint, type StatusListSpec } from '@eudi-pcaf/core';
+import type { StatusBehaviour } from '@eudi-pcaf/status-provider';
 
 /** How long after the declared timeout (ICS RP.R.6) a slow endpoint answers. */
 export const SLOW_MARGIN_MS = 10_000;

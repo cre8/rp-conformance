@@ -1,8 +1,8 @@
 {
-  "name": "@rp-conformance/definitions",
+  "name": "@eudi-pcaf/definitions",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
-  "dependencies": {"@rp-conformance/core": "workspace:*"}
+  "dependencies": {"@eudi-pcaf/core": "workspace:*"}
 }

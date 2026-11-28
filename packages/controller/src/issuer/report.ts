@@ -2,7 +2,7 @@
 // section 5): one JUnit test suite per variant, one test case per FCAF test case.
 import { writeFile } from 'node:fs/promises';
 import { hostname } from 'node:os';
-import { parseIssuerTestCaseId } from '@rp-conformance/core';
+import { parseIssuerTestCaseId } from '@eudi-pcaf/core';
 import type { IssuerRunReport, IssuerTestCaseRecord } from './runner';
 
 const cell = (text: string) => text.replace(/\|/g, '\\|').replace(/\n/g, ' ');

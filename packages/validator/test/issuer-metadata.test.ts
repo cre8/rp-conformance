@@ -1,7 +1,7 @@
 // The metadata and offer checks of the issuer suite (issue 24, `OBS-META`): metadata as the Test Registrar enrols a
 // Provider passes every check, and each faulty artifact fails exactly its check and no other (issuer harness design
 // section 7, level 1). The signed metadata is signed with the enrolled access certificate's key.
-import { createTestPki, enrolSut, type Enrolment, PID_DOCTYPE, PID_VCT, type TestPki } from '@rp-conformance/forge';
+import { createTestPki, enrolSut, type Enrolment, PID_DOCTYPE, PID_VCT, type TestPki } from '@eudi-pcaf/forge';
 import { CompactSign, importJWK } from 'jose';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { type FetchedArtifact, type MetadataObservation, validateCredentialOffer, validateIssuerMetadata, wellKnownMetadataUrl } from '../src/index';

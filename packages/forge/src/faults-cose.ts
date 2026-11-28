@@ -2,7 +2,7 @@
 // format and of the identifier list. Each one decodes the valid artifact as raw CBOR, changes it and assembles and
 // signs the COSE structure again, so no library stands between a valid artifact and its deliberate fault.
 import { createPublicKey, generateKeyPairSync, randomUUID, sign as nodeSign, createHmac } from 'node:crypto';
-import { type FaultId, faultInfo, type FaultPoint } from '@rp-conformance/core';
+import { type FaultId, faultInfo, type FaultPoint } from '@eudi-pcaf/core';
 import { createCertificate } from '@owf/x509';
 import {
   type CborMap,

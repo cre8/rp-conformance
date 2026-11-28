@@ -5,7 +5,7 @@
 // involved). The rules are written out here from RFC 6749, RFC 7636, RFC 9126 and OpenID4VCI 1.0, not imported from the
 // issuance client, so a wrong rule in the client is not repeated by the validator.
 import { createHash } from 'node:crypto';
-import { AUTHORIZATION_RESPONSE_CHECKS, type CheckResult } from '@rp-conformance/core';
+import { AUTHORIZATION_RESPONSE_CHECKS, type CheckResult } from '@eudi-pcaf/core';
 import { CheckRecorder, NotApplicable, type ValidationMode, type ValidationResult } from './checks';
 
 /** Request parameters by name; undefined for one that was not sent. */

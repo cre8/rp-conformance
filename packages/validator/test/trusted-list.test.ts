@@ -17,7 +17,7 @@ import {
   TSL_SIGNING_EXTENDED_KEY_USAGE,
   TSL_TYPE,
   type TestPki,
-} from '@rp-conformance/forge';
+} from '@eudi-pcaf/forge';
 import { DOMParser } from '@xmldom/xmldom';
 import { createHash } from 'node:crypto';
 import { beforeAll, describe, expect, it } from 'vitest';

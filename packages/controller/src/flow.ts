@@ -13,10 +13,10 @@ import type {
   RelyingPartyAdapter,
   RelyingPartyResult,
   StepDefinition,
-} from '@rp-conformance/core';
-import { FLOW_EXPECTATION_CODES } from '@rp-conformance/core';
-import type { DcApiOutcome, DcApiShim } from '@rp-conformance/dc-api-shim';
-import type { ConformanceWallet, DcApiAnswer, HttpExchange, PresentationEvidence } from '@rp-conformance/wallet';
+} from '@eudi-pcaf/core';
+import { FLOW_EXPECTATION_CODES } from '@eudi-pcaf/core';
+import type { DcApiOutcome, DcApiShim } from '@eudi-pcaf/dc-api-shim';
+import type { ConformanceWallet, DcApiAnswer, HttpExchange, PresentationEvidence } from '@eudi-pcaf/wallet';
 import { type Evaluation, evaluateReject, worst } from './evaluate';
 import type { StepRecord } from './runner';
 

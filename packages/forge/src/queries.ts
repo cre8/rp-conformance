@@ -1,4 +1,4 @@
-import type { DcqlQuery, DefaultQueryId } from '@rp-conformance/core';
+import type { DcqlQuery, DefaultQueryId } from '@eudi-pcaf/core';
 import { CREDENTIAL_A_DOCTYPE, CREDENTIAL_A_NAMESPACE, CREDENTIAL_A_VCT } from './attestation';
 import { PID_DOCTYPE, PID_NAMESPACE } from './mdoc';
 import { PID_VCT } from './pid';

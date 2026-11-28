@@ -4,7 +4,7 @@
 import { createHash, randomBytes, X509Certificate } from 'node:crypto';
 import { type CallbackContext, type Jwk, setGlobalConfig } from '@openid4vc/oauth2';
 import { Openid4vpClient } from '@openid4vc/openid4vp';
-import { type CapturedRequest, type DcqlQuery, type FaultId, faultInfo } from '@rp-conformance/core';
+import { type CapturedRequest, type DcqlQuery, type FaultId, faultInfo } from '@eudi-pcaf/core';
 import {
   base64url,
   buildAuthorizationResponse,
@@ -19,8 +19,8 @@ import {
   type Oid4vpHandover,
   type Secp256k1KeyPair,
   verifyEs256,
-} from '@rp-conformance/forge';
-import { validatePath } from '@rp-conformance/validator';
+} from '@eudi-pcaf/forge';
+import { validatePath } from '@eudi-pcaf/validator';
 import { type Certificate, parseCertificate } from '@owf/x509';
 import type { JWK } from 'jose';
 

@@ -29,7 +29,7 @@ import {
   step,
   testCaseId,
   type WalletBehaviour,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 import { requestTestCase } from '../requests';
 
 const CONTROL = 'RP_WS_IA_MainInteraction_001a';

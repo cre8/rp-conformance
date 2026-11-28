@@ -1,7 +1,7 @@
 // The issuer definitions are consistent: valid IDs, one definition per test case and variant, the variant's profiles
 // in the profile applicability, and every configuration reference declared by the reference Provider's ICS.
 import { readFileSync } from 'node:fs';
-import { defineIssuerTestCase, ISSUER_OUTPUT_CHECKS, isExecutable, parseIssuerTestCaseId, variantOf } from '@rp-conformance/core';
+import { defineIssuerTestCase, ISSUER_OUTPUT_CHECKS, isExecutable, parseIssuerTestCaseId, variantOf } from '@eudi-pcaf/core';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { executableIssuerDefinitions, issuerDefinitions } from '../src/index';
@@ -78,7 +78,7 @@ describe('issuer definitions: grants', () => {
 
   it('has the positive control in SD+AC, and every grant fault the definitions name is of the variant’s grant', async () => {
     expect(executableIssuerDefinitions.some((d) => d.id === 'PP_WS_IA_MainInteraction_001' && variantOf(d) === 'SD+AC')).toBe(true);
-    const { GRANT_FAULTS, isGrantFault } = await import('@rp-conformance/core');
+    const { GRANT_FAULTS, isGrantFault } = await import('@eudi-pcaf/core');
     for (const definition of issuerDefinitions) {
       for (const step of definition.steps) {
         if (step.run?.kind !== 'issuance') continue;

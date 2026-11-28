@@ -8,10 +8,10 @@
 // by a function of its own (`jwts.ts`, `requests.ts`) and passes the hooks before it is signed or sent.
 import { createHash, randomBytes } from 'node:crypto';
 import { type CallbackContext, setGlobalConfig } from '@openid4vc/oauth2';
-import { EXPIRY_MARGIN_SECONDS, type GrantFaultId, TX_CODE_WRONG_ATTEMPTS } from '@rp-conformance/core';
+import { EXPIRY_MARGIN_SECONDS, type GrantFaultId, TX_CODE_WRONG_ATTEMPTS } from '@eudi-pcaf/core';
 import { type CredentialOfferObject, determineAuthorizationServerForCredentialOffer, type IssuerMetadataResult, Openid4vciClient } from '@openid4vc/openid4vci';
-import { base64url, type EcKeyPair, generateEcKeyPair } from '@rp-conformance/forge';
-import { type JwtParts, keySigner, signJwt, type TestWalletProvider, type WalletUnitId, wiaPopParts } from '@rp-conformance/wallet-provider';
+import { base64url, type EcKeyPair, generateEcKeyPair } from '@eudi-pcaf/forge';
+import { type JwtParts, keySigner, signJwt, type TestWalletProvider, type WalletUnitId, wiaPopParts } from '@eudi-pcaf/wallet-provider';
 import { type HttpExchange, type HttpRequestMessage, type HttpResponseRecord, type IssuanceStep, jsonOf, oauthErrorOf, recordingFetch, type RequestHook, send } from './http';
 import { dpopProofParts, keyProofParts } from './jwts';
 import { applyAuthorizationFault, applyTokenRequestFault, newCodeVerifier, s256Challenge, type TokenForm, wrongTxCode } from './grant-faults';

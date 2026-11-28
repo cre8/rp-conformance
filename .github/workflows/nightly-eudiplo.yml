@@ -67,11 +67,11 @@ jobs:
           created=$(docker image inspect "$EUDIPLO_IMAGE" --format '{{index .Config.Labels "org.opencontainers.image.created"}}')
           echo "EUDIPLO \`$EUDIPLO_IMAGE\`: revision \`$revision\`, \`$digest\`, built $created" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Run every test case in both flows
-        run: pnpm rp-conformance run --adapter eudiplo --known-findings adapters/eudiplo/known-findings.yaml --report-dir reports
+        run: pnpm eudi-pcaf run --adapter eudiplo --known-findings adapters/eudiplo/known-findings.yaml --report-dir reports
       - name: Issuer suite against EUDIPLO
         if: ${{ !cancelled() && steps.eudiplo.outcome == 'success' }}
         run: >-
-          pnpm rp-conformance issuer run --adapter eudiplo
+          pnpm eudi-pcaf issuer run --adapter eudiplo
           --ics adapters/issuer-eudiplo/ics.yaml
           --known-findings adapters/issuer-eudiplo/known-findings.yaml
           --report-dir issuer-reports
@@ -85,7 +85,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: rp-conformance-eudiplo-${{ github.run_number }}
+          name: eudi-pcaf-eudiplo-${{ github.run_number }}
           path: reports/
           retention-days: 30
           if-no-files-found: warn

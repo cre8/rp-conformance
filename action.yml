@@ -47,11 +47,11 @@ inputs:
       example the adapter's EUDIPLO_URL or credentials); HARNESS_HOST is always passed
     default: ''
   args:
-    description: Further arguments of `rp-conformance run`, one per line
+    description: Further arguments of `eudi-pcaf run`, one per line
     default: ''
   report-dir:
     description: Where the reports go, relative to the workspace
-    default: rp-conformance-reports
+    default: eudi-pcaf-reports
   image:
     description: >-
       Image of the harness; default: the one published for the version of this action (`main` for a branch).
@@ -61,7 +61,7 @@ inputs:
     description: Upload the report directory as an artifact
     default: 'true'
   artifact-name:
-    description: "Name of the artifact; default: rp-conformance-<suite>-<job>; set it in a matrix"
+    description: "Name of the artifact; default: eudi-pcaf-<suite>-<job>; set it in a matrix"
     default: ''
   fail-on-error:
     description: Fail the step when the run fails (an unexpected FAIL, INCONCLUSIVE, REVIEW or a harness error)
@@ -92,14 +92,14 @@ runs:
         set -euo pipefail
         if [ "$IMAGE" = build ] || { [ -z "$IMAGE" ] && [ -z "$ACTION_REF" ]; }; then
           # A local action (`uses: ./`) or an explicit `build`: the image of the action's own source.
-          IMAGE=rp-conformance:action
+          IMAGE=eudi-pcaf:action
           docker build -t "$IMAGE" "$ACTION_PATH"
         elif [ -z "$IMAGE" ]; then
           case "$ACTION_REF" in
             v[0-9]*) tag="$ACTION_REF" ;;
             *) if [[ "$ACTION_REF" =~ ^[0-9a-f]{40}$ ]]; then tag="sha-${ACTION_REF:0:7}"; else tag=main; fi ;;
           esac
-          IMAGE="ghcr.io/cre8/rp-conformance:$tag"
+          IMAGE="ghcr.io/cre8/eudi-pcaf:$tag"
           docker pull --quiet "$IMAGE"
         else
           docker pull --quiet "$IMAGE" || docker image inspect "$IMAGE" > /dev/null
@@ -164,7 +164,7 @@ runs:
       if: ${{ inputs.upload-artifact == 'true' && steps.run.outputs.report != '' }}
       uses: actions/upload-artifact@v7
       with:
-        name: ${{ inputs.artifact-name || format('rp-conformance-{0}-{1}', inputs.suite, github.job) }}
+        name: ${{ inputs.artifact-name || format('eudi-pcaf-{0}-{1}', inputs.suite, github.job) }}
         path: ${{ steps.run.outputs.report }}
         retention-days: 30
 

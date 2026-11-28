@@ -1,6 +1,6 @@
 // PP_WS_SM_Validity: the validity period of what the Provider issues (issuer catalogue section 5.1.3). Every test case
 // runs `SCN-I` without mutation and checks the issued credential (`CONF`), in each format and grant.
-import { defineIssuerTestCase, type FormatVariant, type GrantVariant, relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, type GrantVariant, relevancy } from '@eudi-pcaf/core';
 import { conf, expand, OUTPUT_COMMENTS, shortConfigurationOf, shortPidProfile } from '../../output';
 import { FORMAT_NAMES, GRANT_NAMES, issuance, pidProfile, preconditions, technologyOf } from '../../wording';
 

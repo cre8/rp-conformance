@@ -45,7 +45,7 @@ Revocation chaining is a poll: every `WALLET_UNIT_STATUS_CHECK_INTERVAL` seconds
 status of every PID it follows and revokes the PIDs of a revoked wallet unit. The Compose file sets it to 30 s (default
 3600 s), so `T_chain` is 30 s plus up to 300 s of reuse of `SL-WP-A` (its `ttl`) plus `T_rev`: PT7M in the ICS.
 
-The values the adapter seeds for `SUBJ-1` and `SUBJ-2` are the suite's (`PID_TEST_SUBJECTS` of `@rp-conformance/core`),
+The values the adapter seeds for `SUBJ-1` and `SUBJ-2` are the suite's (`PID_TEST_SUBJECTS` of `@eudi-pcaf/core`),
 in [`src/subjects.ts`](src/subjects.ts) (`PID_SUBJECTS`, `pidClaimsFor`): the Conformance Wallet compares the issued
 claims with them (`pid-values`).
 
@@ -72,7 +72,7 @@ list entries.
 Not part of `pnpm test`, since it needs a running EUDIPLO:
 
 ```bash
-EUDIPLO_PORT=3216 docker compose --env-file adapters/issuer-eudiplo/reference.env -p rp-conformance-i16 -f adapters/eudiplo/docker-compose.yml up -d --wait
+EUDIPLO_PORT=3216 docker compose --env-file adapters/issuer-eudiplo/reference.env -p eudi-pcaf-i16 -f adapters/eudiplo/docker-compose.yml up -d --wait
 ```
 
 ```bash
@@ -80,7 +80,7 @@ EUDIPLO_PORT=3216 pnpm test:issuer-eudiplo
 ```
 
 ```bash
-docker compose -p rp-conformance-i16 -f adapters/eudiplo/docker-compose.yml down -v
+docker compose -p eudi-pcaf-i16 -f adapters/eudiplo/docker-compose.yml down -v
 ```
 
 It enrols the SUT by CSR with the Test Registrar, publishes `TL-WP` (as the Test Wallet Provider builds it,

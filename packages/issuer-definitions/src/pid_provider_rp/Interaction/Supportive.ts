@@ -1,7 +1,7 @@
 // PP_RP_IA_Supportive_001 to _003 (issuer catalogue section 5.2, `SCN-P`): how the Provider serves its status lists to
 // Relying Parties. No format is named: each runs in `SD` until the mdoc PID lands (issue 21), and in `PA`, since the grant
 // does not change what is published.
-import { defineIssuerTestCase, type FormatVariant, issuerProfiles, relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, issuerProfiles, relevancy } from '@eudi-pcaf/core';
 import { fetchStep, issueStep, published } from '../../status';
 import { pidProfile, preconditions, technologyOf } from '../../wording';
 

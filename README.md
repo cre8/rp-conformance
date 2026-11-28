@@ -1,10 +1,12 @@
-# RP conformance
+# eudi-pcaf
 
 Functional conformance tests for **Relying Parties** of the EUDI Wallet ecosystem: services that request and verify PIDs and attestations from Wallet Units, and, as a draft, for the **PID Providers** and **Attestation Providers** that issue them.
 
 The EU [Functional Conformance Assessment Framework](https://conformance.eudi.dev) (FCAF) tests only the Wallet Solution, and the OIDF verifier suite mostly covers happy flows. This project defines and executes the tests a Relying Party must pass, with the focus on what it must reject: expired credentials, revoked or suspended credentials, unusable status lists, wrong trust anchors, stale trust lists, faulty response encryption.
 
-Site: [rp-conformance.eudi-wallet.dev](https://rp-conformance.eudi-wallet.dev/), the **Peer Conformance Assessment Framework (PCAF)**: the Relying Party and the Provider test cases in the FCAF format, the FCAF's framework pages rewritten for these SUTs and the documents of both suites, as an unofficial preview.
+The project was called `rp-conformance` until the issuer suite was added. The old names still work for now: the `rp-conformance` CLI command, the image `ghcr.io/cre8/rp-conformance` and the `@rp-conformance/core` import in the image.
+
+Site: [pcaf.eudi-wallet.dev](https://pcaf.eudi-wallet.dev/), the **Peer Conformance Assessment Framework (PCAF)**: the Relying Party and the Provider test cases in the FCAF format, the FCAF's framework pages rewritten for these SUTs and the documents of both suites, as an unofficial preview.
 
 **Status.** All 470 test cases of the Relying Party suite run unattended, each once per presentation flow the Relying Party supports (redirects and the W3C Digital Credentials API): the 121 baseline test cases (PID, QEAA, PuB-EAA and non-qualified EAA in SD-JWT VC and mdoc format, Status List Tokens in JWT and CWT format, identifier lists, response encryption) and 199 further ones on session and device binding, issuer integrity, the trust lists, the requests the Relying Party sends, the protocol flow, the data model, combined presentations, robustness and the Polaris negative vectors (issue 10), and 150 in class `RP_AP`, the status list test cases of `RP_PP` for QEAAs, PuB-EAAs and non-qualified EAAs ([harness design §11](harness-design.md#11-delivery-phases)). The issuer suite is executable in part. A nightly GitHub Actions job runs both against EUDIPLO's main image.
 
@@ -23,7 +25,7 @@ Site: [rp-conformance.eudi-wallet.dev](https://rp-conformance.eudi-wallet.dev/),
 | [adapter-guide.md](adapter-guide.md) | How to test your own Relying Party, PID Provider or Attestation Provider: writing an adapter from the templates, the ICS, networking, reading the report |
 | [adapters/](adapters/) | RP adapters with their ICS: `reference` (the reference RP, in-process), [`eudiplo`](adapters/eudiplo/README.md) (with a Docker Compose file for EUDIPLO and PostgreSQL, and its known findings) and `template` (the starting point for an adapter of your own); issuer adapters: `issuer-eudiplo` and `issuer-template` |
 | [running.md](running.md) | Running both suites: the CLI and its options, flows, the report, EUDIPLO, the Docker image, the GitHub Action and the CI jobs |
-| [Dockerfile](Dockerfile), [action.yml](action.yml) | The harness image (`ghcr.io/cre8/rp-conformance`) and the GitHub Action that runs it, see [running.md](running.md#docker-image) |
+| [Dockerfile](Dockerfile), [action.yml](action.yml) | The harness image (`ghcr.io/cre8/eudi-pcaf`) and the GitHub Action that runs it, see [running.md](running.md#docker-image) |
 | [.github/workflows/nightly-eudiplo.yml](.github/workflows/nightly-eudiplo.yml) | Nightly run of every test case of both suites against `ghcr.io/eudiplo/eudiplo:main`, also started by hand (`workflow_dispatch`) |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Rendering the test cases into the overlays, the FCAF lint, building the site |
 
@@ -50,7 +52,7 @@ pnpm test
 ```
 
 ```bash
-pnpm rp-conformance run --adapter reference
+pnpm eudi-pcaf run --adapter reference
 ```
 
 Against EUDIPLO:
@@ -60,14 +62,14 @@ docker compose -f adapters/eudiplo/docker-compose.yml up -d --wait
 ```
 
 ```bash
-pnpm rp-conformance run --adapter eudiplo --known-findings adapters/eudiplo/known-findings.yaml
+pnpm eudi-pcaf run --adapter eudiplo --known-findings adapters/eudiplo/known-findings.yaml
 ```
 
 [running.md](running.md) explains the options, the flows and the report, and how to run the harness from its Docker image or with the GitHub Action. To test a Relying Party, PID Provider or Attestation Provider of your own, write an adapter for it: [adapter-guide.md](adapter-guide.md).
 
 ## Issuer suite
 
-Status: [issuer-harness-design.md](issuer-harness-design.md) §10. The test cases of `packages/issuer-definitions` are executable, one definition per test case and variant: the PID Provider ones, and for Attestation Providers the same objectives in the category variants `Q`, `PB` and `E` with the objectives of their own. `pnpm rp-conformance issuer --list` lists them; they are rendered to the second FCAF overlay [fcaf-overlay-issuer/](fcaf-overlay-issuer/README.md) and published on the site next to the Relying Party test cases.
+Status: [issuer-harness-design.md](issuer-harness-design.md) §10. The test cases of `packages/issuer-definitions` are executable, one definition per test case and variant: the PID Provider ones, and for Attestation Providers the same objectives in the category variants `Q`, `PB` and `E` with the objectives of their own. `pnpm eudi-pcaf issuer --list` lists them; they are rendered to the second FCAF overlay [fcaf-overlay-issuer/](fcaf-overlay-issuer/README.md) and published on the site next to the Relying Party test cases.
 
 What is not validated: the suite is proven against EUDIPLO only. Test cases EUDIPLO cannot run are NOT APPLICABLE against it and have not been seen to pass against any Provider, and test cases that FAIL against it with a known finding are not validated until EUDIPLO is fixed. [adapters/issuer-eudiplo/README.md](adapters/issuer-eudiplo/README.md) lists both, per test case.
 
@@ -76,7 +78,7 @@ docker compose --env-file adapters/issuer-eudiplo/reference.env -f adapters/eudi
 ```
 
 ```bash
-pnpm rp-conformance issuer run --adapter eudiplo --ics adapters/issuer-eudiplo/ics.yaml --known-findings adapters/issuer-eudiplo/known-findings.yaml
+pnpm eudi-pcaf issuer run --adapter eudiplo --ics adapters/issuer-eudiplo/ics.yaml --known-findings adapters/issuer-eudiplo/known-findings.yaml
 ```
 
 ## Licence

@@ -2,7 +2,7 @@
 // section 5.1.3. One definition per test case and variant; the variants run so far are `SD` × `PA`, as for the
 // positive control `PP_WS_IA_MainInteraction_001`, and `SD` × `AC` for `_007_UF`, which the catalogue restricts to the
 // authorization code flow.
-import { type FormatVariant, type GrantVariant, type IssuerTestCaseDefinition, issuerProfiles, relevancy } from '@rp-conformance/core';
+import { type FormatVariant, type GrantVariant, type IssuerTestCaseDefinition, issuerProfiles, relevancy } from '@eudi-pcaf/core';
 import { FORMAT_NAMES, GRANT_NAMES, iss, pidProfile } from '../../wording';
 import { faultStep, rejected, validStep, securityTestCase } from './attestations';
 

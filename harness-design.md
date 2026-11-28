@@ -1,4 +1,4 @@
-# RP conformance harness: design
+# PCAF harness: design
 
 Draft 0.8, 2026-11-22. It describes the tool that executes the Relying Party test cases in [fcaf-overlay](fcaf-overlay/README.md) against any Relying Party, EUDIPLO first. What is implemented, how to run it and what the nightly job does are in the [README](README.md).
 
@@ -375,7 +375,7 @@ Together with the 121 baseline test cases and the 97 of Phase 5, 470 test cases 
 
 ## 12. Decisions
 
-1. **Where the harness lives**: decided 2026-11-06, the private repository `cre8/rp-conformance`, next to the catalogue and the baseline. A move to an organisation (EUDIPLO, OpenWallet Foundation Labs) stays possible later.
+1. **Where the harness lives**: decided 2026-11-06, the private repository `cre8/eudi-pcaf`, next to the catalogue and the baseline. A move to an organisation (EUDIPLO, OpenWallet Foundation Labs) stays possible later.
 2. **Source of truth**: decided 2026-11-07, the executable test definitions; a TypeScript renderer in this monorepo produces the FCAF markdown and replaces the Python `generator/` (section 4.2).
 3. **Reference RP**: decided, a minimal RP built on the reference validator (`packages/reference-rp`, `adapters/reference`), so the harness is proven independently of EUDIPLO; CI runs every executable test case against it (section 7).
 4. **OIDF bridge**: decided, the overlapping objectives run only through the harness's own steps. The bridge (section 4.9) stays optional and is not built.

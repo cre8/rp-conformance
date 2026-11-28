@@ -2,7 +2,7 @@
 // `default_credential_A` as the forge issues it, signed by `QP-T` under its granted qualified EAA service on `TL-QEAA`,
 // passes every credential check and the attestation checks; a forge-built attestation with one defect fails exactly
 // the check of that rule. And `holder-binding` of a configuration that is not device-bound.
-import { ATTESTATION_TEST_SUBJECTS } from '@rp-conformance/core';
+import { ATTESTATION_TEST_SUBJECTS } from '@eudi-pcaf/core';
 import {
   buildTrustedLists,
   CREDENTIAL_A_DOCTYPE,
@@ -15,7 +15,7 @@ import {
   issueMdoc,
   issueSdJwtVc,
   type TestPki,
-} from '@rp-conformance/forge';
+} from '@eudi-pcaf/forge';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { checkQualifiedService, type IssuedOutputOptions, TRUST_RULES, TrustStore, validateIssuedMdoc, validateIssuedSdJwtVc } from '../src/index';
 

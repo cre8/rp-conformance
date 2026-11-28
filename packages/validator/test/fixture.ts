@@ -12,7 +12,7 @@ import {
   faultInfo,
   type PresentationAction,
   type TrustListAction,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 import {
   buildAuthorizationResponse,
   buildDcApiResponse,
@@ -45,9 +45,9 @@ import {
   type Secp256k1KeyPair,
   type ServedStatusList,
   type TestPki,
-} from '@rp-conformance/forge';
+} from '@eudi-pcaf/forge';
 import { exportJWK, generateKeyPair, type JWK } from 'jose';
-import type { CheckResult } from '@rp-conformance/core';
+import type { CheckResult } from '@eudi-pcaf/core';
 import {
   type FetchedStatusList,
   type MdocValidation,

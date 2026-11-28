@@ -1,7 +1,7 @@
 // RP_WS_MS_ProtocolMessages: the Authorization Request the Relying Party sends, by reference via redirects or through
 // the W3C Digital Credentials API. `RP_WS_MS_ProtocolMessages_006` (ISO/IEC 18013-7 Annex C) is not written: the
 // harness has no Annex C flow.
-import { relevancy } from '@rp-conformance/core';
+import { relevancy } from '@eudi-pcaf/core';
 import { requestTestCase } from '../requests';
 
 const protocolMessages = (testCase: Omit<Parameters<typeof requestTestCase>[0], 'layer' | 'area'>) =>

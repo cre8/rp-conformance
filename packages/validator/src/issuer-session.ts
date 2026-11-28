@@ -5,8 +5,8 @@
 // response encryption, and the notification and deferred credential requests (sections 9 and 11). A conforming issuer
 // accepts a request only if every check passes, so each session fault can be shown to fail exactly one of them.
 import { createPublicKey, verify as nodeVerify } from 'node:crypto';
-import { type CheckId, SESSION_CHECKS } from '@rp-conformance/core';
-import { base64url, sha256 } from '@rp-conformance/forge';
+import { type CheckId, SESSION_CHECKS } from '@eudi-pcaf/core';
+import { base64url, sha256 } from '@eudi-pcaf/forge';
 import { CheckRecorder, NotApplicable, type ValidationMode, type ValidationResult } from './checks';
 import { fail } from './status-list';
 

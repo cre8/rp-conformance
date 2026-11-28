@@ -1,7 +1,7 @@
 // The status list procedures of the reference validator (Token Status List sections 4, 5 and 8; ISO/IEC 18013-5 second
 // edition section 12.3.6): one named check per property, for a Status List Token in JWT or CWT format.
 import { inflateSync } from 'node:zlib';
-import { type CborMap, COSE, COSE_ALG, base64url, decodeCbor, readCose, sigStructure, verifyEs256, x5chainOf } from '@rp-conformance/forge';
+import { type CborMap, COSE, COSE_ALG, base64url, decodeCbor, readCose, sigStructure, verifyEs256, x5chainOf } from '@eudi-pcaf/forge';
 import { parseCertificate } from '@owf/x509';
 import { CheckFailure, type CheckRecorder, NotApplicable } from './checks';
 import type { MatchedIssuer } from './trust';

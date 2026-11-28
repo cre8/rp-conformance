@@ -2,7 +2,7 @@
 // the PID Provider LoTE `TL-PID`, or the Trusted List `TL-QEAA`, with the changes of the step and at most one trust-list
 // fault. The harness and the self-validation build it with the same function. Issue 26: the issuer suite publishes
 // versions of the Wallet Provider LoTE `TL-WP` the same way (PP_Inf_SM_TrustMechanisms), sealed by its own scheme operator.
-import { faultInfo, type IssuerTrustListAction, type TrustListAction } from '@rp-conformance/core';
+import { faultInfo, type IssuerTrustListAction, type TrustListAction } from '@eudi-pcaf/core';
 import { LOTE_TYPES } from '@owf/eudi-lote';
 import { flipBitInSegment } from './jose';
 import { buildLoteDocument, sealLote } from './lote';

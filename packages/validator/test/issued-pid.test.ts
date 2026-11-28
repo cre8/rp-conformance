@@ -1,7 +1,7 @@
 // Output-side self-validation of the issuer suite (issuer harness design section 7): a PID the forge issues valid per the
 // PID Rulebook, in SD-JWT VC and in mdoc, passes every credential check and every output check (`SM_Validity`,
 // `DM_*`); a forge-built PID with one defect fails exactly the check of that rule.
-import { ATTESTATION_OUTPUT_CHECKS, ISSUER_OUTPUT_CHECKS, PID_TEST_SUBJECTS, pidClaimsOf } from '@rp-conformance/core';
+import { ATTESTATION_OUTPUT_CHECKS, ISSUER_OUTPUT_CHECKS, PID_TEST_SUBJECTS, pidClaimsOf } from '@eudi-pcaf/core';
 import {
   base64url,
   buildSealedLote,
@@ -19,7 +19,7 @@ import {
   PID_VCT,
   type TestPki,
   tdate,
-} from '@rp-conformance/forge';
+} from '@eudi-pcaf/forge';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
   checkMdocValidityPeriod,

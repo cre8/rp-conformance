@@ -1,17 +1,17 @@
 {
-  "name": "@rp-conformance/wallet-provider",
+  "name": "@eudi-pcaf/wallet-provider",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
   "dependencies": {
     "@owf/x509": "^0.7.0",
-    "@rp-conformance/forge": "workspace:*",
-    "@rp-conformance/status-provider": "workspace:*",
-    "@rp-conformance/trust-infrastructure": "workspace:*"
+    "@eudi-pcaf/forge": "workspace:*",
+    "@eudi-pcaf/status-provider": "workspace:*",
+    "@eudi-pcaf/trust-infrastructure": "workspace:*"
   },
   "devDependencies": {
     "@owf/token-status-list": "^0.7.0",
-    "@rp-conformance/validator": "workspace:*"
+    "@eudi-pcaf/validator": "workspace:*"
   }
 }

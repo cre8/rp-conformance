@@ -1,4 +1,4 @@
-import { startServer, sendJson, sendText, type RunningServer } from '@rp-conformance/core';
+import { startServer, sendJson, sendText, type RunningServer } from '@eudi-pcaf/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DcApiShim } from '../src/index';
 

@@ -2,22 +2,22 @@
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { type Flow, isExecutable, type RelyingPartyAdapter } from '@rp-conformance/core';
-import { definitions, testBook } from '@rp-conformance/definitions';
+import { type Flow, isExecutable, type RelyingPartyAdapter } from '@eudi-pcaf/core';
+import { definitions, testBook } from '@eudi-pcaf/definitions';
 import { type AdapterEntry, resolveAdapter } from './adapter-module';
 import { loadIcs } from './ics';
 import { loadKnownFindings, runOutcome } from './known-findings';
 import { runConformance } from './runner';
 
 const ADAPTERS: Record<string, AdapterEntry<RelyingPartyAdapter>> = {
-  reference: { load: () => import('@rp-conformance/adapter-reference'), dir: 'reference' },
-  eudiplo: { load: () => import('@rp-conformance/adapter-eudiplo'), dir: 'eudiplo' },
+  reference: { load: () => import('@eudi-pcaf/adapter-reference'), dir: 'reference' },
+  eudiplo: { load: () => import('@eudi-pcaf/adapter-eudiplo'), dir: 'eudiplo' },
 };
 
-const usage = `Usage: rp-conformance run --adapter <${Object.keys(ADAPTERS).join('|')}|path> [options]
+const usage = `Usage: eudi-pcaf run --adapter <${Object.keys(ADAPTERS).join('|')}|path> [options]
 
 --adapter takes a built-in adapter or the path of an adapter module of your own (.ts or .js, exporting
-createAdapter(): RelyingPartyAdapter of @rp-conformance/core); such a module needs --ics.
+createAdapter(): RelyingPartyAdapter of @eudi-pcaf/core); such a module needs --ics.
 
 Options:
   --only <id>            Test case or test book item ID or pattern with *, repeatable or comma separated
@@ -36,7 +36,7 @@ Options:
 
 The report goes to <report-dir>/<run>/: report.json, summary.md, junit.xml and the artifacts of every step.
 
-The issuer suite (a PID Provider or Attestation Provider as system under test): rp-conformance issuer --help
+The issuer suite (a PID Provider or Attestation Provider as system under test): eudi-pcaf issuer --help
 `;
 
 async function main() {
@@ -113,7 +113,7 @@ async function main() {
   if (!outcome.ok) process.exitCode = 1;
 }
 
-// `rp-conformance issuer ...` runs the issuer suite (packages/controller/src/issuer/cli.ts).
+// `eudi-pcaf issuer ...` runs the issuer suite (packages/controller/src/issuer/cli.ts).
 const issuer = () =>
   import('./issuer/cli').then(async ({ issuerMain }) => {
     process.exitCode = await issuerMain(process.argv.slice(3), { out: (text) => process.stdout.write(text), err: (text) => process.stderr.write(text) });

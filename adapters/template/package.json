@@ -1,10 +1,10 @@
 {
-  "name": "@rp-conformance/adapter-template",
+  "name": "@eudi-pcaf/adapter-template",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
   "dependencies": {
-    "@rp-conformance/core": "workspace:*"
+    "@eudi-pcaf/core": "workspace:*"
   }
 }

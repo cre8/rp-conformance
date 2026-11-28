@@ -2,7 +2,7 @@
 // credential request and response encryption (OpenID4VCI 1.0 section 10). Built on node:crypto so the fault layer can
 // send what a JOSE library would refuse (an unadvertised `enc`, a key off its curve) in the parameters it encrypts.
 import { type CipherGCM, type DecipherGCM, createCipheriv, createDecipheriv, createHash, createPrivateKey, createPublicKey, diffieHellman, generateKeyPairSync, randomBytes } from 'node:crypto';
-import { base64url } from '@rp-conformance/forge';
+import { base64url } from '@eudi-pcaf/forge';
 
 const KEY_BITS: Record<string, number> = { A128GCM: 128, A192GCM: 192, A256GCM: 256 };
 

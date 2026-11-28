@@ -1,7 +1,7 @@
 // PP_WS_SM_KeyAttestation: the KA at the credential endpoint, in the `key_attestation` header of the key proof and as
 // the `attestation` proof type, issuer catalogue section 5.1.3. One definition per test case and variant; the variants
 // run so far are `SD` × `PA`, as for the positive control `PP_WS_IA_MainInteraction_001`.
-import { type FormatVariant, type GrantVariant, type IssuerExpectation, type IssuerTestCaseDefinition, issuerProfiles, relevancy } from '@rp-conformance/core';
+import { type FormatVariant, type GrantVariant, type IssuerExpectation, type IssuerTestCaseDefinition, issuerProfiles, relevancy } from '@eudi-pcaf/core';
 import { FORMAT_NAMES, GRANT_NAMES, iss, pidProfile } from '../../wording';
 import { faultStep, issuanceStep, maintenanceConf, rejected, revocationStep, STATUS_LIST_FAULTS, STATUS_LIST_HTTP, statusListSteps, validStep, securityTestCase } from './attestations';
 

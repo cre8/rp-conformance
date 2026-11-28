@@ -8,8 +8,8 @@
 // case refers to it, with the unit's index. A Provider may reuse a fetched list for its `ttl` (Token Status List
 // section 13.7), so a change of the shared list could be masked by a copy fetched by an earlier test case, and would
 // carry into every later one. The RP harness serves a status list per credential for the same reason.
-import { type IssuanceAction, ISSUER_FAULTS, type IssuerFaultId, type WalletEventAction } from '@rp-conformance/core';
-import { applyStatusListFault, buildStatusListTokenJwt, decodeJws } from '@rp-conformance/forge';
+import { type IssuanceAction, ISSUER_FAULTS, type IssuerFaultId, type WalletEventAction } from '@eudi-pcaf/core';
+import { applyStatusListFault, buildStatusListTokenJwt, decodeJws } from '@eudi-pcaf/forge';
 import {
   applyIssuerFault,
   type HttpExchange,
@@ -17,9 +17,9 @@ import {
   KEY_ATTESTATION_HEADER,
   type MessageHooks,
   type WalletUnitBinding,
-} from '@rp-conformance/issuer-wallet';
-import type { StatusProvider } from '@rp-conformance/status-provider';
-import { CLIENT_ATTESTATION_HEADER, CLIENT_ATTESTATION_POP_HEADER, REVOKED, signerFor, type TestWalletProvider, type WalletUnitId } from '@rp-conformance/wallet-provider';
+} from '@eudi-pcaf/issuer-wallet';
+import type { StatusProvider } from '@eudi-pcaf/status-provider';
+import { CLIENT_ATTESTATION_HEADER, CLIENT_ATTESTATION_POP_HEADER, REVOKED, signerFor, type TestWalletProvider, type WalletUnitId } from '@eudi-pcaf/wallet-provider';
 
 type StatusReference = { idx: number; uri: string };
 

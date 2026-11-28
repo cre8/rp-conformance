@@ -2,10 +2,10 @@
 // chains to the anchor `TL-WP` publishes for its purpose, read from the sealed list as the Test Trust Infrastructure
 // serves it; a revocation shows in the status list the Test Status Provider serves.
 import { getListFromStatusListJWT } from '@owf/token-status-list';
-import { base64url, createTestPki, decodeJws, LIST_PROFILES, type TestPki, verifyEs256 } from '@rp-conformance/forge';
-import { StatusProvider } from '@rp-conformance/status-provider';
-import { TrustInfrastructure } from '@rp-conformance/trust-infrastructure';
-import { type ListSource, validatePath, verifyLote } from '@rp-conformance/validator';
+import { base64url, createTestPki, decodeJws, LIST_PROFILES, type TestPki, verifyEs256 } from '@eudi-pcaf/forge';
+import { StatusProvider } from '@eudi-pcaf/status-provider';
+import { TrustInfrastructure } from '@eudi-pcaf/trust-infrastructure';
+import { type ListSource, validatePath, verifyLote } from '@eudi-pcaf/validator';
 import { parseCertificate } from '@owf/x509';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {

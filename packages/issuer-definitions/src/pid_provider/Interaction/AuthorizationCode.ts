@@ -1,7 +1,7 @@
 // PP_WS_IA_AuthorizationCode: the authorization code flow with PAR and PKCE (issuer catalogue section 5.1.2). One
 // definition per format variant; the grant is `AC` by definition. The faults are those of the points `authorization`
 // and `token-request` (`GRANT_FAULTS`); reusing a `request_uri` or a code is a `token-reuse` step.
-import { defineIssuerTestCase, type FormatVariant, GRANT_FAULTS, type GrantFaultId, type IssuerExpectation, relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, GRANT_FAULTS, type GrantFaultId, type IssuerExpectation, relevancy } from '@eudi-pcaf/core';
 import { FORMAT_NAMES, iss, issuance, pidProfile, preconditions, rej, technologyOf } from '../../wording';
 
 const CONTROL = 'PP_WS_IA_MainInteraction_001';

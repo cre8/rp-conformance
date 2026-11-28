@@ -1,6 +1,6 @@
 // Loads the adapter that `--adapter` names: a built-in adapter by its name, or an adapter module of the user's own by
 // its path (a `.ts`, `.mts`, `.js` or `.mjs` file that exports `createAdapter()`). The CLI runs under tsx, so a
-// TypeScript module needs no build step. Such a module may import `@rp-conformance/core`; the Docker image makes that
+// TypeScript module needs no build step. Such a module may import `@eudi-pcaf/core`; the Docker image makes that
 // package resolvable from any directory (Dockerfile).
 import { isAbsolute, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';

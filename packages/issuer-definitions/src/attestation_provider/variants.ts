@@ -13,7 +13,7 @@ import {
   type IssuerTestCaseDefinition,
   defineIssuerTestCase,
   issuerProfiles,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 
 /**
  * The objectives the catalogue marks **PID only** (sections 5.1.1 to 5.1.4): an Attestation Provider has its own in

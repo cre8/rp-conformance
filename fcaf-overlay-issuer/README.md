@@ -35,7 +35,7 @@ The issuer definitions have one definition per test case and variant (credential
 
 ## Rendering
 
-The files are rendered; do not edit them here. The test cases come from the executable definitions in [../packages/issuer-definitions](../packages/issuer-definitions), the ICS items from `ISSUER_ICS_ITEMS` of `@rp-conformance/core`, the hand-written pages from [../packages/fcaf-render/pages](../packages/fcaf-render/pages) (`pid-provider.md`, `pp_*.md`, `defaults-issuer.md`, `ics-issuer.md`, `references-issuer.md`), and the modified FCAF pages from the Relying Party overlay. From the repository root:
+The files are rendered; do not edit them here. The test cases come from the executable definitions in [../packages/issuer-definitions](../packages/issuer-definitions), the ICS items from `ISSUER_ICS_ITEMS` of `@eudi-pcaf/core`, the hand-written pages from [../packages/fcaf-render/pages](../packages/fcaf-render/pages) (`pid-provider.md`, `pp_*.md`, `defaults-issuer.md`, `ics-issuer.md`, `references-issuer.md`), and the modified FCAF pages from the Relying Party overlay. From the repository root:
 
 ```bash
 pnpm fcaf:render

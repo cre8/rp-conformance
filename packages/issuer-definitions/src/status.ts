@@ -1,7 +1,7 @@
 // Building blocks of the revocation and status list test cases (issue 22): the `observe-status`, `issuer-event` and
 // `present` steps, and the wording of the checks `OBS-SL` runs on a published status list (issuer harness design section
 // 6.3, catalogue sections 3.6 and 5.2).
-import type { FormatVariant, IssuerExpectation, IssuerStepDefinition } from '@rp-conformance/core';
+import type { FormatVariant, IssuerExpectation, IssuerStepDefinition } from '@eudi-pcaf/core';
 import { FORMAT_NAMES, iss, issuance } from './wording';
 
 /** The token format of the status list a credential of the format references. */

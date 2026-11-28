@@ -1,5 +1,5 @@
 {
-  "name": "@rp-conformance/forge",
+  "name": "@eudi-pcaf/forge",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -16,7 +16,7 @@
     "@owf/mdoc": "0.9.3",
     "@owf/token-status-list": "^0.7.0",
     "@owf/x509": "^0.7.0",
-    "@rp-conformance/core": "workspace:*",
+    "@eudi-pcaf/core": "workspace:*",
     "@sd-jwt/core": "^0.24.3",
     "@sd-jwt/sd-jwt-vc": "^0.24.3",
     "@xmldom/xmldom": "^0.9.12",

@@ -22,7 +22,7 @@ pnpm test
 ```
 
 ```bash
-pnpm rp-conformance run --adapter reference
+pnpm eudi-pcaf run --adapter reference
 ```
 
 `pnpm test` includes the self-validation (harness design §7): every fault of the catalogue fails exactly its target
@@ -79,7 +79,7 @@ docker compose -f adapters/eudiplo/docker-compose.yml up -d --wait
 ```
 
 ```bash
-pnpm rp-conformance run --adapter eudiplo --known-findings adapters/eudiplo/known-findings.yaml
+pnpm eudi-pcaf run --adapter eudiplo --known-findings adapters/eudiplo/known-findings.yaml
 ```
 
 [adapters/eudiplo/README.md](adapters/eudiplo/README.md) covers the image, the environment variables, the DC API page,
@@ -88,7 +88,7 @@ the trust configuration per category and a second EUDIPLO next to a running one.
 ## Issuer suite
 
 ```bash
-pnpm rp-conformance issuer --list
+pnpm eudi-pcaf issuer --list
 ```
 
 ```bash
@@ -96,7 +96,7 @@ docker compose --env-file adapters/issuer-eudiplo/reference.env -f adapters/eudi
 ```
 
 ```bash
-pnpm rp-conformance issuer run --adapter eudiplo --ics adapters/issuer-eudiplo/ics.yaml --known-findings adapters/issuer-eudiplo/known-findings.yaml
+pnpm eudi-pcaf issuer run --adapter eudiplo --ics adapters/issuer-eudiplo/ics.yaml --known-findings adapters/issuer-eudiplo/known-findings.yaml
 ```
 
 Per run the controller starts the Test Trust Infrastructure (`TL-WP`, `TL-PID`, `TL-AC`, `TL-RC`) and the Test Status
@@ -117,14 +117,14 @@ results, `summary.md`, `junit.xml`, the credentials). `EUDIPLO_PORT` and `HARNES
 
 ## Docker image
 
-The image `ghcr.io/cre8/rp-conformance` ([Dockerfile](Dockerfile)) holds the CLI, both suites, the built-in adapters
+The image `ghcr.io/cre8/eudi-pcaf` ([Dockerfile](Dockerfile)) holds the CLI, both suites, the built-in adapters
 and Chromium for the DC API flow, so a run needs neither a clone nor Node.js. Its working directory `/work` is where
-relative paths resolve; an adapter module there can import `@rp-conformance/core` without installing it, and is an ES
+relative paths resolve; an adapter module there can import `@eudi-pcaf/core` without installing it, and is an ES
 module unless a `package.json` of its own says otherwise. On the host network the system under test and the harness
 reach each other as with the bare CLI (Linux; Docker Desktop needs host networking turned on):
 
 ```bash
-docker run --rm --init --network host --user "$(id -u):$(id -g)" -v "$PWD:/work" ghcr.io/cre8/rp-conformance:main run --adapter ./my-adapter.ts --ics my-ics.yaml
+docker run --rm --init --network host --user "$(id -u):$(id -g)" -v "$PWD:/work" ghcr.io/cre8/eudi-pcaf:main run --adapter ./my-adapter.ts --ics my-ics.yaml
 ```
 
 Tags: `main` and `sha-<commit>` from main, `<version>`, `v<major>` and `latest` from a release tag
@@ -143,7 +143,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose up -d --wait   # the Relying Party under test
-      - uses: cre8/rp-conformance@main
+      - uses: cre8/eudi-pcaf@main
         env:
           MY_RP_URL: http://127.0.0.1:8080
           HARNESS_HOST: host.docker.internal   # if the RP runs in a container

@@ -3,7 +3,7 @@
 // then broken in exactly one way; every signature that still covers the changed bytes is computed again, so the
 // encoding is the only defect. The fault layer (faults.ts, faults-cose.ts, presentation.ts) calls these first.
 import { createHash, randomBytes } from 'node:crypto';
-import type { FaultId } from '@rp-conformance/core';
+import type { FaultId } from '@eudi-pcaf/core';
 import { type CborMap, COSE, coseValue, decodeCbor, encodeCbor, readCose } from './cbor';
 import { base64url, signEs256 } from './crypto';
 import { decodeJws, resignJws } from './jose';

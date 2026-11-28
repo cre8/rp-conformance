@@ -1,13 +1,13 @@
 # EUDIPLO as the Relying Party under test, with PostgreSQL (harness design section 8).
 #
 #   docker compose -f adapters/eudiplo/docker-compose.yml up -d --wait
-#   pnpm rp-conformance run --adapter eudiplo --only RP_WS_IA_MainInteraction_001a
+#   pnpm eudi-pcaf run --adapter eudiplo --only RP_WS_IA_MainInteraction_001a
 #
 # The harness services run on the host; EUDIPLO reaches them as host.docker.internal. EUDIPLO is published on
 # 127.0.0.1 only, and its PUBLIC_URL (request_uri, response_uri) names 127.0.0.1 rather than localhost: localhost may
 # resolve to ::1 first, where another process can listen on the same port. EUDIPLO_PORT moves the host port, for a
 # second stack next to this one (with another project name: docker compose -p <name>).
-name: rp-conformance-eudiplo
+name: eudi-pcaf-eudiplo
 
 services:
   eudiplo:

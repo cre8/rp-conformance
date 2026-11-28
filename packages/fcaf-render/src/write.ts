@@ -1,6 +1,6 @@
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
-import type { IssuerTestCaseDefinition, TestCaseDefinition } from '@rp-conformance/core';
+import type { IssuerTestCaseDefinition, TestCaseDefinition } from '@eudi-pcaf/core';
 import { loadIssuerPages, renderIssuerOverlay } from './issuer-overlay';
 import { loadSharedPages, loadUpstreamPages, renderOverlay } from './overlay';
 

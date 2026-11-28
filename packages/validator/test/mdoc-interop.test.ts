@@ -1,4 +1,4 @@
-import { identifierListToken, pid, presentation, statusListToken } from '@rp-conformance/core';
+import { identifierListToken, pid, presentation, statusListToken } from '@eudi-pcaf/core';
 import {
   createTestPki,
   encodeCbor,
@@ -12,7 +12,7 @@ import {
   presentMdoc,
   requestedElements,
   PID_MDOC_QUERY,
-} from '@rp-conformance/forge';
+} from '@eudi-pcaf/forge';
 import { CoseKey, DeviceResponse, IdentifierListCwt, SessionTranscript, Verifier } from '@owf/mdoc';
 import { StatusListCwt } from '@owf/token-status-list';
 import { parseCertificate } from '@owf/x509';

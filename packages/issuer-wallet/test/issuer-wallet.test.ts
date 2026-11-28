@@ -5,9 +5,9 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Oauth2AuthorizationServer } from '@openid4vc/oauth2';
 import { Openid4vciIssuer } from '@openid4vc/openid4vci';
-import { base64url, createTestPki, decodeJws, type EcKeyPair, generateEcKeyPair, sha256, type TestPki } from '@rp-conformance/forge';
-import { StatusProvider } from '@rp-conformance/status-provider';
-import { CLIENT_ATTESTATION_HEADER, CLIENT_ATTESTATION_POP_HEADER, keySigner, signJwt, TestWalletProvider, TYP, wiaPopParts } from '@rp-conformance/wallet-provider';
+import { base64url, createTestPki, decodeJws, type EcKeyPair, generateEcKeyPair, sha256, type TestPki } from '@eudi-pcaf/forge';
+import { StatusProvider } from '@eudi-pcaf/status-provider';
+import { CLIENT_ATTESTATION_HEADER, CLIENT_ATTESTATION_POP_HEADER, keySigner, signJwt, TestWalletProvider, TYP, wiaPopParts } from '@eudi-pcaf/wallet-provider';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   accessTokenHash,

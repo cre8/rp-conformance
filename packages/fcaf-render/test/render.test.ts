@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { ics } from '@rp-conformance/core';
-import { baselineDefinitions, definitions, attestationProviderDefinitions } from '@rp-conformance/definitions';
+import { ics } from '@eudi-pcaf/core';
+import { baselineDefinitions, definitions, attestationProviderDefinitions } from '@eudi-pcaf/definitions';
 import { describe, expect, it } from 'vitest';
 import { compareOverlay, renderBaseline, renderTestCase, testCasePath } from '../src/index';
 

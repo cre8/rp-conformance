@@ -1,6 +1,6 @@
 // RP_WS_MS_Metadata: the `client_metadata` of the Relying Party's request, with the key the Authorization Response is
 // encrypted to and the formats and algorithms it accepts.
-import { formats, type FormatWording, relevancy } from '@rp-conformance/core';
+import { formats, type FormatWording, relevancy } from '@eudi-pcaf/core';
 import { requestTestCase } from '../requests';
 
 const metadata = (testCase: Omit<Parameters<typeof requestTestCase>[0], 'layer' | 'area'>) => requestTestCase({ layer: 'MS', area: 'Metadata', ...testCase });

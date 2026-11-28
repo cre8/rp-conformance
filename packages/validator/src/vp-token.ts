@@ -1,8 +1,8 @@
 // The checks of a `vp_token` as a whole (RP_WS_UC_Presentation): before its presentations are validated, `vp-token`
 // checks it against the DCQL query of the request; after them, `combined-binding` checks that the presented
 // credentials belong to the same person by their identifying attributes (attribute-based binding).
-import type { DcqlQuery } from '@rp-conformance/core';
-import { base64url, type CborMap, decodeCbor } from '@rp-conformance/forge';
+import type { DcqlQuery } from '@eudi-pcaf/core';
+import { base64url, type CborMap, decodeCbor } from '@eudi-pcaf/forge';
 import { CheckFailure, CheckRecorder, type ValidationMode, type ValidationResult } from './checks';
 
 const fail = (message: string): never => {

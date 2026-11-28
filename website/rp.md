@@ -12,8 +12,8 @@ The test cases are rendered from the executable definitions into an FCAF overlay
 | --- | --- |
 | [Test catalogue](rp-test-catalogue.md) | The test objectives for Relying Parties, traced to the ARF high-level requirements, with the test environment, the Relying Party ICS and the decisions taken |
 | [Harness design](harness-design.md) | The Conformance Wallet, the status list and trust list servers, the artifact forge with fault injection, the Relying Party adapter, verdicts and delivery phases |
-| [Running the harness](running.md) | Running the suites from a clone, with the Docker image or with the GitHub Action: options, flows, the report, the CI jobs |
-| [Testing your own Relying Party or issuer](adapter-guide.md) | How to run the suite against your Relying Party: writing its adapter from the template, filling in the ICS, networking, reading the report |
+| [Running the harness](../harness/running.md) | Running the suites from a clone, with the Docker image or with the GitHub Action: options, flows, the report, the CI jobs |
+| [Testing your own Relying Party or issuer](../harness/adapter-guide.md) | How to run the suite against your Relying Party: writing its adapter from the template, filling in the ICS, networking, reading the report |
 
 ## Reference verifier and EUDIPLO
 

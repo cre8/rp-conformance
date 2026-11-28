@@ -1,7 +1,7 @@
 // Renders the FCAF overlay (fcaf-overlay/docs/fcaf): the test cases from the definitions, the overviews, area and layer
 // pages and baseline lists of the Relying Party SUT, the Relying Party ICS, and modified copies of four FCAF pages.
 import { readFile } from 'node:fs/promises';
-import { parseTestCaseId, type TestCaseDefinition } from '@rp-conformance/core';
+import { parseTestCaseId, type TestCaseDefinition } from '@eudi-pcaf/core';
 import { AREA_TITLE, CLASS_DIR, CLASS_TITLE, LAYER_DIR, LAYER_TITLE, renderTestCase, testCasePath, testCasePathInSut } from './testcase';
 
 /** The FCAF pages the overlay modifies, from the `submitted` branch (see upstream/README.md). */

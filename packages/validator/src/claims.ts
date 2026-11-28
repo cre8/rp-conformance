@@ -1,6 +1,6 @@
 // The `claims` check of the reference validator (RP_WS_DM_IdentifyingData, RP_WS_DM_CredentialMetadata): the disclosed
 // claims satisfy the credential query, and the PID attributes have the data types of the PID rulebook.
-import { Tagged } from '@rp-conformance/forge';
+import { Tagged } from '@eudi-pcaf/forge';
 import { fail } from './status-list';
 
 /** A claim of a DCQL credential query: its path and, optionally, the values it may have (OpenID4VP section 6.3). */

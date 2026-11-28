@@ -28,7 +28,7 @@ import {
   STATUS_LIST_CWT_TYPE,
   toEnrolledCertificate,
   verifyCsr,
-} from '@rp-conformance/forge';
+} from '@eudi-pcaf/forge';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { type FetchedStatusList, TRUST_RULES, validateMdocPresentation, validatePath, validateSdJwtVcPresentation } from '../src/index';
 import { AUDIENCE, Fixture, KB_MAX_AGE, MAX_STATUS_LIST_BYTES, RESPONSE_URI, SKEW } from './fixture';

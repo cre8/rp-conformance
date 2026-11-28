@@ -5,10 +5,10 @@
 // Conformance Wallet proved possession of and that the Wallet Unit's key attestation attests. `trusted-authorities`
 // checks a query, of which there is none.
 import { createHash } from 'node:crypto';
-import { type AttestationSubject, type CheckId, type CheckResult, type PidSubject, STATUS_LIST_CHECKS } from '@rp-conformance/core';
+import { type AttestationSubject, type CheckId, type CheckResult, type PidSubject, STATUS_LIST_CHECKS } from '@eudi-pcaf/core';
 // Issue 27: the rulebook of `default_credential_A` and the device binding of an attestation.
 import { checkAttestationAttributes, checkAttestationDisclosure, checkAttestationType, checkAttestationValues, checkQualifiedService, checkRevocationMethod } from './attestation-rulebook';
-import { base64url, type CborMap, decodeCbor, verifyEs256 } from '@rp-conformance/forge';
+import { base64url, type CborMap, decodeCbor, verifyEs256 } from '@eudi-pcaf/forge';
 import { CheckRecorder, type ValidationMode, type ValidationResult } from './checks';
 import { describeKey, processDisclosures } from './disclosures';
 import {

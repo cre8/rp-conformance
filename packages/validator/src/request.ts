@@ -2,8 +2,8 @@
 // `RP_WS_SM_RpIntegrity`): one named check per property of the requests a Relying Party sends, evaluated over every
 // request a step captured, so a request fault can be shown to fail exactly one of them.
 import { createHash } from 'node:crypto';
-import { type CapturedRequest, type CheckResult, type Flow, REQUEST_CHECKS, type RequestCheck } from '@rp-conformance/core';
-import { base64url, PID_DOCTYPE, PID_VCT, verifyEs256 } from '@rp-conformance/forge';
+import { type CapturedRequest, type CheckResult, type Flow, REQUEST_CHECKS, type RequestCheck } from '@eudi-pcaf/core';
+import { base64url, PID_DOCTYPE, PID_VCT, verifyEs256 } from '@eudi-pcaf/forge';
 import { parseAccessCertificate, validateAccessCertificate } from '@owf/eudi-access-certificate';
 import { checkOverAsking, parseWRPRC, validateWRPRCPayload } from '@owf/eudi-registration-certificate';
 import { type Certificate, parseCertificate } from '@owf/x509';

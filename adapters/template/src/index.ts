@@ -1,7 +1,7 @@
 // Template of a Relying Party adapter: copy this file, replace the HTTP calls to "my RP" with the API of your Relying
 // Party, and run it with
 //
-//   pnpm rp-conformance run --adapter ./my-adapter.ts --ics my-ics.yaml
+//   pnpm eudi-pcaf run --adapter ./my-adapter.ts --ics my-ics.yaml
 //
 // The walkthrough is in adapter-guide.md. The Relying Party API this template assumes is made up, and every call to
 // it is marked `TODO`:
@@ -27,7 +27,7 @@ import {
   type RelyingPartyResult,
   type StartedPresentation,
   type TestEnvironment,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 
 /** Where the harness reaches your Relying Party. Use 127.0.0.1, not localhost (adapter-guide.md, "Networking"). */
 const RP_URL = (process.env.MY_RP_URL ?? 'http://127.0.0.1:8080').replace(/\/$/, '');

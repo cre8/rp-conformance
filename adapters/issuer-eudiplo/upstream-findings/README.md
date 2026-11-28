@@ -52,9 +52,9 @@ header text (`PP_RP_IA_Supportive_002`). The other findings the review classed a
 To reproduce one of them:
 
 ```bash
-EUDIPLO_PORT=3228 docker compose --env-file adapters/issuer-eudiplo/reference.env -p rp-conformance-fix -f adapters/eudiplo/docker-compose.yml up -d --wait
+EUDIPLO_PORT=3228 docker compose --env-file adapters/issuer-eudiplo/reference.env -p eudi-pcaf-fix -f adapters/eudiplo/docker-compose.yml up -d --wait
 ```
 
 ```bash
-EUDIPLO_PORT=3228 pnpm rp-conformance issuer run --adapter eudiplo --only '<test case ID>'
+EUDIPLO_PORT=3228 pnpm eudi-pcaf issuer run --adapter eudiplo --only '<test case ID>'
 ```

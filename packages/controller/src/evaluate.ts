@@ -8,7 +8,7 @@ import {
   type PolicyReference,
   type RelyingPartyResult,
   type Verdict,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 import { icsAnswer, statusMeanings } from './ics';
 
 export interface Evaluation {

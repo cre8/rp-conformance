@@ -6,8 +6,8 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { type CallbackContext, type Jwk, type JwtSigner, Oauth2AuthorizationServer, Oauth2ResourceServer } from '@openid4vc/oauth2';
 import { Openid4vciIssuer } from '@openid4vc/openid4vci';
-import { type RunningServer, sendJson, startServer } from '@rp-conformance/core';
-import { base64url, type EcKeyPair, generateEcKeyPair, signEs256, verifyEs256 } from '@rp-conformance/forge';
+import { type RunningServer, sendJson, startServer } from '@eudi-pcaf/core';
+import { base64url, type EcKeyPair, generateEcKeyPair, signEs256, verifyEs256 } from '@eudi-pcaf/forge';
 import { parseCertificate } from '@owf/x509';
 
 export const CONFIGURATION_ID = 'test_sd_jwt_vc';

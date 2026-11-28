@@ -31,7 +31,7 @@ import {
   step,
   type TrustListAction,
   testCaseId,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 
 const CONTROLS: [string, string] = [positiveControlOf(formats.sdJwtVc), positiveControlOf(formats.mdoc)];
 const LOTE = ['[ETSI TS 119 602]', '[ARF] Annex 2, OIA_15a, OIA_15b'];

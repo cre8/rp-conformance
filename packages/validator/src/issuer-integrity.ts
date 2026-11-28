@@ -2,8 +2,8 @@
 // `PP_WS_SM_IssuerIntegrity`), over several issued credentials (`PP_WS_SM_Unlinkability`), and over the requests the
 // Provider sends to the harness (`PP_Inf_SM_TrustMechanisms_008`). Each check is a pure function of the captured
 // artifacts; an `inspect` step names the checks its `CONF` requires.
-import type { CheckResult, IssuerInspectionCheck } from '@rp-conformance/core';
-import { base64url, COSE, type CborMap, decodeCbor, decodeEmbedded, readCose, x5chainOf } from '@rp-conformance/forge';
+import type { CheckResult, IssuerInspectionCheck } from '@eudi-pcaf/core';
+import { base64url, COSE, type CborMap, decodeCbor, decodeEmbedded, readCose, x5chainOf } from '@eudi-pcaf/forge';
 import { parseCertificate } from '@owf/x509';
 import { deviceKeyOfMso, readIssuerSigned, asMap } from './mdoc';
 import { statusReferenceOfIssued } from './published-status';

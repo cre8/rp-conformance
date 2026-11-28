@@ -1,7 +1,7 @@
 // The attribute variants of `default_credential_pid` for the data model test cases (RP_WS_DM_IdentifyingData,
 // RP_WS_DM_CredentialMetadata): the PID is issued, valid in every other respect, with other attributes. Each variant is
-// a credential fault of the catalogue (FAULTS in @rp-conformance/core) that forgePresentation applies at issuance.
-import type { FaultId } from '@rp-conformance/core';
+// a credential fault of the catalogue (FAULTS in @eudi-pcaf/core) that forgePresentation applies at issuance.
+import type { FaultId } from '@eudi-pcaf/core';
 import { DEFAULT_PID_MDOC_CLAIMS, type IssuedMdoc, issueMdoc, type MdocIssueOptions, PID_DOCTYPE, PID_NAMESPACE } from './mdoc';
 import { DEFAULT_PID_CLAIMS, type IssuedSdJwtVc, issueSdJwtVc, PID_VCT, type PidIssueOptions } from './pid';
 

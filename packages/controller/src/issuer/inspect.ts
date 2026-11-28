@@ -11,9 +11,9 @@ import {
   type IssuerIcs,
   type IssuerInspectionCheck,
   UNLINKABILITY_CHECKS,
-} from '@rp-conformance/core';
-import { base64url, decodeJws, parseCertificate, verifyEs256 } from '@rp-conformance/forge';
-import type { IssuanceEvidence } from '@rp-conformance/issuer-wallet';
+} from '@eudi-pcaf/core';
+import { base64url, decodeJws, parseCertificate, verifyEs256 } from '@eudi-pcaf/forge';
+import type { IssuanceEvidence } from '@eudi-pcaf/issuer-wallet';
 import {
   checkIssuerIntegrity,
   checkNoWalletIdentifier,
@@ -23,7 +23,7 @@ import {
   inspectIssued,
   type OutboundRequest,
   validatePath,
-} from '@rp-conformance/validator';
+} from '@eudi-pcaf/validator';
 import type { Evaluation } from '../evaluate';
 import { worst } from '../evaluate';
 import { sentAttestations } from './attestations';

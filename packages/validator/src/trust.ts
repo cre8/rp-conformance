@@ -1,4 +1,4 @@
-import type { CredentialCategory, TrustListCheck } from '@rp-conformance/core';
+import type { CredentialCategory, TrustListCheck } from '@eudi-pcaf/core';
 import { verifyCompact } from '@owf/eudi-jades';
 import { LoTEProfile, validateLoTEProfile } from '@owf/eudi-lote';
 import {
@@ -10,7 +10,7 @@ import {
   validateTrustedListProfile,
 } from '@owf/eudi-tl';
 import { type Certificate, parseCertificate } from '@owf/x509';
-import { base64url, verifyEs256 } from '@rp-conformance/forge';
+import { base64url, verifyEs256 } from '@eudi-pcaf/forge';
 import { CheckRecorder, type ValidationMode, type ValidationResult } from './checks';
 import { fail } from './status-list';
 import { validatePath } from './x509-path';

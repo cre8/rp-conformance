@@ -1,7 +1,7 @@
 // Signing certificates with one deliberate defect, for the certificate path faults of IssuerIntegrity: the credential
 // is issued with such a signer instead of the entity's own, so the chain it carries is the only difference.
 import { generateKeyPairSync, type KeyObject, sign as nodeSign } from 'node:crypto';
-import type { CredentialFormat, FaultId } from '@rp-conformance/core';
+import type { CredentialFormat, FaultId } from '@eudi-pcaf/core';
 import type { X509Extension } from '@owf/x509';
 import {
   type CertifiedKey,

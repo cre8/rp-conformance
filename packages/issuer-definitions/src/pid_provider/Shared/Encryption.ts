@@ -1,7 +1,7 @@
 // PP_WS_SH_Encryption (`P-ENC`, issuer catalogue section 5.1.5): credential request and response encryption. The
 // request is a JWE (`ECDH-ES`) to the key in `credential_request_encryption`; `credential_response_encryption` carries
 // an ephemeral P-256 key of the Conformance Wallet.
-import { defineIssuerTestCase, type FormatVariant, type GrantVariant, relevancy } from '@rp-conformance/core';
+import { defineIssuerTestCase, type FormatVariant, type GrantVariant, relevancy } from '@eudi-pcaf/core';
 import { iss, issuance, preconditions, rej, technologyOf } from '../../wording';
 import { FORMAT, faultStep, GRANT, MAIN, profileOf, ufPreconditions } from '../session';
 

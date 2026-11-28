@@ -1,5 +1,5 @@
-import { acc, all, fetched, nofetch, nostat, policyApplicationSpecificStatus, rej } from '@rp-conformance/core';
-import { PID_QUERY } from '@rp-conformance/forge';
+import { acc, all, fetched, nofetch, nostat, policyApplicationSpecificStatus, rej } from '@eudi-pcaf/core';
+import { PID_QUERY } from '@eudi-pcaf/forge';
 import { describe, expect, it } from 'vitest';
 import { evaluate, evaluateAccept, type EvaluationInput, evaluateReject } from '../src/evaluate';
 

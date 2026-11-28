@@ -20,7 +20,7 @@ import {
   scenario,
   step,
   testCaseId,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 
 const references = (format: FormatWording) => [
   `[ARF] Annex 2, ${format === formats.sdJwtVc ? 'OIA_03c, OIA_08a, OIA_12' : 'OIA_03b, OIA_08, OIA_12'}`,

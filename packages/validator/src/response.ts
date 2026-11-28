@@ -1,4 +1,4 @@
-import { base64url } from '@rp-conformance/forge';
+import { base64url } from '@eudi-pcaf/forge';
 import { compactDecrypt } from 'jose';
 import { CheckFailure, CheckRecorder, type ValidationMode, type ValidationResult } from './checks';
 

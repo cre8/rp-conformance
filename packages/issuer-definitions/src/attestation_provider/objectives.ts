@@ -20,7 +20,7 @@ import {
   issuerProfiles,
   type Relevancy,
   relevancy,
-} from '@rp-conformance/core';
+} from '@eudi-pcaf/core';
 import { definitions as clientAttestation } from '../pid_provider/SecurityMechanisms/ClientAttestation';
 import { conf } from '../pid_provider/MessageStructure/conf';
 import { revokedWithin } from '../inspection';
